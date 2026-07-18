@@ -5,8 +5,8 @@ namespace BemLeadAi\Core;
 use BemLeadAi\Admin\AdminMenu;
 use BemLeadAi\Ai\SignalClassifier;
 use BemLeadAi\Api\RestController;
+use BemLeadAi\Knowledge\KnowledgeBaseBuilder;
 use BemLeadAi\Learning\VariantBandit;
-use BemLeadAi\Rag\ContentIndexer;
 use BemLeadAi\Scoring\DisengagementDetector;
 use BemLeadAi\Scoring\ScoringEngine;
 use BemLeadAi\Triggers\ActionRunner;
@@ -49,11 +49,16 @@ final class Plugin
         // Jobs asynchrones (Action Scheduler ou WP-Cron en repli).
         add_action('bem_lead_ai_job_classify', [$this, 'jobClassify'], 10, 1);
         add_action('bem_lead_ai_job_action', [$this, 'jobAction'], 10, 3);
-        add_action('bem_lead_ai_job_wa_inbound', [$this, 'jobWhatsAppInbound'], 10, 3);
+
+        // Reconstruction de la base de connaissance (catalogue caché) à chaque
+        // modification de contenu, pour garder le préfixe LLM à jour.
+        add_action('save_post', [$this, 'onContentChanged'], 20, 1);
+        add_action('deleted_post', [$this, 'onContentChanged'], 20, 1);
+        add_action('bem_lead_ai_job_rebuild_kb', fn() => (new KnowledgeBaseBuilder())->rebuild());
 
         // Crons récurrents.
         add_action('bem_lead_ai_cron_disengagement', fn() => (new DisengagementDetector())->run());
-        add_action('bem_lead_ai_cron_reindex', fn() => (new ContentIndexer())->reindexAll());
+        add_action('bem_lead_ai_cron_rebuild_kb', fn() => (new KnowledgeBaseBuilder())->rebuild());
         add_action('bem_lead_ai_cron_bandit', fn() => (new VariantBandit())->sweepConversions());
 
         // Export / effacement des données personnelles (droit à l'oubli, loi n°2008-12).
@@ -80,7 +85,55 @@ final class Plugin
             'title' => Options::get('widget_title'),
             'greeting' => Options::get('widget_greeting'),
             'pageContext' => $this->currentPageContext(),
+            'whatsappEnabled' => (new \BemLeadAi\Channels\WhatsAppHandoff())->isEnabled(),
+            'whatsappLabel' => Options::get('whatsapp_cta_label'),
+            'design' => [
+                'primary' => Options::get('widget_primary_color'),
+                'accent' => Options::get('widget_accent_color'),
+                'userBubble' => Options::get('widget_bubble_user_color'),
+                'avatar' => esc_url_raw((string) Options::get('widget_avatar_url')),
+                'launcher' => Options::get('widget_launcher_icon'),
+                'position' => Options::get('widget_position') === 'left' ? 'left' : 'right',
+            ],
         ]);
+
+        wp_add_inline_style('bem-lead-ai-widget', $this->widgetInlineStyle());
+    }
+
+    /** Variables CSS dérivées des réglages de design (couleurs, position). */
+    private function widgetInlineStyle(): string
+    {
+        $primary = sanitize_hex_color((string) Options::get('widget_primary_color')) ?: '#0b3d91';
+        $accent = sanitize_hex_color((string) Options::get('widget_accent_color')) ?: '#e6b800';
+        $userBubble = sanitize_hex_color((string) Options::get('widget_bubble_user_color')) ?: $primary;
+        $dark = $this->darken($primary, 0.16);
+        $side = Options::get('widget_position') === 'left' ? 'left' : 'right';
+        $otherSide = $side === 'left' ? 'right' : 'left';
+
+        return ".bem-widget{--bem-primary:{$primary};--bem-primary-dark:{$dark};--bem-accent:{$accent};--bem-user:{$userBubble};{$side}:20px;{$otherSide}:auto;}"
+            . ".bem-panel{{$side}:0;{$otherSide}:auto;}";
+    }
+
+    private function darken(string $hex, float $amount): string
+    {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+        }
+        if (strlen($hex) !== 6) {
+            return '#082a66';
+        }
+        $rgb = array_map(fn($c) => max(0, (int) round(hexdec($c) * (1 - $amount))), str_split($hex, 2));
+        return sprintf('#%02x%02x%02x', $rgb[0], $rgb[1], $rgb[2]);
+    }
+
+    /** Planifie une reconstruction du catalogue peu après une modification. */
+    public function onContentChanged(int $postId): void
+    {
+        if (wp_is_post_revision($postId) || wp_is_post_autosave($postId)) {
+            return;
+        }
+        Queue::dispatchIn(30, 'bem_lead_ai_job_rebuild_kb');
     }
 
     /**
@@ -129,19 +182,5 @@ final class Plugin
     public function jobAction(string $actionType, int $leadId, array $args = []): void
     {
         (new ActionRunner())->run($actionType, $leadId, $args);
-    }
-
-    /**
-     * Message WhatsApp entrant, traité hors du webhook (Meta exige un 200
-     * rapide) : même orchestrateur que le web, réponse renvoyée via Cloud API.
-     */
-    public function jobWhatsAppInbound(string $waid, string $text, string $profileName = ''): void
-    {
-        $adapter = new \BemLeadAi\Chat\ChannelAdapter();
-        $lead = $adapter->resolveWhatsAppLead($waid, $profileName ?: null);
-        $result = (new \BemLeadAi\Chat\ChatOrchestrator())->handleMessage($lead, $text, 'whatsapp');
-        if ($result['reply'] !== null) {
-            (new \BemLeadAi\Channels\WhatsAppClient())->sendText($waid, $result['reply']);
-        }
     }
 }

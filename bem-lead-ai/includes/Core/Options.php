@@ -15,14 +15,35 @@ final class Options
     /** Clés considérées comme secrètes → chiffrées au stockage. */
     public const SECRET_KEYS = [
         'anthropic_api_key',
-        'embeddings_api_key',
-        'qdrant_api_key',
         'perfex_api_key',
         'hubspot_api_key',
-        'whatsapp_token',
-        'whatsapp_webhook_secret',
         'crm_webhook_secret',
     ];
+
+    /**
+     * Modèles Claude proposés dans l'admin, par usage.
+     * Chat/résumés : qualité conversationnelle. Classification : haute
+     * fréquence, on privilégie un modèle léger.
+     */
+    public static function chatModels(): array
+    {
+        return [
+            'claude-sonnet-5' => 'Claude Sonnet 5 — équilibré (recommandé)',
+            'claude-opus-4-8' => 'Claude Opus 4.8 — le plus capable',
+            'claude-haiku-4-5-20251001' => 'Claude Haiku 4.5 — le plus rapide/économique',
+        ];
+    }
+
+    public static function classifierModels(): array
+    {
+        return [
+            'claude-haiku-4-5-20251001' => 'Claude Haiku 4.5 — rapide/économique (recommandé)',
+            'claude-sonnet-5' => 'Claude Sonnet 5 — plus fin',
+        ];
+    }
+
+    /** Lien vers la console Anthropic pour créer/gérer la clé API. */
+    public const ANTHROPIC_CONSOLE_URL = 'https://console.anthropic.com/settings/keys';
 
     public static function defaults(): array
     {
@@ -31,16 +52,11 @@ final class Options
             'anthropic_api_key' => '',
             'chat_model' => 'claude-sonnet-5',
             'classifier_model' => 'claude-haiku-4-5-20251001',
-            'embeddings_provider' => 'voyage', // voyage | openai
-            'embeddings_api_key' => '',
-            'embeddings_model' => 'voyage-3.5',
-            // Vector store
-            'qdrant_url' => '',
-            'qdrant_api_key' => '',
-            'qdrant_collection' => 'bem_content',
-            // Indexation
+            // Base de connaissance (catalogue en contexte, mis en cache LLM)
             'indexed_post_types' => 'formation,page',
             'onboarding_category' => 'onboarding',
+            'kb_cache_ttl' => '1h', // 5m | 1h — durée de vie du cache de préfixe LLM
+            'kb_max_chars_per_post' => 4000,
             // Scoring — logique marketing
             'score_decay_half_life_days' => 7,
             'score_blend_intent_weight' => 0.55, // l'intention conversationnelle pèse plus que le comportement
@@ -52,12 +68,11 @@ final class Options
             // Notifications
             'admissions_email' => get_option('admin_email'),
             'slack_webhook_url' => '',
-            // WhatsApp
-            'whatsapp_enabled' => 0,
-            'whatsapp_phone_number_id' => '',
-            'whatsapp_token' => '',
-            'whatsapp_verify_token' => '',
-            'whatsapp_webhook_secret' => '',
+            // WhatsApp — passerelle "click-to-chat" (pas d'API Business)
+            'whatsapp_enabled' => 1,
+            'whatsapp_cta_label' => 'Continuer sur WhatsApp',
+            'whatsapp_numbers' => "Admissions BEM|221770000000|\n", // Label|numéro|formation(optionnel), une ligne par numéro
+            'whatsapp_prefill' => "Bonjour, je viens du site de BEM Dakar. Je m'intéresse à {formation} et j'aimerais en savoir plus.",
             // CRM
             'perfex_url' => '',
             'perfex_api_key' => '',
@@ -66,11 +81,18 @@ final class Options
             // Bandit
             'bandit_epsilon' => 0.3,
             'bandit_conversion_window_hours' => 72,
-            // Widget
+            // Widget — contenu
             'widget_enabled' => 1,
             'widget_title' => 'Conseiller d\'orientation BEM',
             'widget_greeting' => 'Bonjour 👋 Je suis le conseiller d\'orientation virtuel de BEM Dakar. Posez-moi vos questions sur nos formations, les admissions ou le financement.',
             'rate_limit_per_minute' => 20,
+            // Widget — design personnalisable
+            'widget_primary_color' => '#0b3d91',
+            'widget_accent_color' => '#e6b800',
+            'widget_bubble_user_color' => '#0b3d91',
+            'widget_avatar_url' => '',
+            'widget_launcher_icon' => '💬',
+            'widget_position' => 'right', // right | left
         ];
     }
 
@@ -118,6 +140,33 @@ final class Options
     {
         $all = self::all();
         return !empty($all[$key]);
+    }
+
+    /**
+     * Numéros WhatsApp parsés depuis le réglage texte.
+     * @return array<int, array{label:string, number:string, formation:string}>
+     */
+    public static function whatsappNumbers(): array
+    {
+        $raw = (string) self::get('whatsapp_numbers');
+        $numbers = [];
+        foreach (preg_split('/\r\n|\r|\n/', $raw) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $parts = array_map('trim', explode('|', $line));
+            $digits = preg_replace('/[^0-9]/', '', $parts[1] ?? '');
+            if ($digits === '') {
+                continue;
+            }
+            $numbers[] = [
+                'label' => $parts[0] !== '' ? $parts[0] : 'BEM Dakar',
+                'number' => $digits,
+                'formation' => $parts[2] ?? '',
+            ];
+        }
+        return $numbers;
     }
 
     private static function encryptionKey(): string

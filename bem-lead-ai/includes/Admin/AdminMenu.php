@@ -14,8 +14,17 @@ final class AdminMenu
         add_action('admin_post_bem_crud_delete', [CrudPage::class, 'handleDelete']);
         add_action('admin_post_bem_handoff_reply', [InboxPage::class, 'handleReply']);
         add_action('admin_post_bem_handoff_close', [InboxPage::class, 'handleClose']);
-        add_action('admin_post_bem_reindex', [SettingsPage::class, 'handleReindex']);
+        add_action('admin_post_bem_rebuild_kb', [SettingsPage::class, 'handleRebuildKb']);
         add_action('admin_post_bem_lead_delete', [DashboardPage::class, 'handleLeadDelete']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueueAdmin']);
+    }
+
+    /** Charge le sélecteur média WordPress sur l'écran de réglages (avatar/logo). */
+    public function enqueueAdmin(string $hook): void
+    {
+        if (str_contains($hook, 'bem-lead-ai-settings')) {
+            wp_enqueue_media();
+        }
     }
 
     public function addMenus(): void

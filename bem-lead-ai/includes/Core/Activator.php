@@ -22,12 +22,15 @@ final class Activator
         if (!wp_next_scheduled('bem_lead_ai_cron_disengagement')) {
             wp_schedule_event(time() + 300, 'hourly', 'bem_lead_ai_cron_disengagement');
         }
-        if (!wp_next_scheduled('bem_lead_ai_cron_reindex')) {
-            wp_schedule_event(time() + 600, 'daily', 'bem_lead_ai_cron_reindex');
+        if (!wp_next_scheduled('bem_lead_ai_cron_rebuild_kb')) {
+            wp_schedule_event(time() + 600, 'daily', 'bem_lead_ai_cron_rebuild_kb');
         }
         if (!wp_next_scheduled('bem_lead_ai_cron_bandit')) {
             wp_schedule_event(time() + 900, 'hourly', 'bem_lead_ai_cron_bandit');
         }
+
+        // Première construction du catalogue en contexte.
+        (new \BemLeadAi\Knowledge\KnowledgeBaseBuilder())->rebuild();
 
         flush_rewrite_rules();
     }
@@ -48,7 +51,6 @@ final class Activator
             channels VARCHAR(40) NOT NULL DEFAULT 'web',
             email VARCHAR(190) NULL,
             phone VARCHAR(40) NULL,
-            waid VARCHAR(40) NULL,
             prenom VARCHAR(100) NULL,
             formation_interet VARCHAR(190) NULL,
             score_comportemental FLOAT NOT NULL DEFAULT 0,
@@ -66,7 +68,6 @@ final class Activator
             PRIMARY KEY  (id),
             UNIQUE KEY session_id (session_id),
             KEY email (email),
-            KEY waid (waid),
             KEY score_final (score_final),
             KEY statut (statut)
         ) $charset;";
@@ -114,19 +115,6 @@ final class Activator
             actif TINYINT(1) NOT NULL DEFAULT 1,
             last_run DATETIME NULL,
             PRIMARY KEY  (id)
-        ) $charset;";
-
-        $sql[] = "CREATE TABLE {$p}bem_content_index (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            post_id BIGINT UNSIGNED NOT NULL,
-            chunk_index INT NOT NULL DEFAULT 0,
-            vector_id VARCHAR(64) NOT NULL,
-            kb VARCHAR(20) NOT NULL DEFAULT 'formations',
-            content_hash VARCHAR(40) NOT NULL,
-            updated_at DATETIME NOT NULL,
-            PRIMARY KEY  (id),
-            KEY post_id (post_id),
-            KEY kb (kb)
         ) $charset;";
 
         $sql[] = "CREATE TABLE {$p}bem_competitor_mentions (
@@ -207,7 +195,7 @@ final class Activator
                 ['Message envoyé au conseiller IA', 'event', ['event_type' => 'chat_message'], 3],
                 ['Email capturé', 'event', ['event_type' => 'email_captured'], 20],
                 ['Téléphone capturé', 'event', ['event_type' => 'phone_captured'], 15],
-                ['Opt-in WhatsApp (canal à forte intention)', 'event', ['event_type' => 'whatsapp_optin'], 10],
+                ['Bascule vers WhatsApp (forte intention)', 'event', ['event_type' => 'whatsapp_handoff_clicked'], 14],
             ];
             foreach ($rules as [$nom, $type, $cond, $poids]) {
                 $wpdb->insert("{$p}bem_scoring_rules", [

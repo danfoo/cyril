@@ -18,10 +18,13 @@ final class ClaudeClient
     private const API_VERSION = '2023-06-01';
 
     /**
+     * @param string|array $system Chaîne simple, ou tableau de blocs
+     *   ['type'=>'text','text'=>..., 'cache_control'=>['type'=>'ephemeral']]
+     *   pour mettre en cache un préfixe volumineux (catalogue de formations).
      * @param array $messages [['role' => 'user'|'assistant', 'content' => string], ...]
      * @return string|WP_Error Texte de la réponse.
      */
-    public function complete(string $model, string $system, array $messages, int $maxTokens = 1024, float $temperature = 0.4): string|WP_Error
+    public function complete(string $model, string|array $system, array $messages, int $maxTokens = 1024, float $temperature = 0.4): string|WP_Error
     {
         $apiKey = (string) Options::get('anthropic_api_key');
         if ($apiKey === '') {

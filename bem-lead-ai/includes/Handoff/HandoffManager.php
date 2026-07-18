@@ -2,7 +2,6 @@
 
 namespace BemLeadAi\Handoff;
 
-use BemLeadAi\Channels\WhatsAppClient;
 use BemLeadAi\Chat\ConversationRepository;
 use BemLeadAi\Core\Options;
 use BemLeadAi\Leads\LeadRepository;
@@ -41,12 +40,7 @@ final class HandoffManager
 
         // Message de transition côté prospect : rassurer, pas de vide.
         $transition = __("Je vous mets en relation avec un conseiller de l'équipe admissions qui va prendre le relais tout de suite. Un instant…", 'bem-lead-ai');
-        $conversations = new ConversationRepository();
-        $canal = str_contains((string) $lead->channels, 'whatsapp') && $lead->waid ? 'whatsapp' : 'web';
-        $conversations->add((int) $lead->id, 'assistant', $transition, $canal);
-        if ($canal === 'whatsapp' && (int) Options::get('whatsapp_enabled') === 1) {
-            (new WhatsAppClient())->sendText((string) $lead->waid, $transition);
-        }
+        (new ConversationRepository())->add((int) $lead->id, 'assistant', $transition, 'web');
 
         // Alerte immédiate des conseillers (email + Slack).
         $inbox = admin_url('admin.php?page=bem-lead-ai-inbox');
@@ -72,7 +66,7 @@ final class HandoffManager
         }
     }
 
-    /** Réponse d'un conseiller depuis l'inbox : relayée sur le bon canal. */
+    /** Réponse d'un conseiller depuis l'inbox : affichée dans le fil de chat web. */
     public function reply(int $leadId, string $message, int $agentUserId): bool
     {
         $lead = (new LeadRepository())->findById($leadId);
@@ -88,12 +82,7 @@ final class HandoffManager
             $leadId
         ));
 
-        $canal = $lead->waid && (int) Options::get('whatsapp_enabled') === 1 && str_contains((string) $lead->channels, 'whatsapp')
-            ? 'whatsapp' : 'web';
-        (new ConversationRepository())->add($leadId, 'agent', $message, $canal);
-        if ($canal === 'whatsapp') {
-            (new WhatsAppClient())->sendText((string) $lead->waid, $message);
-        }
+        (new ConversationRepository())->add($leadId, 'agent', $message, 'web');
         return true;
     }
 

@@ -126,19 +126,41 @@
   var pollTimer = null;
 
   function buildWidget() {
+    var design = CFG.design || {};
     var root = document.createElement('div');
     root.className = 'bem-widget';
+
+    var avatarHtml = design.avatar
+      ? '<img class="bem-avatar" src="' + encodeURI(design.avatar) + '" alt="">'
+      : '';
+    var waHtml = CFG.whatsappEnabled
+      ? '<button type="button" class="bem-wa" data-bem="whatsapp">' +
+        '<span class="bem-wa-icon">✆</span> ' + escapeHtml(CFG.whatsappLabel || 'Continuer sur WhatsApp') + '</button>'
+      : '';
+
     root.innerHTML =
-      '<button class="bem-launcher" aria-label="Ouvrir le conseiller">💬</button>' +
+      '<button class="bem-launcher" aria-label="Ouvrir le conseiller">' + escapeHtml(design.launcher || '💬') + '</button>' +
       '<div class="bem-panel" role="dialog" aria-label="Conseiller BEM" hidden>' +
-      '  <div class="bem-header"><span>' + escapeHtml(CFG.title || 'Conseiller BEM') + '</span>' +
+      '  <div class="bem-header">' + avatarHtml + '<span>' + escapeHtml(CFG.title || 'Conseiller BEM') + '</span>' +
       '    <button class="bem-close" aria-label="Fermer">×</button></div>' +
       '  <div class="bem-messages"></div>' +
       '  <div class="bem-handoff-note" hidden>👤 Un conseiller a pris le relais.</div>' +
+      '  ' + waHtml +
       '  <form class="bem-input"><input type="text" placeholder="Votre question…" autocomplete="off" required>' +
       '    <button type="submit" aria-label="Envoyer">➤</button></form>' +
       '</div>';
     document.body.appendChild(root);
+
+    var waBtn = root.querySelector('[data-bem="whatsapp"]');
+    if (waBtn) {
+      waBtn.addEventListener('click', function () {
+        waBtn.disabled = true;
+        api('/whatsapp-link', { session_id: sessionId() }).then(function (res) {
+          waBtn.disabled = false;
+          if (res && res.url) { window.open(res.url, '_blank', 'noopener'); }
+        }).catch(function () { waBtn.disabled = false; });
+      });
+    }
 
     var launcher = root.querySelector('.bem-launcher');
     var panel = root.querySelector('.bem-panel');

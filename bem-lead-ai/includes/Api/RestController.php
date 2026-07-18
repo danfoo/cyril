@@ -2,16 +2,16 @@
 
 namespace BemLeadAi\Api;
 
+use BemLeadAi\Channels\WhatsAppHandoff;
 use BemLeadAi\Chat\ChannelAdapter;
 use BemLeadAi\Chat\ChatOrchestrator;
 use BemLeadAi\Chat\ConversationRepository;
 use BemLeadAi\Core\Options;
-use BemLeadAi\Core\Queue;
 use BemLeadAi\Financing\FinancingSimulator;
 use BemLeadAi\Handoff\HandoffManager;
+use BemLeadAi\Knowledge\KnowledgeBaseBuilder;
 use BemLeadAi\Leads\EventRepository;
 use BemLeadAi\Leads\LeadRepository;
-use BemLeadAi\Rag\ContentIndexer;
 use BemLeadAi\Scoring\ScoringEngine;
 use WP_Error;
 use WP_REST_Request;
@@ -46,17 +46,10 @@ final class RestController
             'permission_callback' => '__return_true',
         ]);
 
-        register_rest_route($ns, '/whatsapp-webhook', [
-            [
-                'methods' => 'GET',
-                'callback' => [$this, 'whatsappVerify'],
-                'permission_callback' => '__return_true',
-            ],
-            [
-                'methods' => 'POST',
-                'callback' => [$this, 'whatsappWebhook'],
-                'permission_callback' => '__return_true',
-            ],
+        register_rest_route($ns, '/whatsapp-link', [
+            'methods' => 'POST',
+            'callback' => [$this, 'whatsappLink'],
+            'permission_callback' => '__return_true',
         ]);
 
         register_rest_route($ns, '/lead/(?P<session_id>[A-Za-z0-9_\-]+)', [
@@ -65,9 +58,9 @@ final class RestController
             'permission_callback' => fn() => current_user_can('manage_options'),
         ]);
 
-        register_rest_route($ns, '/reindex', [
+        register_rest_route($ns, '/rebuild-kb', [
             'methods' => 'POST',
-            'callback' => fn() => rest_ensure_response((new ContentIndexer())->reindexAll()),
+            'callback' => fn() => rest_ensure_response((new KnowledgeBaseBuilder())->rebuild()),
             'permission_callback' => fn() => current_user_can('manage_options'),
         ]);
 
@@ -140,6 +133,7 @@ final class RestController
             'reply' => $result['reply'],
             'handoff' => $result['handoff'],
             'last_message_id' => $result['message_id'],
+            'whatsapp' => $result['whatsapp'],
         ]);
     }
 
@@ -217,64 +211,41 @@ final class RestController
     }
 
     /* ------------------------------------------------------------------ */
-    /* WhatsApp                                                            */
+    /* WhatsApp — passerelle click-to-chat                                 */
     /* ------------------------------------------------------------------ */
 
-    /** Vérification du webhook par Meta (challenge). */
-    public function whatsappVerify(WP_REST_Request $request): mixed
+    /**
+     * Renvoie le lien wa.me pré-rempli pour continuer sur WhatsApp, et trace
+     * le clic comme signal de forte intention.
+     */
+    public function whatsappLink(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
-        $mode = (string) $request->get_param('hub_mode');
-        $token = (string) $request->get_param('hub_verify_token');
-        $challenge = (string) $request->get_param('hub_challenge');
-        if ($mode === 'subscribe' && hash_equals((string) Options::get('whatsapp_verify_token'), $token)) {
-            // Meta attend le challenge brut.
-            header('Content-Type: text/plain');
-            echo esc_html($challenge);
-            exit;
+        if (!RateLimiter::allow('whatsapp', RateLimiter::clientKey($request), 30)) {
+            return new WP_Error('bem_rate_limited', 'Rate limited', ['status' => 429]);
         }
-        return new WP_Error('bem_forbidden', 'Verification failed', ['status' => 403]);
-    }
-
-    public function whatsappWebhook(WP_REST_Request $request): WP_REST_Response
-    {
-        // Vérification de signature Meta (X-Hub-Signature-256) si configurée.
-        $secret = (string) Options::get('whatsapp_webhook_secret');
-        if ($secret !== '') {
-            $signature = (string) $request->get_header('x-hub-signature-256');
-            $expected = 'sha256=' . hash_hmac('sha256', $request->get_body(), $secret);
-            if (!hash_equals($expected, $signature)) {
-                return new WP_REST_Response(['ok' => false], 403);
-            }
+        $handoff = new WhatsAppHandoff();
+        if (!$handoff->isEnabled()) {
+            return new WP_Error('bem_disabled', __('WhatsApp non configuré.', 'bem-lead-ai'), ['status' => 404]);
         }
 
-        $body = $request->get_json_params() ?: [];
-        foreach ((array) ($body['entry'] ?? []) as $entry) {
-            foreach ((array) ($entry['changes'] ?? []) as $change) {
-                $value = $change['value'] ?? [];
-                $contacts = $value['contacts'] ?? [];
-                foreach ((array) ($value['messages'] ?? []) as $message) {
-                    if (($message['type'] ?? '') !== 'text') {
-                        continue;
-                    }
-                    $waid = (string) ($message['from'] ?? '');
-                    $text = (string) ($message['text']['body'] ?? '');
-                    if ($waid === '' || $text === '') {
-                        continue;
-                    }
-                    $profileName = null;
-                    foreach ((array) $contacts as $contact) {
-                        if (($contact['wa_id'] ?? '') === $waid) {
-                            $profileName = $contact['profile']['name'] ?? null;
-                        }
-                    }
-                    // Traitement asynchrone : Meta exige une réponse 200 rapide,
-                    // l'appel LLM ne doit pas la retarder.
-                    Queue::dispatch('bem_lead_ai_job_wa_inbound', [$waid, $text, (string) $profileName], true);
-                }
-            }
+        $sessionId = sanitize_text_field((string) $request->get_param('session_id'));
+        $lead = $sessionId !== '' ? (new ChannelAdapter())->resolveWebLead($sessionId) : null;
+        if (!$lead) {
+            return new WP_Error('bem_bad_request', 'Session invalide.', ['status' => 400]);
         }
 
-        return new WP_REST_Response(['ok' => true], 200);
+        $link = $handoff->buildLink($lead);
+        if (!$link) {
+            return new WP_Error('bem_disabled', 'Aucun numéro disponible.', ['status' => 404]);
+        }
+
+        // Clic = signal de forte intention (alimente scoring + triggers).
+        (new LeadRepository())->touch((int) $lead->id, 'whatsapp');
+        (new EventRepository())->record((int) $lead->id, 'whatsapp_handoff_clicked', [
+            'number' => $link['number'],
+        ], 'whatsapp');
+
+        return rest_ensure_response($link);
     }
 
     /* ------------------------------------------------------------------ */

@@ -3,7 +3,6 @@
 namespace BemLeadAi\Triggers;
 
 use BemLeadAi\Ai\Summarizer;
-use BemLeadAi\Channels\WhatsAppClient;
 use BemLeadAi\Chat\ConversationRepository;
 use BemLeadAi\Core\Options;
 use BemLeadAi\Crm\HubSpotConnector;
@@ -144,30 +143,15 @@ final class ActionRunner
     }
 
     /**
-     * Livraison multicanal, dans l'ordre de préférence marketing :
-     * WhatsApp (taux de lecture le plus élevé) > chat web (visible à la
-     * prochaine visite) + email en parallèle si disponible.
+     * Livraison d'un message proactif (relance, offre de financement) :
+     * déposé dans le fil de chat — le widget l'affiche à la prochaine visite —
+     * et doublé par email si l'adresse est connue.
      *
      * @return string|false Canal principal utilisé.
      */
     private function deliverMessage(object $lead, string $message): string|false
     {
-        $channel = false;
-
-        if ($lead->waid && (int) Options::get('whatsapp_enabled') === 1) {
-            $wa = new WhatsAppClient();
-            if ($wa->sendText((string) $lead->waid, $message)) {
-                (new ConversationRepository())->add((int) $lead->id, 'assistant', $message, 'whatsapp');
-                $channel = 'whatsapp';
-            }
-        }
-
-        if (!$channel) {
-            // Déposé dans le fil de chat : le widget l'affichera à la
-            // prochaine ouverture (message proactif).
-            (new ConversationRepository())->add((int) $lead->id, 'assistant', $message, 'web');
-            $channel = 'web';
-        }
+        (new ConversationRepository())->add((int) $lead->id, 'assistant', $message, 'web');
 
         if ($lead->email) {
             wp_mail(
@@ -177,6 +161,6 @@ final class ActionRunner
             );
         }
 
-        return $channel;
+        return 'web';
     }
 }

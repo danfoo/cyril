@@ -28,13 +28,6 @@ final class LeadRepository
         return $row ?: null;
     }
 
-    public function findByWaid(string $waid): ?object
-    {
-        global $wpdb;
-        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$this->table} WHERE waid = %s", $waid));
-        return $row ?: null;
-    }
-
     public function findByEmail(string $email): ?object
     {
         global $wpdb;
@@ -43,16 +36,13 @@ final class LeadRepository
     }
 
     /**
-     * Crée ou retrouve un lead pour un identifiant de session unifié
-     * (web ou WhatsApp) et enregistre le canal utilisé.
+     * Crée ou retrouve un lead pour un identifiant de session et enregistre le
+     * canal utilisé.
      */
-    public function findOrCreate(string $sessionId, string $canal = 'web', ?string $waid = null): object
+    public function findOrCreate(string $sessionId, string $canal = 'web'): object
     {
         global $wpdb;
         $lead = $this->findBySessionId($sessionId);
-        if (!$lead && $waid) {
-            $lead = $this->findByWaid($waid);
-        }
         if ($lead) {
             $this->touch((int) $lead->id, $canal);
             return $this->findById((int) $lead->id);
@@ -61,7 +51,6 @@ final class LeadRepository
         $wpdb->insert($this->table, [
             'session_id' => $sessionId,
             'channels' => $canal,
-            'waid' => $waid,
             'first_seen' => $now,
             'last_seen' => $now,
         ]);
