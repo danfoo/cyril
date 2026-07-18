@@ -95,15 +95,19 @@ final class Plugin
         wp_enqueue_style('bem-lead-ai-widget', BEM_LEAD_AI_URL . 'assets/css/widget.css', [], self::assetVersion('assets/css/widget.css'));
         wp_enqueue_script('bem-lead-ai-widget', BEM_LEAD_AI_URL . 'assets/js/widget.js', [], self::assetVersion('assets/js/widget.js'), true);
 
+        // stripslashes défensif : nettoie les antislashs éventuellement stockés
+        // par d'anciens enregistrements (avant le correctif wp_unslash).
+        $clean = static fn($v) => stripslashes((string) $v);
+
         wp_localize_script('bem-lead-ai-widget', 'BemLeadAiConfig', [
             'restUrl' => esc_url_raw(rest_url(BEM_LEAD_AI_REST_NS)),
             'nonce' => wp_create_nonce('wp_rest'),
-            'title' => Options::get('widget_title'),
-            'subtitle' => Options::get('widget_subtitle'),
-            'greeting' => Options::get('widget_greeting'),
+            'title' => $clean(Options::get('widget_title')),
+            'subtitle' => $clean(Options::get('widget_subtitle')),
+            'greeting' => $clean(Options::get('widget_greeting')),
             'pageContext' => $this->currentPageContext(),
             'whatsappEnabled' => (new \BemLeadAi\Channels\WhatsAppHandoff())->isEnabled(),
-            'whatsappLabel' => Options::get('whatsapp_cta_label'),
+            'whatsappLabel' => $clean(Options::get('whatsapp_cta_label')),
             'design' => [
                 'primary' => Options::get('widget_primary_color'),
                 'accent' => Options::get('widget_accent_color'),

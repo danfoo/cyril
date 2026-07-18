@@ -184,12 +184,12 @@ final class SettingsPage
 
     private function text(string $key, string $label, array $o): string
     {
-        return $this->row($label, '<input type="text" name="s[' . esc_attr($key) . ']" value="' . esc_attr((string) ($o[$key] ?? '')) . '" class="regular-text">');
+        return $this->row($label, '<input type="text" name="s[' . esc_attr($key) . ']" value="' . esc_attr(stripslashes((string) ($o[$key] ?? ''))) . '" class="regular-text">');
     }
 
     private function textarea(string $key, string $label, array $o): string
     {
-        return $this->row($label, '<textarea name="s[' . esc_attr($key) . ']" rows="3" class="large-text">' . esc_textarea((string) ($o[$key] ?? '')) . '</textarea>');
+        return $this->row($label, '<textarea name="s[' . esc_attr($key) . ']" rows="3" class="large-text">' . esc_textarea(stripslashes((string) ($o[$key] ?? ''))) . '</textarea>');
     }
 
     private function number(string $key, string $label, array $o): string
@@ -281,7 +281,10 @@ final class SettingsPage
         }
         check_admin_referer('bem_save_settings');
 
-        $input = (array) ($_POST['s'] ?? []);
+        // wp_unslash indispensable : WordPress ajoute des antislashs aux
+        // superglobales ($_POST). Sans ça, une apostrophe devient d\'orientation
+        // et les antislashs s'accumulent à chaque enregistrement.
+        $input = wp_unslash((array) ($_POST['s'] ?? []));
         $defaults = Options::defaults();
         $checkboxes = ['whatsapp_enabled', 'widget_enabled'];
         $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill'];

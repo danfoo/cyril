@@ -130,18 +130,21 @@
     var root = document.createElement('div');
     root.className = 'bem-widget';
 
-    var launcherIcon = escapeHtml(design.launcher || '💬');
-    // Avatar utilisé dans l'en-tête et devant chaque message du conseiller.
-    var avatarInner = design.avatar
+    // Avatar/logo utilisé dans l'en-tête, devant chaque réponse, et comme icône du lanceur.
+    var hasImage = !!design.avatar;
+    var avatarInner = hasImage
       ? '<img src="' + encodeURI(design.avatar) + '" alt="">'
       : '<span>🎓</span>';
+    var launcherIcon = hasImage
+      ? '<img src="' + encodeURI(design.avatar) + '" alt="">'
+      : escapeHtml(design.launcher || '💬');
     var waHtml = CFG.whatsappEnabled
       ? '<button type="button" class="bem-wa" data-bem="whatsapp">' +
         '<span class="bem-wa-icon">✆</span> ' + escapeHtml(CFG.whatsappLabel || 'Continuer sur WhatsApp') + '</button>'
       : '';
 
     root.innerHTML =
-      '<button class="bem-launcher" aria-label="Ouvrir le conseiller">' +
+      '<button class="bem-launcher' + (hasImage ? ' bem-has-image' : '') + '" aria-label="Ouvrir le conseiller">' +
       '  <span class="bem-launcher-icon">' + launcherIcon + '</span>' +
       '  <span class="bem-launcher-close">×</span>' +
       '</button>' +
@@ -181,18 +184,24 @@
     var input = form.querySelector('input');
     var greeted = false;
 
-    launcher.addEventListener('click', function () {
-      chatOpen = !chatOpen;
-      panel.hidden = !chatOpen;
-      launcher.classList.toggle('bem-open', chatOpen);
-      if (chatOpen && !greeted) {
+    function setOpen(open) {
+      chatOpen = open;
+      panel.hidden = !open;
+      launcher.classList.toggle('bem-open', open);
+      root.classList.toggle('bem-panel-open', open);
+      if (open && !greeted) {
         addMessage('assistant', CFG.greeting || 'Bonjour ! Comment puis-je vous aider ?');
         greeted = true;
         startPolling();
       }
-    });
-    root.querySelector('.bem-close').addEventListener('click', function () {
-      chatOpen = false; panel.hidden = true; launcher.classList.remove('bem-open');
+      if (open) { setTimeout(function () { input.focus(); }, 60); }
+    }
+
+    launcher.addEventListener('click', function () { setOpen(!chatOpen); });
+    root.querySelector('.bem-close').addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
     });
 
     form.addEventListener('submit', function (e) {
@@ -222,8 +231,13 @@
       row.className = 'bem-row ' + (isUser ? 'bem-row-user' : 'bem-row-bot');
       var bubble = document.createElement('div');
       bubble.className = 'bem-msg';
-      bubble.textContent = text;
-      if (!isUser) {
+      if (isUser) {
+        // Messages utilisateur : texte brut (pas de Markdown).
+        bubble.className += ' bem-msg-plain';
+        bubble.textContent = text;
+      } else {
+        // Réponses du conseiller : Markdown léger rendu proprement.
+        bubble.innerHTML = renderMarkdown(text);
         var av = document.createElement('div');
         av.className = 'bem-row-avatar';
         av.innerHTML = botAvatar;
@@ -265,6 +279,56 @@
     var d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
+  }
+
+  /* Rendu Markdown léger et SÛR : on échappe tout le HTML d'abord, puis on
+     n'ajoute que nos propres balises (gras, italique, code, listes, liens). */
+  function renderMarkdown(raw) {
+    var lines = escapeHtml(String(raw == null ? '' : raw)).split(/\r?\n/);
+    var html = '';
+    var listType = null;
+    var para = [];
+
+    function inline(s) {
+      return s
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+        .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+        .replace(/(^|[\s(])((https?:\/\/[^\s<]+))/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+    }
+    function flushPara() {
+      if (para.length) { html += '<p>' + inline(para.join('<br>')) + '</p>'; para = []; }
+    }
+    function flushList() {
+      if (listType) { html += '</' + listType + '>'; listType = null; }
+    }
+
+    lines.forEach(function (line) {
+      var t = line.trim();
+      var ul = t.match(/^[-*•]\s+(.*)$/);
+      var ol = t.match(/^\d+[.)]\s+(.*)$/);
+      var hd = t.match(/^#{1,4}\s+(.*)$/);
+      if (hd) {
+        flushPara(); flushList();
+        html += '<p><strong>' + inline(hd[1]) + '</strong></p>';
+      } else if (ul) {
+        flushPara();
+        if (listType !== 'ul') { flushList(); html += '<ul>'; listType = 'ul'; }
+        html += '<li>' + inline(ul[1]) + '</li>';
+      } else if (ol) {
+        flushPara();
+        if (listType !== 'ol') { flushList(); html += '<ol>'; listType = 'ol'; }
+        html += '<li>' + inline(ol[1]) + '</li>';
+      } else if (t === '') {
+        flushPara(); flushList();
+      } else {
+        flushList(); para.push(t);
+      }
+    });
+    flushPara(); flushList();
+    return html || '<p></p>';
   }
 
   /* ---- Boot ---------------------------------------------------------- */
