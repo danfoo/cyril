@@ -48,7 +48,13 @@ final class Activator
         // KnowledgeBaseBuilder reconstruit aussi paresseusement au 1er accès.
         Queue::dispatchIn(15, 'bem_lead_ai_job_rebuild_kb');
 
-        update_option('bem_lead_ai_db_version', BEM_LEAD_AI_VERSION);
+        // Écriture cache-safe de la version, sinon needsUpgrade() pourrait
+        // rester vrai (cache d'objet périmé) et relancer la migration à chaque requête.
+        update_option('bem_lead_ai_db_version', BEM_LEAD_AI_VERSION, false);
+        if (function_exists('wp_cache_delete')) {
+            wp_cache_delete('bem_lead_ai_db_version', 'options');
+            wp_cache_delete('alloptions', 'options');
+        }
     }
 
     /** True si le code est plus récent que ce qui a été migré en base. */
@@ -188,8 +194,7 @@ final class Activator
         foreach ($sql as $statement) {
             dbDelta($statement);
         }
-
-        update_option('bem_lead_ai_db_version', BEM_LEAD_AI_VERSION);
+        // La version est écrite (cache-safe) par runMigrations().
     }
 
     /**

@@ -24,9 +24,21 @@ final class SettingsPage
         if (isset($_GET['saved'])) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Réglages enregistrés.', 'bem-lead-ai') . '</p></div>';
         }
+        if (isset($_GET['saveerror'])) {
+            echo '<div class="notice notice-error"><p><strong>' . esc_html__('Échec de la persistance des réglages.', 'bem-lead-ai') . '</strong> '
+                . esc_html__('L\'écriture en base n\'a pas été relue correctement — cause quasi certaine : un cache d\'objet persistant (Redis / Memcached) ou un plugin de cache. Videz le cache de l\'objet (Outils → ou votre plugin de cache), puis réessayez. Si le problème persiste, contactez votre hébergeur : l\'option "' . Options::optionName() . '" n\'est pas écrite.', 'bem-lead-ai') . '</p></div>';
+        }
         if (isset($_GET['rebuilt'])) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Catalogue reconstruit.', 'bem-lead-ai') . '</p></div>';
         }
+
+        // Diagnostic de persistance visible (valeur réellement stockée en base).
+        global $wpdb;
+        $raw = $wpdb->get_var($wpdb->prepare("SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", Options::optionName()));
+        $persisted = is_string($raw) ? maybe_unserialize($raw) : null;
+        $storedTitle = is_array($persisted) ? ($persisted['widget_title'] ?? '—') : '(option absente en base)';
+        echo '<p class="description">' . esc_html__('Valeur actuellement stockée en base (titre du widget) :', 'bem-lead-ai')
+            . ' <code>' . esc_html((string) $storedTitle) . '</code></p>';
 
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('bem_save_settings');
@@ -277,7 +289,20 @@ final class SettingsPage
             }
         }
         Options::update($clean);
-        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings&saved=1'));
+
+        // Vérifie que l'écriture a réellement persisté (relecture directe en
+        // base, cache d'objet contourné). Un échec ici = couche de cache/DB,
+        // pas notre code : on le signale honnêtement.
+        global $wpdb;
+        $raw = $wpdb->get_var($wpdb->prepare(
+            "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+            Options::optionName()
+        ));
+        $persisted = is_string($raw) ? maybe_unserialize($raw) : [];
+        $ok = is_array($persisted) && ($persisted['widget_title'] ?? null) === $clean['widget_title'];
+
+        $flag = $ok ? 'saved=1' : 'saveerror=1';
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings&' . $flag));
         exit;
     }
 

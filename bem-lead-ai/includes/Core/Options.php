@@ -101,17 +101,38 @@ final class Options
 
     public static function ensureDefaults(): void
     {
-        $current = get_option(self::OPTION, []);
-        if (!is_array($current)) {
-            $current = [];
+        $stored = get_option(self::OPTION, []);
+        if (!is_array($stored)) {
+            $stored = [];
         }
-        update_option(self::OPTION, array_merge(self::defaults(), $current));
+        $merged = array_merge(self::defaults(), $stored);
+        // N'écrit que si des clés manquent réellement — évite de réécrire (et
+        // potentiellement d'écraser avec du cache périmé) à chaque migration.
+        if ($merged !== $stored) {
+            self::persist($merged);
+        }
     }
 
     public static function all(): array
     {
         $stored = get_option(self::OPTION, []);
         return array_merge(self::defaults(), is_array($stored) ? $stored : []);
+    }
+
+    /**
+     * Écrit l'option en base ET purge les caches d'objet susceptibles de
+     * servir une valeur périmée (alloptions + entrée directe). Sans cette
+     * purge, certains hébergements à cache persistant (Redis/Memcached)
+     * réaffichent l'ancienne valeur après enregistrement → « rien ne s'applique ».
+     * L'option est non-autoloadée pour sortir du bloc « alloptions » mis en cache.
+     */
+    private static function persist(array $value): void
+    {
+        update_option(self::OPTION, $value, false);
+        if (function_exists('wp_cache_delete')) {
+            wp_cache_delete(self::OPTION, 'options');
+            wp_cache_delete('alloptions', 'options');
+        }
     }
 
     public static function get(string $key): mixed
@@ -136,7 +157,13 @@ final class Options
             }
             $current[$key] = $value;
         }
-        update_option(self::OPTION, $current);
+        self::persist($current);
+    }
+
+    /** Nom de l'option, pour vérification externe de la persistance. */
+    public static function optionName(): string
+    {
+        return self::OPTION;
     }
 
     public static function hasSecret(string $key): bool
