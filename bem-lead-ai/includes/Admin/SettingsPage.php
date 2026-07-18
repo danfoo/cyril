@@ -90,6 +90,7 @@ final class SettingsPage
         $this->section(__('Widget de chat — contenu', 'bem-lead-ai'), [
             $this->checkbox('widget_enabled', 'Afficher le widget', $o),
             $this->text('widget_title', 'Titre du widget', $o),
+            $this->text('widget_subtitle', 'Sous-titre (sous le titre)', $o),
             $this->textarea('widget_greeting', 'Message d\'accueil', $o),
             $this->number('rate_limit_per_minute', 'Limite messages / minute', $o),
         ]);
@@ -101,8 +102,10 @@ final class SettingsPage
             $this->color('widget_bubble_user_color', 'Couleur des bulles utilisateur', $o),
             $this->image('widget_avatar_url', 'Avatar / logo du conseiller', $o),
             $this->text('widget_launcher_icon', 'Icône du bouton (emoji)', $o),
+            $this->select('widget_theme', 'Thème de la conversation', $o, ['light' => 'Clair', 'dark' => 'Sombre']),
+            $this->number('widget_corner_radius', 'Arrondi des coins (px)', $o),
             $this->select('widget_position', 'Position à l\'écran', $o, ['right' => 'En bas à droite', 'left' => 'En bas à gauche']),
-        ], __('Personnalisez l\'apparence pour l\'aligner sur la charte de BEM Dakar.', 'bem-lead-ai'));
+        ], __('Personnalisez l\'apparence pour l\'aligner sur la charte de BEM Dakar. Les changements s\'appliquent immédiatement au widget.', 'bem-lead-ai'));
 
         // --- Bandit ---
         $this->section(__('Apprentissage (bandit)', 'bem-lead-ai'), [
@@ -248,21 +251,26 @@ final class SettingsPage
 
         $input = (array) ($_POST['s'] ?? []);
         $defaults = Options::defaults();
+        $checkboxes = ['whatsapp_enabled', 'widget_enabled'];
+        $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill'];
         $clean = [];
         foreach ($defaults as $key => $default) {
             if (in_array($key, Options::SECRET_KEYS, true)) {
+                // Champ secret vide = conserver la clé existante (géré dans Options::update).
                 $clean[$key] = (string) ($input[$key] ?? '');
-                continue;
-            }
-            if (is_int($default) || is_float($default)) {
-                $clean[$key] = isset($input[$key]) && $input[$key] !== '' ? (is_float($default) ? (float) $input[$key] : (int) $input[$key]) : $default;
-            } elseif (in_array($key, ['whatsapp_enabled', 'widget_enabled'], true)) {
-                $clean[$key] = isset($input[$key]) ? 1 : 0;
+            } elseif (in_array($key, $checkboxes, true)) {
+                // Les cases à cocher DOIVENT être traitées avant la détection
+                // int/float (leur défaut vaut 1, un entier).
+                $clean[$key] = !empty($input[$key]) ? 1 : 0;
+            } elseif (is_int($default) || is_float($default)) {
+                $clean[$key] = isset($input[$key]) && $input[$key] !== ''
+                    ? (is_float($default) ? (float) $input[$key] : (int) $input[$key])
+                    : $default;
             } elseif (str_ends_with($key, '_color')) {
                 $clean[$key] = sanitize_hex_color((string) ($input[$key] ?? '')) ?: $default;
             } elseif ($key === 'widget_avatar_url') {
                 $clean[$key] = esc_url_raw((string) ($input[$key] ?? ''));
-            } elseif (in_array($key, ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill'], true)) {
+            } elseif (in_array($key, $textareas, true)) {
                 $clean[$key] = sanitize_textarea_field((string) ($input[$key] ?? $default));
             } else {
                 $clean[$key] = sanitize_text_field((string) ($input[$key] ?? $default));

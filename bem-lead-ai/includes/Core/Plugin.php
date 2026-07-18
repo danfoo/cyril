@@ -83,6 +83,7 @@ final class Plugin
             'restUrl' => esc_url_raw(rest_url(BEM_LEAD_AI_REST_NS)),
             'nonce' => wp_create_nonce('wp_rest'),
             'title' => Options::get('widget_title'),
+            'subtitle' => Options::get('widget_subtitle'),
             'greeting' => Options::get('widget_greeting'),
             'pageContext' => $this->currentPageContext(),
             'whatsappEnabled' => (new \BemLeadAi\Channels\WhatsAppHandoff())->isEnabled(),
@@ -94,24 +95,39 @@ final class Plugin
                 'avatar' => esc_url_raw((string) Options::get('widget_avatar_url')),
                 'launcher' => Options::get('widget_launcher_icon'),
                 'position' => Options::get('widget_position') === 'left' ? 'left' : 'right',
+                'theme' => Options::get('widget_theme') === 'dark' ? 'dark' : 'light',
             ],
         ]);
 
         wp_add_inline_style('bem-lead-ai-widget', $this->widgetInlineStyle());
     }
 
-    /** Variables CSS dérivées des réglages de design (couleurs, position). */
+    /** Variables CSS dérivées des réglages de design (couleurs, rayon, thème, position). */
     private function widgetInlineStyle(): string
     {
         $primary = sanitize_hex_color((string) Options::get('widget_primary_color')) ?: '#0b3d91';
         $accent = sanitize_hex_color((string) Options::get('widget_accent_color')) ?: '#e6b800';
         $userBubble = sanitize_hex_color((string) Options::get('widget_bubble_user_color')) ?: $primary;
-        $dark = $this->darken($primary, 0.16);
+        $dark = $this->darken($primary, 0.18);
+        $radius = max(0, min(28, (int) Options::get('widget_corner_radius')));
         $side = Options::get('widget_position') === 'left' ? 'left' : 'right';
         $otherSide = $side === 'left' ? 'right' : 'left';
+        $isDark = Options::get('widget_theme') === 'dark';
 
-        return ".bem-widget{--bem-primary:{$primary};--bem-primary-dark:{$dark};--bem-accent:{$accent};--bem-user:{$userBubble};{$side}:20px;{$otherSide}:auto;}"
-            . ".bem-panel{{$side}:0;{$otherSide}:auto;}";
+        // Palette de la zone de conversation selon le thème.
+        $convBg = $isDark ? '#12151c' : '#f6f7fb';
+        $botBubble = $isDark ? '#232733' : '#ffffff';
+        $textColor = $isDark ? '#e8eaf0' : '#1f2430';
+        $muted = $isDark ? '#9aa3b2' : '#8a93a6';
+        $inputBg = $isDark ? '#1a1e27' : '#ffffff';
+        $inputBorder = $isDark ? '#2c313d' : '#e2e6ef';
+
+        return ".bem-widget{"
+            . "--bem-primary:{$primary};--bem-primary-dark:{$dark};--bem-accent:{$accent};--bem-user:{$userBubble};"
+            . "--bem-radius:{$radius}px;--bem-conv-bg:{$convBg};--bem-bot:{$botBubble};--bem-text:{$textColor};"
+            . "--bem-muted:{$muted};--bem-input-bg:{$inputBg};--bem-input-border:{$inputBorder};"
+            . "{$side}:22px;{$otherSide}:auto;}"
+            . ".bem-panel{{$side}:0;{$otherSide}:auto;transform-origin:bottom {$side};}";
     }
 
     private function darken(string $hex, float $amount): string

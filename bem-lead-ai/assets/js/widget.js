@@ -130,19 +130,30 @@
     var root = document.createElement('div');
     root.className = 'bem-widget';
 
-    var avatarHtml = design.avatar
-      ? '<img class="bem-avatar" src="' + encodeURI(design.avatar) + '" alt="">'
-      : '';
+    var launcherIcon = escapeHtml(design.launcher || '💬');
+    // Avatar utilisé dans l'en-tête et devant chaque message du conseiller.
+    var avatarInner = design.avatar
+      ? '<img src="' + encodeURI(design.avatar) + '" alt="">'
+      : '<span>🎓</span>';
     var waHtml = CFG.whatsappEnabled
       ? '<button type="button" class="bem-wa" data-bem="whatsapp">' +
         '<span class="bem-wa-icon">✆</span> ' + escapeHtml(CFG.whatsappLabel || 'Continuer sur WhatsApp') + '</button>'
       : '';
 
     root.innerHTML =
-      '<button class="bem-launcher" aria-label="Ouvrir le conseiller">' + escapeHtml(design.launcher || '💬') + '</button>' +
+      '<button class="bem-launcher" aria-label="Ouvrir le conseiller">' +
+      '  <span class="bem-launcher-icon">' + launcherIcon + '</span>' +
+      '  <span class="bem-launcher-close">×</span>' +
+      '</button>' +
       '<div class="bem-panel" role="dialog" aria-label="Conseiller BEM" hidden>' +
-      '  <div class="bem-header">' + avatarHtml + '<span>' + escapeHtml(CFG.title || 'Conseiller BEM') + '</span>' +
-      '    <button class="bem-close" aria-label="Fermer">×</button></div>' +
+      '  <div class="bem-header">' +
+      '    <div class="bem-header-avatar">' + avatarInner + '</div>' +
+      '    <div class="bem-header-text">' +
+      '      <div class="bem-header-title">' + escapeHtml(CFG.title || 'Conseiller BEM') + '</div>' +
+      '      <div class="bem-header-subtitle">' + escapeHtml(CFG.subtitle || 'En ligne') + '</div>' +
+      '    </div>' +
+      '    <button class="bem-close" aria-label="Fermer">×</button>' +
+      '  </div>' +
       '  <div class="bem-messages"></div>' +
       '  <div class="bem-handoff-note" hidden>👤 Un conseiller a pris le relais.</div>' +
       '  ' + waHtml +
@@ -150,6 +161,7 @@
       '    <button type="submit" aria-label="Envoyer">➤</button></form>' +
       '</div>';
     document.body.appendChild(root);
+    var botAvatar = avatarInner;
 
     var waBtn = root.querySelector('[data-bem="whatsapp"]');
     if (waBtn) {
@@ -205,20 +217,31 @@
     });
 
     function addMessage(role, text) {
+      var isUser = role === 'user';
+      var row = document.createElement('div');
+      row.className = 'bem-row ' + (isUser ? 'bem-row-user' : 'bem-row-bot');
       var bubble = document.createElement('div');
-      bubble.className = 'bem-msg bem-msg-' + (role === 'user' ? 'user' : 'bot');
+      bubble.className = 'bem-msg';
       bubble.textContent = text;
-      messages.appendChild(bubble);
+      if (!isUser) {
+        var av = document.createElement('div');
+        av.className = 'bem-row-avatar';
+        av.innerHTML = botAvatar;
+        row.appendChild(av);
+      }
+      row.appendChild(bubble);
+      messages.appendChild(row);
       messages.scrollTop = messages.scrollHeight;
-      return bubble;
+      return row;
     }
     function addTyping() {
-      var t = document.createElement('div');
-      t.className = 'bem-msg bem-msg-bot bem-typing';
-      t.innerHTML = '<span></span><span></span><span></span>';
-      messages.appendChild(t);
+      var row = document.createElement('div');
+      row.className = 'bem-row bem-row-bot';
+      row.innerHTML = '<div class="bem-row-avatar">' + botAvatar + '</div>' +
+        '<div class="bem-msg bem-typing"><span></span><span></span><span></span></div>';
+      messages.appendChild(row);
       messages.scrollTop = messages.scrollHeight;
-      return t;
+      return row;
     }
 
     /* Polling : relances proactives + réponses conseiller (handoff). */

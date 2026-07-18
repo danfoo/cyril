@@ -1,118 +1,209 @@
-/* BEM Lead AI — styles du widget, scopés sous .bem-* pour éviter les conflits de thème. */
+/* BEM Lead AI — widget de chat. Design moderne, scopé sous .bem-* et piloté
+   par des variables CSS (toutes surchargées en ligne selon les réglages). */
 
 .bem-widget {
   --bem-primary: #0b3d91;
   --bem-primary-dark: #082a66;
   --bem-accent: #e6b800;
-  --bem-bg: #ffffff;
   --bem-user: #0b3d91;
-  --bem-bot: #f1f3f8;
+  --bem-radius: 20px;
+  --bem-conv-bg: #f6f7fb;
+  --bem-bot: #ffffff;
+  --bem-text: #1f2430;
+  --bem-muted: #8a93a6;
+  --bem-input-bg: #ffffff;
+  --bem-input-border: #e2e6ef;
+  --bem-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 22px;
+  right: 22px;
   z-index: 99998;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--bem-font);
 }
 
+/* ---- Lanceur ------------------------------------------------------- */
 .bem-launcher {
-  width: 60px;
-  height: 60px;
+  position: relative;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
   border: none;
-  background: var(--bem-primary);
+  background: linear-gradient(135deg, var(--bem-primary), var(--bem-primary-dark));
   color: #fff;
-  font-size: 26px;
+  font-size: 27px;
+  line-height: 1;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(11, 61, 145, 0.35);
-  transition: transform 0.15s ease, background 0.15s ease;
+  box-shadow: 0 10px 28px rgba(11, 61, 145, 0.4);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.bem-launcher:hover { transform: scale(1.06); background: var(--bem-primary-dark); }
-.bem-launcher.bem-open { background: var(--bem-primary-dark); }
+.bem-launcher::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--bem-primary);
+  opacity: 0.5;
+  animation: bem-pulse 2.4s ease-out infinite;
+}
+.bem-launcher:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 14px 34px rgba(11, 61, 145, 0.48); }
+.bem-launcher.bem-open::after { display: none; }
+.bem-launcher .bem-launcher-close { display: none; font-size: 26px; }
+.bem-launcher.bem-open .bem-launcher-icon { display: none; }
+.bem-launcher.bem-open .bem-launcher-close { display: block; }
+@keyframes bem-pulse {
+  0% { transform: scale(1); opacity: 0.5; }
+  70% { transform: scale(1.5); opacity: 0; }
+  100% { opacity: 0; }
+}
 
+/* ---- Panneau ------------------------------------------------------- */
 .bem-panel {
   position: absolute;
-  bottom: 74px;
+  bottom: 78px;
   right: 0;
-  width: 360px;
+  width: 380px;
   max-width: calc(100vw - 32px);
-  height: 520px;
-  max-height: calc(100vh - 120px);
-  background: var(--bem-bg);
-  border-radius: 16px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+  height: 580px;
+  max-height: calc(100vh - 130px);
+  background: var(--bem-bot);
+  border-radius: var(--bem-radius);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28), 0 2px 8px rgba(15, 23, 42, 0.12);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: bem-in 0.18s ease;
+  transform-origin: bottom right;
+  animation: bem-in 0.26s cubic-bezier(0.34, 1.4, 0.5, 1);
 }
-@keyframes bem-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes bem-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
 
+/* ---- En-tête ------------------------------------------------------- */
 .bem-header {
-  background: var(--bem-primary);
+  position: relative;
+  background: linear-gradient(135deg, var(--bem-primary), var(--bem-primary-dark));
   color: #fff;
-  padding: 14px 16px;
-  font-weight: 600;
+  padding: 16px 18px;
   display: flex;
-  gap: 10px;
-  justify-content: flex-start;
+  gap: 12px;
   align-items: center;
 }
-.bem-header span { flex: 1; }
-.bem-avatar {
-  width: 32px;
-  height: 32px;
+.bem-header-avatar {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
   border-radius: 50%;
-  object-fit: cover;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  overflow: hidden;
 }
+.bem-header-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.bem-header-avatar::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #34d399;
+  border: 2px solid var(--bem-primary-dark);
+}
+.bem-header-text { flex: 1; min-width: 0; }
+.bem-header-title { font-weight: 700; font-size: 15px; line-height: 1.2; }
+.bem-header-subtitle { font-size: 12px; opacity: 0.82; margin-top: 2px; }
 .bem-close {
-  background: none; border: none; color: #fff; font-size: 24px; line-height: 1; cursor: pointer; opacity: 0.85;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  flex: 0 0 auto;
 }
-.bem-close:hover { opacity: 1; }
+.bem-close:hover { background: rgba(255, 255, 255, 0.26); }
 
+/* ---- Messages ------------------------------------------------------ */
 .bem-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 18px 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background: #fafbfd;
+  gap: 12px;
+  background: var(--bem-conv-bg);
+  scroll-behavior: smooth;
 }
+.bem-messages::-webkit-scrollbar { width: 6px; }
+.bem-messages::-webkit-scrollbar-thumb { background: rgba(120, 130, 150, 0.35); border-radius: 3px; }
+
+.bem-row { display: flex; gap: 8px; align-items: flex-end; max-width: 100%; animation: bem-pop 0.28s ease; }
+.bem-row-user { flex-direction: row-reverse; }
+@keyframes bem-pop {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.bem-row-avatar {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bem-primary), var(--bem-primary-dark));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  overflow: hidden;
+}
+.bem-row-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
 .bem-msg {
-  max-width: 82%;
-  padding: 10px 14px;
-  border-radius: 14px;
+  max-width: 78%;
+  padding: 11px 15px;
+  border-radius: 16px;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
 }
-.bem-msg-user {
-  align-self: flex-end;
+.bem-row-user .bem-msg {
   background: var(--bem-user);
   color: #fff;
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 5px;
 }
-.bem-msg-bot {
-  align-self: flex-start;
+.bem-row-bot .bem-msg {
   background: var(--bem-bot);
-  color: #1a1a2e;
-  border-bottom-left-radius: 4px;
+  color: var(--bem-text);
+  border: 1px solid rgba(120, 130, 150, 0.12);
+  border-bottom-left-radius: 5px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
 }
 
-.bem-typing { display: flex; gap: 4px; align-items: center; }
+/* Indicateur de saisie */
+.bem-typing { display: flex; gap: 4px; align-items: center; padding: 13px 16px; }
 .bem-typing span {
-  width: 7px; height: 7px; border-radius: 50%; background: #9aa4bf;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--bem-muted);
   animation: bem-blink 1.2s infinite both;
 }
 .bem-typing span:nth-child(2) { animation-delay: 0.2s; }
 .bem-typing span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes bem-blink { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+@keyframes bem-blink { 0%, 80%, 100% { opacity: 0.3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
 
 .bem-handoff-note {
-  padding: 8px 16px;
+  padding: 9px 16px;
   background: #fff8e1;
   color: #7a5c00;
   font-size: 13px;
@@ -120,50 +211,70 @@
   border-top: 1px solid #f0e4b8;
 }
 
-/* Bouton « Continuer sur WhatsApp » */
+/* ---- Bouton WhatsApp ---------------------------------------------- */
 .bem-wa {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: calc(100% - 24px);
-  margin: 10px 12px 0;
-  padding: 10px 14px;
+  width: calc(100% - 28px);
+  margin: 12px 14px 0;
+  padding: 11px 14px;
   border: none;
-  border-radius: 22px;
-  background: #25d366;
+  border-radius: 26px;
+  background: linear-gradient(135deg, #25d366, #1da851);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.32);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.bem-wa:hover { background: #1da851; }
-.bem-wa:disabled { opacity: 0.6; cursor: default; }
-.bem-wa-icon { font-size: 16px; }
+.bem-wa:hover { transform: translateY(-1px); box-shadow: 0 9px 20px rgba(37, 211, 102, 0.4); }
+.bem-wa:disabled { opacity: 0.6; cursor: default; transform: none; }
+.bem-wa-icon { font-size: 17px; }
 
+/* ---- Saisie -------------------------------------------------------- */
 .bem-input {
   display: flex;
   gap: 8px;
-  padding: 12px;
-  border-top: 1px solid #eef0f4;
-  background: #fff;
+  padding: 12px 14px;
+  background: var(--bem-bot);
+  border-top: 1px solid var(--bem-input-border);
 }
 .bem-input input {
   flex: 1;
-  border: 1px solid #d4d9e6;
-  border-radius: 22px;
-  padding: 10px 16px;
+  min-width: 0;
+  border: 1px solid var(--bem-input-border);
+  background: var(--bem-input-bg);
+  color: var(--bem-text);
+  border-radius: 24px;
+  padding: 11px 16px;
   font-size: 14px;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-.bem-input input:focus { border-color: var(--bem-primary); }
+.bem-input input::placeholder { color: var(--bem-muted); }
+.bem-input input:focus {
+  border-color: var(--bem-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bem-primary) 18%, transparent);
+}
 .bem-input button {
-  width: 42px; height: 42px; border-radius: 50%; border: none;
-  background: var(--bem-primary); color: #fff; font-size: 16px; cursor: pointer;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--bem-primary), var(--bem-primary-dark));
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
 }
-.bem-input button:hover { background: var(--bem-primary-dark); }
+.bem-input button:hover { transform: scale(1.06); filter: brightness(1.06); }
+.bem-input button:active { transform: scale(0.96); }
 
-/* Bandeau de consentement */
+/* ---- Bandeau de consentement -------------------------------------- */
 .bem-consent {
   position: fixed;
   bottom: 0; left: 0; right: 0;
@@ -181,15 +292,27 @@
 }
 .bem-consent a { color: var(--bem-accent, #e6b800); text-decoration: underline; }
 .bem-consent-actions { display: flex; gap: 8px; }
-.bem-btn {
-  border: none; border-radius: 20px; padding: 8px 18px; font-size: 13px; cursor: pointer; font-weight: 600;
-}
+.bem-btn { border: none; border-radius: 22px; padding: 9px 20px; font-size: 13px; cursor: pointer; font-weight: 600; }
 .bem-btn-primary { background: #0b3d91; color: #fff; }
 .bem-btn-primary:hover { background: #082a66; }
 .bem-btn-ghost { background: transparent; color: #cdd6e6; border: 1px solid #3a4d6d; }
 .bem-btn-ghost:hover { background: rgba(255, 255, 255, 0.08); }
 
+/* ---- Mobile -------------------------------------------------------- */
 @media (max-width: 480px) {
-  .bem-widget { bottom: 12px; right: 12px; }
-  .bem-panel { width: calc(100vw - 24px); height: calc(100vh - 96px); }
+  .bem-widget { bottom: 14px; right: 14px; }
+  .bem-panel {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    bottom: 0;
+    right: 0 !important;
+    left: 0 !important;
+    border-radius: 0;
+    position: fixed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bem-launcher::after, .bem-panel, .bem-row, .bem-typing span { animation: none; }
 }

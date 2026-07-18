@@ -84,6 +84,7 @@ final class Options
             // Widget — contenu
             'widget_enabled' => 1,
             'widget_title' => 'Conseiller d\'orientation BEM',
+            'widget_subtitle' => 'Réponses en quelques secondes',
             'widget_greeting' => 'Bonjour 👋 Je suis le conseiller d\'orientation virtuel de BEM Dakar. Posez-moi vos questions sur nos formations, les admissions ou le financement.',
             'rate_limit_per_minute' => 20,
             // Widget — design personnalisable
@@ -93,6 +94,8 @@ final class Options
             'widget_avatar_url' => '',
             'widget_launcher_icon' => '💬',
             'widget_position' => 'right', // right | left
+            'widget_corner_radius' => 20, // px, coins du panneau et des bulles
+            'widget_theme' => 'light', // light | dark — apparence de la zone de conversation
         ];
     }
 
