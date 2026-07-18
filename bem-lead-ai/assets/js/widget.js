@@ -272,35 +272,30 @@
 
     /* ---- Accroche animée : incite au premier clic --------------------- */
     var teaser = root.querySelector('.bem-teaser');
-    var TEASER_KEY = 'bem_teaser_seen';
-    function teaserDismissed() {
-      try { return sessionStorage.getItem(TEASER_KEY) === '1'; } catch (e) { return false; }
-    }
-    function dismissTeaser(remember) {
+    // Fermeture non mémorisée : l'accroche réapparaît à CHAQUE chargement de page.
+    var teaserClosed = false;
+    function dismissTeaser() {
       if (!teaser) return;
+      teaserClosed = true;
       teaser.classList.remove('bem-teaser-in');
       teaser.hidden = true;
-      if (remember) { try { sessionStorage.setItem(TEASER_KEY, '1'); } catch (e) {} }
     }
     if (teaser) {
       root.querySelector('[data-bem="teaser-close"]').addEventListener('click', function (e) {
         e.stopPropagation();
-        dismissTeaser(true);
+        dismissTeaser();
       });
       // Cliquer sur la bulle ouvre directement le chat.
       teaser.querySelector('.bem-teaser-text').addEventListener('click', function () {
-        dismissTeaser(true);
         setOpen(true);
       });
-      // Apparition différée (le temps que la page se pose), une fois par session.
-      if (!teaserDismissed()) {
-        setTimeout(function () {
-          if (!chatOpen && !teaserDismissed()) {
-            teaser.hidden = false;
-            requestAnimationFrame(function () { teaser.classList.add('bem-teaser-in'); });
-          }
-        }, 2600);
-      }
+      // Apparition différée (le temps que la page se pose), à chaque page vue.
+      setTimeout(function () {
+        if (!chatOpen && !teaserClosed) {
+          teaser.hidden = false;
+          requestAnimationFrame(function () { teaser.classList.add('bem-teaser-in'); });
+        }
+      }, 2600);
     }
 
     function setOpen(open) {
@@ -308,7 +303,7 @@
       panel.hidden = !open;
       launcher.classList.toggle('bem-open', open);
       root.classList.toggle('bem-panel-open', open);
-      if (open) { dismissTeaser(true); }
+      if (open) { dismissTeaser(); }
       if (open && !initialized) {
         initialized = true;
         loadHistory(); // recharge la conversation existante (continuité entre visites)

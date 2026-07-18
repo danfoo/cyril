@@ -27,7 +27,8 @@
 .bem-teaser {
   position: absolute;
   bottom: 76px;
-  max-width: 230px;
+  width: 220px;
+  box-sizing: border-box;
   display: flex;
   align-items: flex-start;
   gap: 6px;
@@ -425,20 +426,38 @@
 /* ---- Mobile -------------------------------------------------------- */
 @media (max-width: 480px) {
   .bem-widget { bottom: 14px; right: 14px; }
-  .bem-panel {
-    width: 100vw;
-    height: 100dvh;
-    max-height: 100dvh;
-    bottom: 0;
-    right: 0 !important;
+  /* Plein écran, au tout premier plan : couvre l'en-tête, le pied de page et
+     la barre de navigation fixes du thème (qui masquaient la saisie). */
+  .bem-widget.bem-panel-open {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
     left: 0 !important;
-    border-radius: 0;
-    position: fixed;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 2147483000 !important;
+  }
+  .bem-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    z-index: 2147483000 !important;
   }
   /* En plein écran mobile, le lanceur flottant chevauche le panneau : on le masque quand le chat est ouvert. */
   .bem-widget.bem-panel-open .bem-launcher { display: none; }
   .bem-widget.bem-panel-open .bem-teaser { display: none; }
-  .bem-teaser { max-width: min(230px, calc(100vw - 40px)); }
+  .bem-teaser { max-width: calc(100vw - 40px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
