@@ -51,7 +51,8 @@ final class FinancingSimulator
             if (!$this->activeOptions()) {
                 return null;
             }
-            return $intro . "BEM Dakar propose des facilités de paiement en plusieurs échéances et des bourses selon votre profil. Dites-moi la formation qui vous intéresse et je vous détaille les options concrètes.";
+            $school = trim((string) \BemLeadAi\Core\Options::get('school_name')) ?: 'BEM Conakry';
+            return $intro . $school . " propose des facilités de paiement en plusieurs échéances et des bourses selon votre profil. Dites-moi la formation qui vous intéresse et je vous détaille les options concrètes.";
         }
 
         $lines = [$intro . sprintf("Pour %s, voici les possibilités :", $option->formation_label)];

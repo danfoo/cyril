@@ -52,7 +52,12 @@ final class ChatOrchestrator
 
     private function generateReply(object $lead, string $message): string
     {
-        $fallback = __("Je rencontre un souci technique momentané. Laissez-moi votre question et votre email : un conseiller de BEM Dakar vous répondra très vite.", 'bem-lead-ai');
+        $school = trim((string) Options::get('school_name')) ?: 'BEM Conakry';
+        $fallback = sprintf(
+            /* translators: %s = nom de l'école */
+            __("Je rencontre un souci technique momentané. Laissez-moi votre question et votre email : un conseiller de %s vous répondra très vite.", 'bem-lead-ai'),
+            $school
+        );
 
         $history = (new ConversationRepository())->history((int) $lead->id, 16);
         $messages = [];
@@ -110,9 +115,13 @@ final class ChatOrchestrator
     {
         $isOnboarding = $kb === 'onboarding';
 
+        $school = trim((string) Options::get('school_name')) ?: 'BEM Conakry';
+        $location = trim((string) Options::get('school_location'));
+        $locationSuffix = $location !== '' ? " (école de management à {$location})" : '';
+
         $persona = $isOnboarding
-            ? "Tu es l'assistant d'accueil de BEM Dakar. Ton interlocuteur est un étudiant INSCRIT : tu l'accompagnes dans ses démarches administratives d'onboarding (documents, inscription pédagogique, rentrée, vie de campus)."
-            : "Tu es le conseiller d'orientation virtuel de BEM Dakar (école de management à Dakar, Sénégal). Ton interlocuteur est un prospect qui s'informe sur les formations. Ton rôle : comprendre son projet, répondre précisément, et faire progresser naturellement son parcours vers la candidature.";
+            ? "Tu es l'assistant d'accueil de {$school}. Ton interlocuteur est un étudiant INSCRIT : tu l'accompagnes dans ses démarches administratives d'onboarding (documents, inscription pédagogique, rentrée, vie de campus)."
+            : "Tu es le conseiller d'orientation virtuel de {$school}{$locationSuffix}. Ton interlocuteur est un prospect qui s'informe sur les formations. Ton rôle : comprendre son projet, répondre précisément, et faire progresser naturellement son parcours vers la candidature. IMPORTANT : tu représentes {$school} et uniquement {$school} — n'emploie jamais un autre nom de ville ou de campus.";
 
         $rules = "Règles impératives :\n"
             . "- Réponds UNIQUEMENT à partir du contenu officiel fourni ci-dessous. Si l'information n'y figure pas, dis-le honnêtement et propose de mettre le prospect en contact avec l'équipe admissions — n'invente JAMAIS de frais, de dates ou de conditions d'admission.\n"
@@ -124,7 +133,7 @@ final class ChatOrchestrator
             . "- COLLECTE DU PRÉNOM : dès les tout premiers échanges, demande naturellement le prénom du prospect pour personnaliser l'accompagnement (ex. « Avec plaisir ! Au fait, comment vous appelez-vous ? »). Une fois obtenu, utilise-le de temps en temps.\n"
             . "- COLLECTE DES COORDONNÉES : à mesure que l'intérêt se confirme (le prospect pose des questions précises, parle de candidature ou de délais), propose de recueillir son email et/ou son numéro de téléphone — présenté comme un service (« Voulez-vous que je vous envoie la brochure / que l'équipe admissions vous rappelle ? Laissez-moi votre email ou téléphone »). Reste subtil et jamais insistant ; une seule demande à la fois, au bon moment.\n"
             . "- Si le prospect s'inquiète du coût, mentionne qu'il existe des facilités de paiement et des bourses, et propose d'en parler.\n"
-            . "- Ne donne jamais ton avis sur les écoles concurrentes ; recentre sur les forces de BEM Dakar (accréditations, insertion professionnelle, réseau).\n"
+            . "- Ne donne jamais ton avis sur les écoles concurrentes ; recentre sur les forces de {$school} (accréditations, insertion professionnelle, réseau).\n"
             . "- Si le prospect souhaite parler à un conseiller humain, ou hésite sur une décision importante, invite-le à utiliser le bouton « WhatsApp » sous la conversation pour échanger de vive voix avec l'équipe admissions.\n");
 
         return $persona . "\n\n" . $rules

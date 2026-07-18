@@ -154,9 +154,14 @@ final class ActionRunner
         (new ConversationRepository())->add((int) $lead->id, 'assistant', $message, 'web');
 
         if ($lead->email) {
+            $school = trim((string) Options::get('school_name')) ?: 'BEM Conakry';
             wp_mail(
                 (string) $lead->email,
-                __('BEM Dakar — nous restons à votre écoute', 'bem-lead-ai'),
+                sprintf(
+                    /* translators: %s = nom de l'école */
+                    __('%s — nous restons à votre écoute', 'bem-lead-ai'),
+                    $school
+                ),
                 $message . "\n\n" . home_url()
             );
         }

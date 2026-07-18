@@ -64,6 +64,12 @@ final class SettingsPage
         wp_nonce_field('bem_save_settings');
         echo '<input type="hidden" name="action" value="bem_save_settings">';
 
+        // --- Identité de l'école ---
+        $this->section(__('Identité de l\'établissement', 'bem-lead-ai'), [
+            $this->text('school_name', 'Nom de l\'école (ex. BEM Conakry)', $o),
+            $this->text('school_location', 'Ville / pays (ex. Conakry, Guinée)', $o),
+        ], __('Ce nom est utilisé par le conseiller IA (« Je suis le conseiller de… ») et dans les messages. Renseignez-le correctement pour éviter toute confusion de ville.', 'bem-lead-ai'));
+
         // --- IA ---
         $consoleLink = '<a href="' . esc_url(Options::ANTHROPIC_CONSOLE_URL) . '" target="_blank" rel="noopener">console.anthropic.com</a>';
         $this->section(

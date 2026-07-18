@@ -20,7 +20,7 @@ defined('ABSPATH') || exit;
 final class SignalClassifier
 {
     private const SYSTEM_PROMPT = <<<'PROMPT'
-Tu analyses des messages envoyés par un prospect au conseiller d'orientation virtuel de BEM Dakar (école de management, Sénégal). Réponds UNIQUEMENT avec un objet JSON strict, sans aucun texte autour, avec exactement ces clés :
+Tu analyses des messages envoyés par un prospect au conseiller d'orientation virtuel d'une école de management. Réponds UNIQUEMENT avec un objet JSON strict, sans aucun texte autour, avec exactement ces clés :
 
 {
   "intent_level": <entier 0-100 : probabilité que ce prospect candidate réellement. 0-20 curiosité vague, 21-45 intérêt réel mais exploratoire, 46-70 projet concret (questions sur admission, dossier, dates), 71-100 décision imminente (veut candidater, demande les étapes, parle de délais)>,

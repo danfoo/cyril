@@ -27,7 +27,8 @@ final class Summarizer
             $history
         ));
 
-        $system = "Tu prépares une fiche de passation pour l'équipe admissions de BEM Dakar. À partir de la conversation, rédige en français, en 6 lignes maximum :\n"
+        $school = trim((string) Options::get('school_name')) ?: 'BEM Conakry';
+        $system = "Tu prépares une fiche de passation pour l'équipe admissions de {$school}. À partir de la conversation, rédige en français, en 6 lignes maximum :\n"
             . "1. PROFIL : qui est le prospect (prénom, formation visée, situation).\n"
             . "2. SIGNAUX : intention, urgence, freins (prix, hésitations), concurrents évoqués.\n"
             . "3. APPROCHE RECOMMANDÉE : le meilleur angle pour le prochain contact humain (argument à mettre en avant, objection à lever, canal et délai conseillés).\n"

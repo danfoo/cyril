@@ -48,6 +48,9 @@ final class Options
     public static function defaults(): array
     {
         return [
+            // Identité de l'école (injectée dans les prompts et messages).
+            'school_name' => 'BEM Conakry',
+            'school_location' => 'Conakry, Guinée',
             // IA
             'anthropic_api_key' => '',
             'chat_model' => 'claude-sonnet-5',
@@ -75,7 +78,7 @@ final class Options
             'whatsapp_enabled' => 1,
             'whatsapp_cta_label' => 'Continuer sur WhatsApp',
             'whatsapp_numbers' => "Admissions BEM|221770000000|\n", // Label|numéro|formation(optionnel), une ligne par numéro
-            'whatsapp_prefill' => "Bonjour, je viens du site de BEM Dakar. Je m'intéresse à {formation} et j'aimerais en savoir plus.",
+            'whatsapp_prefill' => "Bonjour, je viens du site de BEM Conakry. Je m'intéresse à {formation} et j'aimerais en savoir plus.",
             // CRM
             'perfex_url' => '',
             'perfex_api_key' => '',
@@ -88,7 +91,7 @@ final class Options
             'widget_enabled' => 1,
             'widget_title' => 'Conseiller d\'orientation BEM',
             'widget_subtitle' => 'Réponses en quelques secondes',
-            'widget_greeting' => 'Bonjour 👋 Je suis le conseiller d\'orientation virtuel de BEM Dakar. Posez-moi vos questions sur nos formations, les admissions ou le financement.',
+            'widget_greeting' => 'Bonjour 👋 Je suis le conseiller d\'orientation virtuel de BEM Conakry. Posez-moi vos questions sur nos formations, les admissions ou le financement.',
             // Bulle d'accroche animée près du lanceur (incite au premier clic).
             // Vide = pas d'accroche.
             'widget_teaser' => '👋 Une question sur nos formations ? Discutons !',
@@ -236,7 +239,7 @@ final class Options
                 continue;
             }
             $numbers[] = [
-                'label' => $parts[0] !== '' ? $parts[0] : 'BEM Dakar',
+                'label' => $parts[0] !== '' ? $parts[0] : 'BEM Conakry',
                 'number' => $digits,
                 'formation' => $parts[2] ?? '',
             ];

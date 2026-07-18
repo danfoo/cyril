@@ -32,6 +32,7 @@ final class Activator
         self::createTables(); // dbDelta : idempotent
         self::seedDefaults(); // insère seulement si vide
         Options::ensureDefaults();
+        self::migrateSchoolName();
 
         if (!wp_next_scheduled('bem_lead_ai_cron_disengagement')) {
             wp_schedule_event(time() + 300, 'hourly', 'bem_lead_ai_cron_disengagement');
@@ -54,6 +55,33 @@ final class Activator
         if (function_exists('wp_cache_delete')) {
             wp_cache_delete('bem_lead_ai_db_version', 'options');
             wp_cache_delete('alloptions', 'options');
+        }
+    }
+
+    /**
+     * Corrige l'ancien nom d'école « BEM Dakar » resté figé dans les réglages
+     * enregistrés (message d'accueil, message WhatsApp pré-rempli) sur les
+     * installations créées avant que le nom devienne configurable.
+     *
+     * Sûr et ciblé : on ne remplace QUE la sous-chaîne exacte « BEM Dakar » par
+     * le nom d'école configuré — les textes personnalisés par l'utilisateur ne
+     * sont pas touchés. Idempotent (plus de « BEM Dakar » → aucune écriture).
+     */
+    private static function migrateSchoolName(): void
+    {
+        $school = trim((string) Options::get('school_name')) ?: 'BEM Conakry';
+        if ($school === 'BEM Dakar') {
+            return;
+        }
+        $patch = [];
+        foreach (['widget_greeting', 'whatsapp_prefill'] as $key) {
+            $value = (string) Options::get($key);
+            if (str_contains($value, 'BEM Dakar')) {
+                $patch[$key] = str_replace('BEM Dakar', $school, $value);
+            }
+        }
+        if ($patch) {
+            Options::update($patch);
         }
     }
 
@@ -290,7 +318,7 @@ final class Activator
             $variants = [
                 ['relance_desengagement', "Bonjour {prenom} 👋 Vous vous étiez renseigné·e sur {formation} à BEM Dakar. Avez-vous des questions restées sans réponse ? Je peux vous aider sur le programme, les débouchés ou le financement — il suffit de répondre ici."],
                 ['relance_desengagement', "Bonjour {prenom}, les candidatures pour {formation} avancent vite et les places sont limitées. Si le programme vous intéresse toujours, c'est le bon moment pour finaliser votre dossier — je peux vous guider étape par étape."],
-                ['relance_desengagement', "Bonjour {prenom} ! Chaque année, des centaines d'étudiants rejoignent BEM Dakar après s'être posé les mêmes questions que vous sur {formation}. Voulez-vous que je vous mette en relation avec l'équipe admissions pour un échange rapide ?"],
+                ['relance_desengagement', "Bonjour {prenom} ! Chaque année, des centaines d'étudiants rejoignent BEM Conakry après s'être posé les mêmes questions que vous sur {formation}. Voulez-vous que je vous mette en relation avec l'équipe admissions pour un échange rapide ?"],
             ];
             foreach ($variants as [$key, $texte]) {
                 $wpdb->insert("{$p}bem_message_variants", [
