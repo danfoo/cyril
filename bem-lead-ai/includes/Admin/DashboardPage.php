@@ -186,6 +186,7 @@ final class DashboardPage
 
         // ---- En-tête : identité, étape, score ----
         echo '<p><a href="' . esc_url(admin_url('admin.php?page=bem-lead-ai-leads')) . '">&larr; ' . esc_html__('Tous les leads', 'bem-lead-ai') . '</a></p>';
+        echo '<div class="bem-crm-wrap">';
         echo '<div class="bem-crm-head">';
         echo '<div><h2 style="margin:0;">' . esc_html($lead->prenom ?: __('Lead anonyme', 'bem-lead-ai')) . ' <span style="color:#8a93a6;font-weight:400;">#' . (int) $lead->id . '</span></h2>';
         echo '<span class="bem-badge" style="background:' . esc_attr(CrmRepository::stageColor($stage)) . ';">' . esc_html(CrmRepository::stageLabel($stage)) . '</span> ';
@@ -263,6 +264,13 @@ final class DashboardPage
         // ================= Colonne latérale : infos =================
         echo '<div class="bem-crm-side">';
 
+        // Résumé IA & approche recommandée (mis en évidence).
+        $summary = get_option('bem_lead_ai_last_summary_' . $leadId);
+        if ($summary) {
+            echo '<div class="bem-panel-card bem-highlight"><h3>💡 ' . esc_html__('Résumé IA & approche recommandée', 'bem-lead-ai') . '</h3>';
+            echo '<div class="bem-highlight-body" style="white-space:pre-wrap;">' . esc_html($summary) . '</div></div>';
+        }
+
         // Responsable.
         echo '<div class="bem-panel-card"><h3>' . esc_html__('Responsable du suivi', 'bem-lead-ai') . '</h3>';
         echo '<form method="post" action="' . $postUrl . '">';
@@ -277,33 +285,32 @@ final class DashboardPage
         echo '</form></div>';
 
         // Coordonnées & signaux.
+        $emailHtml = $lead->email
+            ? '<a href="' . esc_url('mailto:' . $lead->email) . '">' . esc_html($lead->email) . '</a>'
+            : '—';
+        $phoneHtml = $lead->phone
+            ? '<a href="' . esc_attr('tel:' . preg_replace('/[^0-9+]/', '', $lead->phone)) . '">' . esc_html($lead->phone) . '</a>'
+            : '—';
         echo '<div class="bem-panel-card"><h3>' . esc_html__('Informations', 'bem-lead-ai') . '</h3>';
         echo '<table class="bem-info"><tbody>';
         $rows = [
-            [__('Email', 'bem-lead-ai'), $lead->email ?: '—'],
-            [__('Téléphone', 'bem-lead-ai'), $lead->phone ?: '—'],
-            [__('Formation d\'intérêt', 'bem-lead-ai'), $lead->formation_interet ?: '—'],
-            [__('Score comportemental', 'bem-lead-ai'), round((float) $lead->score_comportemental)],
-            [__('Score intention (IA)', 'bem-lead-ai'), round((float) $lead->score_intention)],
-            [__('Urgence détectée', 'bem-lead-ai'), $signals['urgency'] ?? 'none'],
-            [__('Sensibilité prix', 'bem-lead-ai'), !empty($signals['price_sensitivity']) ? __('oui', 'bem-lead-ai') : __('non', 'bem-lead-ai')],
-            [__('Canaux', 'bem-lead-ai'), $lead->channels],
-            [__('Base de connaissance', 'bem-lead-ai'), $lead->kb_mode],
-            [__('Première visite', 'bem-lead-ai'), $lead->first_seen],
-            [__('Dernière visite', 'bem-lead-ai'), $lead->last_seen],
-            [__('CRM Perfex / HubSpot', 'bem-lead-ai'), ($lead->crm_id_perfex ?: '—') . ' / ' . ($lead->crm_id_hubspot ?: '—')],
+            [__('Email', 'bem-lead-ai'), $emailHtml, true],
+            [__('Téléphone', 'bem-lead-ai'), $phoneHtml, true],
+            [__('Formation d\'intérêt', 'bem-lead-ai'), $lead->formation_interet ?: '—', false],
+            [__('Score comportemental', 'bem-lead-ai'), round((float) $lead->score_comportemental), false],
+            [__('Score intention (IA)', 'bem-lead-ai'), round((float) $lead->score_intention), false],
+            [__('Urgence détectée', 'bem-lead-ai'), $signals['urgency'] ?? 'none', false],
+            [__('Sensibilité prix', 'bem-lead-ai'), !empty($signals['price_sensitivity']) ? __('oui', 'bem-lead-ai') : __('non', 'bem-lead-ai'), false],
+            [__('Canaux', 'bem-lead-ai'), $lead->channels, false],
+            [__('Base de connaissance', 'bem-lead-ai'), $lead->kb_mode, false],
+            [__('Première visite', 'bem-lead-ai'), $lead->first_seen, false],
+            [__('Dernière visite', 'bem-lead-ai'), $lead->last_seen, false],
+            [__('CRM Perfex / HubSpot', 'bem-lead-ai'), ($lead->crm_id_perfex ?: '—') . ' / ' . ($lead->crm_id_hubspot ?: '—'), false],
         ];
-        foreach ($rows as [$label, $value]) {
-            echo '<tr><th>' . esc_html($label) . '</th><td>' . esc_html((string) $value) . '</td></tr>';
+        foreach ($rows as [$label, $value, $isHtml]) {
+            echo '<tr><th>' . esc_html($label) . '</th><td>' . ($isHtml ? wp_kses_post((string) $value) : esc_html((string) $value)) . '</td></tr>';
         }
         echo '</tbody></table></div>';
-
-        // Résumé IA.
-        $summary = get_option('bem_lead_ai_last_summary_' . $leadId);
-        if ($summary) {
-            echo '<div class="bem-panel-card"><h3>' . esc_html__('Résumé IA & approche recommandée', 'bem-lead-ai') . '</h3>';
-            echo '<div style="white-space:pre-wrap;">' . esc_html($summary) . '</div></div>';
-        }
 
         // Droit à l'oubli (loi n°2008-12).
         if (current_user_can('manage_options')) {
@@ -317,6 +324,7 @@ final class DashboardPage
 
         echo '</div>'; // /side
         echo '</div>'; // /grid
+        echo '</div>'; // /wrap
     }
 
     /** Boutons d'action rapide (WhatsApp, email, téléphone). */
@@ -331,7 +339,9 @@ final class DashboardPage
             }
         }
         if ($lead->email) {
-            $out .= '<a class="button" href="' . esc_attr('mailto:' . $lead->email) . '">✉ ' . esc_html__('Email', 'bem-lead-ai') . '</a> ';
+            $school = trim((string) \BemLeadAi\Core\Options::get('school_name')) ?: 'BEM Conakry';
+            $subject = rawurlencode(sprintf(__('%s — votre projet de formation', 'bem-lead-ai'), $school));
+            $out .= '<a class="button" href="' . esc_url('mailto:' . $lead->email . '?subject=' . $subject) . '">✉ ' . esc_html__('Email', 'bem-lead-ai') . '</a> ';
         }
         if ($lead->phone) {
             $out .= '<a class="button" href="' . esc_attr('tel:' . preg_replace('/[^0-9+]/', '', $lead->phone)) . '">☎ ' . esc_html__('Appeler', 'bem-lead-ai') . '</a>';
@@ -339,15 +349,21 @@ final class DashboardPage
         return $out . '</div>';
     }
 
-    /** Fil chronologique : activités CRM + messages de conversation fusionnés. */
+    /**
+     * Fil d'activité organisé par onglets (Tout / Notes / Tâches / Suivi CRM /
+     * Conversation) — meilleur suivi qu'une liste unique interminable.
+     * Onglets en CSS pur (radios), aucune dépendance JS.
+     */
     private function renderTimeline(int $leadId, CrmRepository $crm, string $nonce, string $postUrl): void
     {
+        // Fusion chronologique, chaque item classé dans une catégorie.
         $items = [];
         foreach ($crm->activities($leadId, 200) as $a) {
-            $items[] = ['ts' => $a->created_at, 'kind' => 'crm', 'data' => $a];
+            $cat = $a->type === 'note' ? 'notes' : ($a->type === 'task' ? 'tasks' : 'crm');
+            $items[] = ['ts' => $a->created_at, 'cat' => $cat, 'html' => $this->crmActivityHtml($a, $leadId, $nonce, $postUrl)];
         }
         foreach ((new ConversationRepository())->history($leadId, 100) as $m) {
-            $items[] = ['ts' => $m->created_at, 'kind' => 'chat', 'data' => $m];
+            $items[] = ['ts' => $m->created_at, 'cat' => 'chat', 'html' => $this->chatItemHtml($m)];
         }
         usort($items, static fn($a, $b) => strcmp((string) $b['ts'], (string) $a['ts']));
 
@@ -356,31 +372,71 @@ final class DashboardPage
             return;
         }
 
-        echo '<ul class="bem-timeline">';
+        $tabs = [
+            'all'   => __('Tout', 'bem-lead-ai'),
+            'notes' => __('Notes', 'bem-lead-ai'),
+            'tasks' => __('Tâches', 'bem-lead-ai'),
+            'crm'   => __('Suivi', 'bem-lead-ai'),
+            'chat'  => __('Conversation', 'bem-lead-ai'),
+        ];
+        $counts = ['all' => count($items), 'notes' => 0, 'tasks' => 0, 'crm' => 0, 'chat' => 0];
         foreach ($items as $it) {
-            if ($it['kind'] === 'chat') {
-                $m = $it['data'];
-                $who = $m->role === 'user' ? __('Prospect', 'bem-lead-ai') : ($m->role === 'agent' ? __('Conseiller', 'bem-lead-ai') : 'IA');
-                $icon = $m->role === 'user' ? '🧑' : ($m->role === 'agent' ? '👤' : '🤖');
-                echo '<li class="bem-tl bem-tl-chat"><span class="bem-tl-ico">' . $icon . '</span>'
-                    . '<div><div class="bem-tl-meta"><strong>' . esc_html($who) . '</strong> · ' . esc_html($m->canal . ' · ' . mysql2date('d/m/Y H:i', $m->created_at)) . '</div>'
-                    . '<div class="bem-tl-body">' . esc_html($m->contenu) . '</div></div></li>';
-                continue;
-            }
-            $a = $it['data'];
-            [$icon, $title] = $this->activityLabel($a);
-            $author = $a->author_id ? get_the_author_meta('display_name', (int) $a->author_id) : '';
-            echo '<li class="bem-tl bem-tl-' . esc_attr($a->type) . '"><span class="bem-tl-ico">' . $icon . '</span>'
-                . '<div><div class="bem-tl-meta"><strong>' . esc_html($title) . '</strong> · ' . esc_html(mysql2date('d/m/Y H:i', $a->created_at)) . ($author ? ' · ' . esc_html($author) : '') . '</div>';
-            if ($a->content !== null && $a->content !== '') {
-                echo '<div class="bem-tl-body">' . esc_html($a->content) . ($a->type === 'task' && $a->due_at ? ' <em>(' . esc_html(mysql2date('d/m/Y', $a->due_at)) . ')</em>' : '') . '</div>';
-            }
-            echo '<form method="post" action="' . $postUrl . '" style="display:inline;" onsubmit="return confirm(\'' . esc_js(__('Supprimer cette activité ?', 'bem-lead-ai')) . '\');">'
-                . '<input type="hidden" name="action" value="bem_crm_activity_delete"><input type="hidden" name="lead_id" value="' . (int) $leadId . '"><input type="hidden" name="activity_id" value="' . (int) $a->id . '"><input type="hidden" name="_wpnonce" value="' . esc_attr($nonce) . '">'
-                . '<button type="submit" class="bem-tl-del" title="' . esc_attr__('Supprimer', 'bem-lead-ai') . '">×</button></form>';
-            echo '</div></li>';
+            $counts[$it['cat']]++;
         }
-        echo '</ul>';
+
+        echo '<div class="bem-tabs">';
+        // Radios + labels (l'ordre : tous les radios, puis les panneaux).
+        foreach ($tabs as $key => $label) {
+            $checked = $key === 'all' ? ' checked' : '';
+            echo '<input type="radio" name="bem-tl-tab-' . (int) $leadId . '" id="bem-tab-' . esc_attr($key) . '-' . (int) $leadId . '" class="bem-tab-radio bem-tab-radio-' . esc_attr($key) . '"' . $checked . '>';
+        }
+        echo '<div class="bem-tab-labels">';
+        foreach ($tabs as $key => $label) {
+            echo '<label for="bem-tab-' . esc_attr($key) . '-' . (int) $leadId . '" class="bem-tab-label bem-tab-label-' . esc_attr($key) . '">' . esc_html($label) . ' <span class="bem-tab-count">' . (int) $counts[$key] . '</span></label>';
+        }
+        echo '</div>';
+
+        echo '<div class="bem-tab-panels">';
+        foreach (array_keys($tabs) as $key) {
+            echo '<div class="bem-tab-panel bem-tab-panel-' . esc_attr($key) . '"><ul class="bem-timeline">';
+            $any = false;
+            foreach ($items as $it) {
+                if ($key === 'all' || $it['cat'] === $key) {
+                    echo $it['html'];
+                    $any = true;
+                }
+            }
+            if (!$any) {
+                echo '<li class="description" style="padding:12px 0;">' . esc_html__('Rien dans cette catégorie.', 'bem-lead-ai') . '</li>';
+            }
+            echo '</ul></div>';
+        }
+        echo '</div>'; // /panels
+        echo '</div>'; // /tabs
+    }
+
+    private function chatItemHtml(object $m): string
+    {
+        $who = $m->role === 'user' ? __('Prospect', 'bem-lead-ai') : ($m->role === 'agent' ? __('Conseiller', 'bem-lead-ai') : 'IA');
+        $icon = $m->role === 'user' ? '🧑' : ($m->role === 'agent' ? '👤' : '🤖');
+        return '<li class="bem-tl bem-tl-chat"><span class="bem-tl-ico">' . $icon . '</span>'
+            . '<div><div class="bem-tl-meta"><strong>' . esc_html($who) . '</strong> · ' . esc_html($m->canal . ' · ' . mysql2date('d/m/Y H:i', $m->created_at)) . '</div>'
+            . '<div class="bem-tl-body">' . esc_html($m->contenu) . '</div></div></li>';
+    }
+
+    private function crmActivityHtml(object $a, int $leadId, string $nonce, string $postUrl): string
+    {
+        [$icon, $title] = $this->activityLabel($a);
+        $author = $a->author_id ? get_the_author_meta('display_name', (int) $a->author_id) : '';
+        $html = '<li class="bem-tl bem-tl-' . esc_attr($a->type) . '"><span class="bem-tl-ico">' . $icon . '</span>'
+            . '<div><div class="bem-tl-meta"><strong>' . esc_html($title) . '</strong> · ' . esc_html(mysql2date('d/m/Y H:i', $a->created_at)) . ($author ? ' · ' . esc_html($author) : '') . '</div>';
+        if ($a->content !== null && $a->content !== '') {
+            $html .= '<div class="bem-tl-body">' . esc_html($a->content) . ($a->type === 'task' && $a->due_at ? ' <em>(' . esc_html(mysql2date('d/m/Y', $a->due_at)) . ')</em>' : '') . '</div>';
+        }
+        $html .= '<form method="post" action="' . $postUrl . '" style="display:inline;" onsubmit="return confirm(\'' . esc_js(__('Supprimer cette activité ?', 'bem-lead-ai')) . '\');">'
+            . '<input type="hidden" name="action" value="bem_crm_activity_delete"><input type="hidden" name="lead_id" value="' . (int) $leadId . '"><input type="hidden" name="activity_id" value="' . (int) $a->id . '"><input type="hidden" name="_wpnonce" value="' . esc_attr($nonce) . '">'
+            . '<button type="submit" class="bem-tl-del" title="' . esc_attr__('Supprimer', 'bem-lead-ai') . '">×</button></form>';
+        return $html . '</div></li>';
     }
 
     /** @return array{0:string,1:string} [icône, libellé] d'une activité. */

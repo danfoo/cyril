@@ -178,3 +178,53 @@
 .bem-info { width: 100%; border-collapse: collapse; }
 .bem-info th { text-align: left; color: #646970; font-weight: 500; padding: 5px 10px 5px 0; vertical-align: top; width: 45%; }
 .bem-info td { padding: 5px 0; }
+
+/* Fiche CRM centrée */
+.bem-crm-wrap { max-width: 1180px; margin: 0 auto; }
+
+/* Résumé IA mis en évidence */
+.bem-panel-card.bem-highlight {
+  border: 1px solid #ffd066;
+  background: linear-gradient(180deg, #fffaf0 0%, #fff8e6 100%);
+  box-shadow: 0 2px 10px rgba(219, 166, 23, 0.15);
+}
+.bem-panel-card.bem-highlight h3 { color: #7a5c00; }
+.bem-highlight-body { color: #3d3320; font-size: 13.5px; line-height: 1.55; }
+
+/* ---- Onglets du fil d'activité (CSS pur, radios) ---- */
+.bem-tabs { margin-top: 12px; }
+.bem-tab-radio { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.bem-tab-labels { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid #eef1f6; margin-bottom: 8px; }
+.bem-tab-label {
+  padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 600; color: #646970;
+  border-radius: 8px 8px 0 0; border: 2px solid transparent; border-bottom: none; margin-bottom: -2px;
+}
+.bem-tab-label:hover { color: #0b3d91; }
+.bem-tab-count {
+  display: inline-block; min-width: 18px; text-align: center; font-size: 11px;
+  background: #eef1f6; color: #55627a; border-radius: 999px; padding: 0 6px; margin-left: 2px;
+}
+.bem-tab-panel { display: none; }
+
+/* Activation : le radio coché révèle son panneau et surligne son onglet */
+.bem-tab-radio-all:checked    ~ .bem-tab-panels .bem-tab-panel-all,
+.bem-tab-radio-notes:checked  ~ .bem-tab-panels .bem-tab-panel-notes,
+.bem-tab-radio-tasks:checked  ~ .bem-tab-panels .bem-tab-panel-tasks,
+.bem-tab-radio-crm:checked    ~ .bem-tab-panels .bem-tab-panel-crm,
+.bem-tab-radio-chat:checked   ~ .bem-tab-panels .bem-tab-panel-chat { display: block; }
+
+.bem-tab-radio-all:checked    ~ .bem-tab-labels .bem-tab-label-all,
+.bem-tab-radio-notes:checked  ~ .bem-tab-labels .bem-tab-label-notes,
+.bem-tab-radio-tasks:checked  ~ .bem-tab-labels .bem-tab-label-tasks,
+.bem-tab-radio-crm:checked    ~ .bem-tab-labels .bem-tab-label-crm,
+.bem-tab-radio-chat:checked   ~ .bem-tab-labels .bem-tab-label-chat {
+  color: #0b3d91; border-color: #eef1f6; border-bottom-color: #fff; background: #fff;
+}
+.bem-tab-radio-all:checked    ~ .bem-tab-labels .bem-tab-label-all .bem-tab-count,
+.bem-tab-radio-notes:checked  ~ .bem-tab-labels .bem-tab-label-notes .bem-tab-count,
+.bem-tab-radio-tasks:checked  ~ .bem-tab-labels .bem-tab-label-tasks .bem-tab-count,
+.bem-tab-radio-crm:checked    ~ .bem-tab-labels .bem-tab-label-crm .bem-tab-count,
+.bem-tab-radio-chat:checked   ~ .bem-tab-labels .bem-tab-label-chat .bem-tab-count { background: #0b3d91; color: #fff; }
+
+/* Le fil devient scrollable pour ne plus être interminable */
+.bem-tab-panel .bem-timeline { max-height: 460px; overflow-y: auto; padding-right: 6px; }
