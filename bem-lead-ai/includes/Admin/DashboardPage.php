@@ -41,21 +41,46 @@ final class DashboardPage
         }
 
         $dueTasks = (new CrmRepository())->dueTasks(0);
+        $convRate = $identified > 0 ? round($inscrits / $identified * 100) : 0;
+
+        // ---- Cartes KPI premium ----
         $cards = [
-            [__('Leads total', 'bem-lead-ai'), $total],
-            [__('Leads chauds à traiter', 'bem-lead-ai'), $hot],
-            [__('Leads identifiés (email/tél.)', 'bem-lead-ai'), $identified],
-            [__('Conversations (7 j)', 'bem-lead-ai'), $conversations7d],
-            [__('Suivis à traiter', 'bem-lead-ai'), count($dueTasks)],
-            [__('Inscrits', 'bem-lead-ai'), $inscrits],
+            ['icon' => '👥', 'accent' => 'blue', 'label' => __('Leads total', 'bem-lead-ai'), 'value' => $total],
+            ['icon' => '🔥', 'accent' => 'red', 'label' => __('Leads chauds à traiter', 'bem-lead-ai'), 'value' => $hot],
+            ['icon' => '📇', 'accent' => 'violet', 'label' => __('Identifiés (email/tél.)', 'bem-lead-ai'), 'value' => $identified],
+            ['icon' => '💬', 'accent' => 'teal', 'label' => __('Conversations (7 j)', 'bem-lead-ai'), 'value' => $conversations7d],
+            ['icon' => '⏰', 'accent' => 'amber', 'label' => __('Suivis à traiter', 'bem-lead-ai'), 'value' => count($dueTasks)],
+            ['icon' => '🎓', 'accent' => 'green', 'label' => __('Inscrits', 'bem-lead-ai'), 'value' => $inscrits, 'sub' => $convRate . '% ' . __('de conversion', 'bem-lead-ai')],
         ];
-        echo '<div style="display:flex;gap:16px;flex-wrap:wrap;margin:16px 0;">';
-        foreach ($cards as [$label, $value]) {
-            echo '<div style="background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:16px 24px;min-width:160px;">'
-                . '<div style="font-size:28px;font-weight:600;">' . esc_html((string) $value) . '</div>'
-                . '<div style="color:#646970;">' . esc_html($label) . '</div></div>';
+        echo '<div class="bem-kpis">';
+        foreach ($cards as $c) {
+            echo '<div class="bem-kpi bem-kpi-' . esc_attr($c['accent']) . '">'
+                . '<div class="bem-kpi-ico">' . $c['icon'] . '</div>'
+                . '<div class="bem-kpi-txt"><div class="bem-kpi-val">' . esc_html((string) $c['value']) . '</div>'
+                . '<div class="bem-kpi-lbl">' . esc_html($c['label']) . '</div>'
+                . (!empty($c['sub']) ? '<div class="bem-kpi-sub">' . esc_html($c['sub']) . '</div>' : '')
+                . '</div></div>';
         }
         echo '</div>';
+
+        // ---- Entonnoir du pipeline ----
+        $stageCounts = [];
+        foreach ($wpdb->get_results("SELECT pipeline_stage AS s, COUNT(*) AS n FROM {$p}bem_leads GROUP BY pipeline_stage") ?: [] as $r) {
+            $stageCounts[(string) $r->s] = (int) $r->n;
+        }
+        $maxStage = max(1, $stageCounts ? max($stageCounts) : 1);
+        echo '<div class="bem-panel-card bem-funnel-card" style="max-width:none;"><h3>' . esc_html__('Pipeline d\'admission', 'bem-lead-ai') . '</h3>';
+        echo '<div class="bem-funnel">';
+        foreach (CrmRepository::stages() as $slug => $conf) {
+            $n = $stageCounts[$slug] ?? 0;
+            $pct = round($n / $maxStage * 100);
+            $url = admin_url('admin.php?page=bem-lead-ai-leads&stage=' . $slug);
+            echo '<a class="bem-funnel-row" href="' . esc_url($url) . '">'
+                . '<span class="bem-funnel-name">' . esc_html($conf['label']) . '</span>'
+                . '<span class="bem-funnel-bar"><span class="bem-funnel-fill" style="width:' . (int) max(6, $pct) . '%;background:' . esc_attr($conf['color']) . ';"></span></span>'
+                . '<span class="bem-funnel-n">' . (int) $n . '</span></a>';
+        }
+        echo '</div></div>';
 
         // Outil de nettoyage des données de test (admin).
         if (current_user_can('manage_options')) {
@@ -85,7 +110,12 @@ final class DashboardPage
             echo '</tbody></table>';
         }
 
-        $this->renderLeadTable(20);
+        // Aperçu des leads les plus chauds (liste complète + filtres sur la page Leads).
+        global $wpdb;
+        $hotLeads = $wpdb->get_results("SELECT * FROM {$p}bem_leads ORDER BY score_final DESC, last_seen DESC LIMIT 8") ?: [];
+        echo '<div class="bem-section-head"><h2>' . esc_html__('Leads les plus chauds', 'bem-lead-ai') . '</h2>'
+            . '<a class="button" href="' . esc_url(admin_url('admin.php?page=bem-lead-ai-leads')) . '">' . esc_html__('Voir tous les leads', 'bem-lead-ai') . ' →</a></div>';
+        $this->renderLeadRows($hotLeads);
         echo '</div>';
     }
 
@@ -113,55 +143,180 @@ final class DashboardPage
         if ($leadId > 0) {
             $this->renderLeadDetail($leadId);
         } else {
-            $this->renderLeadTable(100);
+            $this->renderLeadsBrowser();
         }
         echo '</div>';
     }
 
-    private function renderLeadTable(int $limit): void
+    /** Liste des leads avec recherche, filtres et pagination (CRM premium). */
+    private function renderLeadsBrowser(): void
     {
         global $wpdb;
         $p = $wpdb->prefix;
-        $leads = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$p}bem_leads ORDER BY score_final DESC, last_seen DESC LIMIT %d",
-            $limit
-        )) ?: [];
+        $perPage = 25;
 
-        // Nombre de tâches ouvertes par lead, en une seule requête (évite le N+1).
+        // Filtres.
+        $search = isset($_GET['s']) ? sanitize_text_field(wp_unslash((string) $_GET['s'])) : '';
+        $fStage = isset($_GET['stage']) ? sanitize_key((string) $_GET['stage']) : '';
+        $fBand = isset($_GET['band']) ? sanitize_key((string) $_GET['band']) : '';
+        $fOwner = isset($_GET['owner']) ? (int) $_GET['owner'] : 0;
+        $paged = max(1, isset($_GET['paged']) ? (int) $_GET['paged'] : 1);
+
+        // Construction sécurisée de la clause WHERE.
+        $where = ['1=1'];
+        $args = [];
+        if ($search !== '') {
+            $like = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = '(prenom LIKE %s OR email LIKE %s OR phone LIKE %s OR formation_interet LIKE %s)';
+            array_push($args, $like, $like, $like, $like);
+        }
+        if (CrmRepository::isStage($fStage)) {
+            $where[] = 'pipeline_stage = %s';
+            $args[] = $fStage;
+        }
+        if ($fOwner > 0) {
+            $where[] = 'owner_id = %d';
+            $args[] = $fOwner;
+        }
+        $bands = [
+            'tres_chaud' => [(float) \BemLeadAi\Core\Options::get('threshold_very_hot'), null],
+            'chaud' => [(float) \BemLeadAi\Core\Options::get('threshold_hot'), (float) \BemLeadAi\Core\Options::get('threshold_very_hot')],
+            'tiede' => [(float) \BemLeadAi\Core\Options::get('threshold_warm'), (float) \BemLeadAi\Core\Options::get('threshold_hot')],
+            'froid' => [null, (float) \BemLeadAi\Core\Options::get('threshold_warm')],
+        ];
+        if (isset($bands[$fBand])) {
+            [$min, $max] = $bands[$fBand];
+            if ($min !== null) { $where[] = 'score_final >= %f'; $args[] = $min; }
+            if ($max !== null) { $where[] = 'score_final < %f'; $args[] = $max; }
+        }
+        $whereSql = implode(' AND ', $where);
+
+        // Total (pour la pagination).
+        $countSql = "SELECT COUNT(*) FROM {$p}bem_leads WHERE {$whereSql}";
+        $total = (int) ($args ? $wpdb->get_var($wpdb->prepare($countSql, $args)) : $wpdb->get_var($countSql));
+        $pages = max(1, (int) ceil($total / $perPage));
+        $paged = min($paged, $pages);
+        $offset = ($paged - 1) * $perPage;
+
+        $listSql = "SELECT * FROM {$p}bem_leads WHERE {$whereSql} ORDER BY score_final DESC, last_seen DESC LIMIT %d OFFSET %d";
+        $listArgs = array_merge($args, [$perPage, $offset]);
+        $leads = $wpdb->get_results($wpdb->prepare($listSql, $listArgs)) ?: [];
+
+        // Barre de filtres.
+        $owners = get_users(['capability' => 'edit_posts', 'number' => 100]);
+        echo '<form method="get" class="bem-filters">';
+        echo '<input type="hidden" name="page" value="bem-lead-ai-leads">';
+        echo '<input type="search" name="s" value="' . esc_attr($search) . '" placeholder="' . esc_attr__('Rechercher (nom, email, téléphone, formation)…', 'bem-lead-ai') . '" class="bem-filter-search">';
+        echo '<select name="stage"><option value="">' . esc_html__('Toutes les étapes', 'bem-lead-ai') . '</option>';
+        foreach (CrmRepository::stages() as $slug => $conf) {
+            echo '<option value="' . esc_attr($slug) . '" ' . selected($fStage, $slug, false) . '>' . esc_html($conf['label']) . '</option>';
+        }
+        echo '</select>';
+        echo '<select name="band"><option value="">' . esc_html__('Toutes les températures', 'bem-lead-ai') . '</option>';
+        foreach (['tres_chaud' => __('Très chaud', 'bem-lead-ai'), 'chaud' => __('Chaud', 'bem-lead-ai'), 'tiede' => __('Tiède', 'bem-lead-ai'), 'froid' => __('Froid', 'bem-lead-ai')] as $slug => $label) {
+            echo '<option value="' . esc_attr($slug) . '" ' . selected($fBand, $slug, false) . '>' . esc_html($label) . '</option>';
+        }
+        echo '</select>';
+        echo '<select name="owner"><option value="0">' . esc_html__('Tous les responsables', 'bem-lead-ai') . '</option>';
+        foreach ($owners as $u) {
+            echo '<option value="' . (int) $u->ID . '" ' . selected($fOwner, (int) $u->ID, false) . '>' . esc_html($u->display_name) . '</option>';
+        }
+        echo '</select>';
+        echo '<button type="submit" class="button button-primary">' . esc_html__('Filtrer', 'bem-lead-ai') . '</button>';
+        if ($search !== '' || $fStage || $fBand || $fOwner) {
+            echo ' <a class="button" href="' . esc_url(admin_url('admin.php?page=bem-lead-ai-leads')) . '">' . esc_html__('Réinitialiser', 'bem-lead-ai') . '</a>';
+        }
+        echo '</form>';
+
+        // Compteur + pagination haute.
+        echo '<div class="bem-section-head"><p class="description" style="margin:0;">'
+            . sprintf(esc_html(_n('%s lead trouvé', '%s leads trouvés', $total, 'bem-lead-ai')), '<strong>' . number_format_i18n($total) . '</strong>')
+            . '</p>' . $this->paginationLinks($paged, $pages) . '</div>';
+
+        $this->renderLeadRows($leads);
+
+        // Pagination basse.
+        if ($pages > 1) {
+            echo '<div class="bem-section-head" style="justify-content:flex-end;">' . $this->paginationLinks($paged, $pages) . '</div>';
+        }
+    }
+
+    /** Liens de pagination conservant les filtres courants. */
+    private function paginationLinks(int $paged, int $pages): string
+    {
+        if ($pages <= 1) {
+            return '';
+        }
+        $base = admin_url('admin.php');
+        $keep = array_filter([
+            'page' => 'bem-lead-ai-leads',
+            's' => isset($_GET['s']) ? sanitize_text_field(wp_unslash((string) $_GET['s'])) : '',
+            'stage' => isset($_GET['stage']) ? sanitize_key((string) $_GET['stage']) : '',
+            'band' => isset($_GET['band']) ? sanitize_key((string) $_GET['band']) : '',
+            'owner' => isset($_GET['owner']) ? (int) $_GET['owner'] : 0,
+        ], static fn($v) => $v !== '' && $v !== 0);
+        $link = static function (int $page) use ($base, $keep): string {
+            $keep['paged'] = $page;
+            return esc_url(add_query_arg($keep, $base));
+        };
+        $out = '<span class="bem-pagination">';
+        if ($paged > 1) {
+            $out .= '<a class="button button-small" href="' . $link($paged - 1) . '">‹</a>';
+        }
+        $out .= '<span class="bem-page-info">' . sprintf(esc_html__('Page %1$d / %2$d', 'bem-lead-ai'), $paged, $pages) . '</span>';
+        if ($paged < $pages) {
+            $out .= '<a class="button button-small" href="' . $link($paged + 1) . '">›</a>';
+        }
+        return $out . '</span>';
+    }
+
+    /** Rend le tableau des leads (en-tête + lignes) à partir d'une liste. */
+    private function renderLeadRows(array $leads): void
+    {
+        global $wpdb;
+        $p = $wpdb->prefix;
+
+        if (!$leads) {
+            echo '<div class="bem-empty">' . esc_html__('Aucun lead à afficher.', 'bem-lead-ai') . '</div>';
+            return;
+        }
+
+        // Tâches ouvertes par lead, en une seule requête (évite le N+1).
+        $ids = implode(',', array_map(static fn($l) => (int) $l->id, $leads));
         $openTasks = [];
-        foreach ($wpdb->get_results("SELECT lead_id, COUNT(*) AS n FROM {$p}bem_crm_activities WHERE type = 'task' AND done = 0 GROUP BY lead_id") ?: [] as $r) {
+        foreach ($wpdb->get_results("SELECT lead_id, COUNT(*) AS n FROM {$p}bem_crm_activities WHERE type = 'task' AND done = 0 AND lead_id IN ({$ids}) GROUP BY lead_id") ?: [] as $r) {
             $openTasks[(int) $r->lead_id] = (int) $r->n;
         }
 
-        echo '<h2>' . esc_html__('Leads par score (les plus chauds d\'abord)', 'bem-lead-ai') . '</h2>';
-        echo '<p class="description">' . esc_html__('Cliquez sur une ligne pour ouvrir la fiche CRM du lead (pipeline, notes, tâches de suivi, conversation).', 'bem-lead-ai') . '</p>';
-        echo '<table class="widefat striped bem-clickable-rows"><thead><tr>'
-            . '<th>ID</th><th>' . esc_html__('Contact', 'bem-lead-ai') . '</th><th>' . esc_html__('Email', 'bem-lead-ai') . '</th>'
-            . '<th>' . esc_html__('Téléphone', 'bem-lead-ai') . '</th><th>' . esc_html__('Formation', 'bem-lead-ai') . '</th>'
+        $bandColors = ['tres_chaud' => '#d63638', 'chaud' => '#dba617', 'tiede' => '#2271b1', 'froid' => '#646970'];
+        echo '<table class="widefat striped bem-clickable-rows bem-leads-table"><thead><tr>'
+            . '<th>' . esc_html__('Contact', 'bem-lead-ai') . '</th>'
+            . '<th>' . esc_html__('Coordonnées', 'bem-lead-ai') . '</th>'
+            . '<th>' . esc_html__('Formation', 'bem-lead-ai') . '</th>'
             . '<th>' . esc_html__('Score', 'bem-lead-ai') . '</th>'
             . '<th>' . esc_html__('Étape', 'bem-lead-ai') . '</th>'
             . '<th>' . esc_html__('Responsable', 'bem-lead-ai') . '</th>'
             . '<th>' . esc_html__('Suivi', 'bem-lead-ai') . '</th>'
-            . '<th>' . esc_html__('Dernière activité', 'bem-lead-ai') . '</th><th></th></tr></thead><tbody>';
+            . '<th>' . esc_html__('Dernière activité', 'bem-lead-ai') . '</th></tr></thead><tbody>';
 
         foreach ($leads as $lead) {
             $url = admin_url('admin.php?page=bem-lead-ai-leads&lead_id=' . (int) $lead->id);
-            $name = $lead->prenom ?: '<em>anonyme</em>';
+            $band = ScoringEngine::band((float) $lead->score_final);
             $stage = CrmRepository::isStage((string) $lead->pipeline_stage) ? (string) $lead->pipeline_stage : 'nouveau';
             $owner = $lead->owner_id ? get_the_author_meta('display_name', (int) $lead->owner_id) : '—';
             $tasks = $openTasks[(int) $lead->id] ?? 0;
-            echo '<tr style="cursor:pointer;" onclick="window.location=\'' . esc_url($url) . '\';">'
-                . '<td><a href="' . esc_url($url) . '"><strong>#' . (int) $lead->id . '</strong></a></td>'
-                . '<td>' . wp_kses_post($name) . '</td>'
-                . '<td>' . esc_html($lead->email ?: '—') . '</td>'
-                . '<td>' . esc_html($lead->phone ?: '—') . '</td>'
+            $initial = mb_strtoupper(mb_substr($lead->prenom ?: '?', 0, 1));
+            $contacts = trim(($lead->email ? esc_html($lead->email) : '') . ($lead->email && $lead->phone ? '<br>' : '') . ($lead->phone ? esc_html($lead->phone) : ''));
+            echo '<tr onclick="window.location=\'' . esc_url($url) . '\';">'
+                . '<td><span class="bem-lead-id"><span class="bem-avatar" style="background:' . esc_attr($bandColors[$band]) . ';">' . esc_html($initial) . '</span>'
+                . '<span><strong>' . esc_html($lead->prenom ?: __('Anonyme', 'bem-lead-ai')) . '</strong><span class="bem-lead-num">#' . (int) $lead->id . '</span></span></span></td>'
+                . '<td class="bem-cell-muted">' . ($contacts !== '' ? $contacts : '—') . '</td>'
                 . '<td>' . esc_html($lead->formation_interet ?: '—') . '</td>'
-                . '<td><strong>' . esc_html((string) round((float) $lead->score_final)) . '</strong>/100</td>'
+                . '<td><span class="bem-score" style="color:' . esc_attr($bandColors[$band]) . ';">' . esc_html((string) round((float) $lead->score_final)) . '</span><span class="bem-score-max">/100</span></td>'
                 . '<td><span class="bem-badge" style="background:' . esc_attr(CrmRepository::stageColor($stage)) . ';">' . esc_html(CrmRepository::stageLabel($stage)) . '</span></td>'
                 . '<td>' . esc_html($owner) . '</td>'
-                . '<td>' . ($tasks ? '<span class="bem-badge bem-badge-task">' . esc_html((string) $tasks) . ' ' . esc_html(_n('tâche', 'tâches', $tasks, 'bem-lead-ai')) . '</span>' : '—') . '</td>'
-                . '<td>' . esc_html($lead->last_seen) . '</td>'
-                . '<td><a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Ouvrir', 'bem-lead-ai') . ' →</a></td>'
+                . '<td>' . ($tasks ? '<span class="bem-badge bem-badge-task">' . esc_html((string) $tasks) . '</span>' : '—') . '</td>'
+                . '<td class="bem-cell-muted">' . esc_html(mysql2date('d/m/Y H:i', $lead->last_seen)) . '</td>'
                 . '</tr>';
         }
         echo '</tbody></table>';
