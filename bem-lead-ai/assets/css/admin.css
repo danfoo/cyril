@@ -109,3 +109,72 @@
 .bem-admin-page .bem-clickable-rows tbody tr { transition: background .12s ease; }
 .bem-admin-page .bem-clickable-rows tbody tr:hover { background: #eef3fb !important; }
 .bem-admin-page .bem-clickable-rows tbody tr:hover strong { color: #0a3d91; }
+
+/* ============ CRM natif — fiche lead ============ */
+.bem-badge {
+  display: inline-block; padding: 3px 11px; border-radius: 999px;
+  color: #fff; font-size: 12px; font-weight: 600; line-height: 1.6; white-space: nowrap;
+}
+.bem-badge-ghost { background: #f0f3f9 !important; color: #3a4a63 !important; border: 1px solid #dbe2ee; }
+.bem-badge-task { background: #dba617 !important; color: #3d2f00 !important; }
+
+.bem-crm-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin: 8px 0 16px; }
+.bem-quick { display: flex; gap: 8px; flex-wrap: wrap; }
+.bem-admin-page .bem-quick-wa { background: #25d366 !important; border-color: #1da851 !important; color: #fff !important; }
+
+/* Pipeline cliquable */
+.bem-pipeline { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 20px; }
+.bem-pipeline-step { margin: 0; }
+.bem-admin-page .bem-pipe-btn {
+  border: 1px solid #d5dce8; background: #fff; color: #55627a; border-radius: 8px;
+  padding: 7px 15px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .12s ease;
+}
+.bem-admin-page .bem-pipe-btn:hover { border-color: #0b3d91; color: #0b3d91; }
+.bem-admin-page .bem-pipe-btn.is-active {
+  background: var(--pipe, #0b3d91); border-color: var(--pipe, #0b3d91); color: #fff;
+}
+
+/* Grille 2 colonnes */
+.bem-crm-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .bem-crm-grid { grid-template-columns: 1fr; } }
+.bem-crm-main, .bem-crm-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.bem-panel-card h3 { margin-top: 0; }
+
+/* Tâches */
+.bem-tasks { margin: 12px 0 0; padding: 0; list-style: none; }
+.bem-task { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #eef1f6; }
+.bem-task:first-child { border-top: none; }
+.bem-task-check {
+  border: 2px solid #b7c0d1; background: #fff; color: transparent; width: 22px; height: 22px;
+  border-radius: 50%; cursor: pointer; font-size: 13px; line-height: 1; flex: 0 0 auto;
+}
+.bem-task-check:hover { border-color: #00a32a; color: #00a32a; }
+.bem-task-text { flex: 1; }
+.bem-task-due { font-size: 12px; color: #646970; }
+.bem-task.is-overdue .bem-task-due { color: #d63638; font-weight: 600; }
+.bem-task-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Fil d'activité */
+.bem-timeline { margin: 12px 0 0; padding: 0; list-style: none; }
+.bem-tl { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid #eef1f6; position: relative; }
+.bem-tl:first-child { border-top: none; }
+.bem-tl-ico {
+  flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; background: #f0f3f9;
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.bem-tl-note .bem-tl-ico { background: #fff5d6; }
+.bem-tl-task .bem-tl-ico { background: #e3f2ff; }
+.bem-tl-stage_change .bem-tl-ico { background: #efe6ff; }
+.bem-tl-meta { font-size: 12px; color: #646970; margin-bottom: 2px; }
+.bem-tl-body { color: #1f2430; white-space: pre-wrap; }
+.bem-tl-chat .bem-tl-body { background: #f6f7fb; border-radius: 8px; padding: 8px 12px; }
+.bem-tl-del {
+  position: absolute; right: 0; top: 12px; border: none; background: transparent; color: #b7c0d1;
+  font-size: 16px; cursor: pointer; line-height: 1;
+}
+.bem-tl-del:hover { color: #d63638; }
+
+/* Table info latérale */
+.bem-info { width: 100%; border-collapse: collapse; }
+.bem-info th { text-align: left; color: #646970; font-weight: 500; padding: 5px 10px 5px 0; vertical-align: top; width: 45%; }
+.bem-info td { padding: 5px 0; }

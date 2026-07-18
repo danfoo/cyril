@@ -91,7 +91,7 @@ final class LeadRepository
     {
         global $wpdb;
         $p = $wpdb->prefix;
-        foreach (['bem_events', 'bem_chat_messages', 'bem_competitor_mentions', 'bem_handoffs'] as $table) {
+        foreach (['bem_events', 'bem_chat_messages', 'bem_competitor_mentions', 'bem_handoffs', 'bem_crm_activities'] as $table) {
             $wpdb->delete($p . $table, ['lead_id' => $id]);
         }
         $wpdb->delete($this->table, ['id' => $id]);

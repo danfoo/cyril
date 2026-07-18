@@ -43,6 +43,10 @@ final class Activator
         if (!wp_next_scheduled('bem_lead_ai_cron_bandit')) {
             wp_schedule_event(time() + 900, 'hourly', 'bem_lead_ai_cron_bandit');
         }
+        if (!wp_next_scheduled('bem_lead_ai_cron_crm_tasks')) {
+            // Rappels quotidiens des tâches de suivi à échéance.
+            wp_schedule_event(time() + 1200, 'daily', 'bem_lead_ai_cron_crm_tasks');
+        }
 
         // (Re)construction du catalogue différée : à `plugins_loaded` les CPT
         // (ex. « formation ») ne sont pas encore enregistrés. On la planifie ;
@@ -113,6 +117,9 @@ final class Activator
             score_intention FLOAT NOT NULL DEFAULT 0,
             score_final FLOAT NOT NULL DEFAULT 0,
             statut VARCHAR(20) NOT NULL DEFAULT 'prospect',
+            pipeline_stage VARCHAR(20) NOT NULL DEFAULT 'nouveau',
+            owner_id BIGINT UNSIGNED NULL,
+            next_action_at DATETIME NULL,
             kb_mode VARCHAR(20) NOT NULL DEFAULT 'formations',
             consent TINYINT(1) NOT NULL DEFAULT 0,
             handoff_active TINYINT(1) NOT NULL DEFAULT 0,
@@ -125,7 +132,24 @@ final class Activator
             UNIQUE KEY session_id (session_id),
             KEY email (email),
             KEY score_final (score_final),
-            KEY statut (statut)
+            KEY statut (statut),
+            KEY pipeline_stage (pipeline_stage),
+            KEY owner_id (owner_id)
+        ) $charset;";
+
+        $sql[] = "CREATE TABLE {$p}bem_crm_activities (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            lead_id BIGINT UNSIGNED NOT NULL,
+            type VARCHAR(20) NOT NULL,
+            content LONGTEXT NULL,
+            author_id BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            due_at DATETIME NULL,
+            done TINYINT(1) NOT NULL DEFAULT 0,
+            meta LONGTEXT NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY lead_created (lead_id, created_at),
+            KEY task_due (type, done, due_at)
         ) $charset;";
 
         $sql[] = "CREATE TABLE {$p}bem_events (
