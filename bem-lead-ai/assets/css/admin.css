@@ -104,3 +104,8 @@
 
 /* Notices arrondies */
 .bem-admin-page .notice { border-radius: 8px; }
+
+/* Lignes de leads cliquables (ouvrent la fiche complète) */
+.bem-admin-page .bem-clickable-rows tbody tr { transition: background .12s ease; }
+.bem-admin-page .bem-clickable-rows tbody tr:hover { background: #eef3fb !important; }
+.bem-admin-page .bem-clickable-rows tbody tr:hover strong { color: #0a3d91; }

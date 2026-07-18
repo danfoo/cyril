@@ -106,25 +106,30 @@ final class DashboardPage
         )) ?: [];
 
         echo '<h2>' . esc_html__('Leads par score (les plus chauds d\'abord)', 'bem-lead-ai') . '</h2>';
-        echo '<table class="widefat striped"><thead><tr>'
-            . '<th>ID</th><th>' . esc_html__('Contact', 'bem-lead-ai') . '</th><th>' . esc_html__('Formation', 'bem-lead-ai') . '</th>'
+        echo '<p class="description">' . esc_html__('Cliquez sur une ligne pour ouvrir la fiche complète du lead (coordonnées, scores, conversation).', 'bem-lead-ai') . '</p>';
+        echo '<table class="widefat striped bem-clickable-rows"><thead><tr>'
+            . '<th>ID</th><th>' . esc_html__('Contact', 'bem-lead-ai') . '</th><th>' . esc_html__('Email', 'bem-lead-ai') . '</th>'
+            . '<th>' . esc_html__('Téléphone', 'bem-lead-ai') . '</th><th>' . esc_html__('Formation', 'bem-lead-ai') . '</th>'
             . '<th>' . esc_html__('Score', 'bem-lead-ai') . '</th><th>' . esc_html__('Bande', 'bem-lead-ai') . '</th>'
-            . '<th>' . esc_html__('Canaux', 'bem-lead-ai') . '</th><th>' . esc_html__('Statut', 'bem-lead-ai') . '</th>'
-            . '<th>' . esc_html__('Dernière activité', 'bem-lead-ai') . '</th></tr></thead><tbody>';
+            . '<th>' . esc_html__('Statut', 'bem-lead-ai') . '</th>'
+            . '<th>' . esc_html__('Dernière activité', 'bem-lead-ai') . '</th><th></th></tr></thead><tbody>';
 
         $bandColors = ['tres_chaud' => '#d63638', 'chaud' => '#dba617', 'tiede' => '#2271b1', 'froid' => '#646970'];
         foreach ($leads as $lead) {
             $band = ScoringEngine::band((float) $lead->score_final);
-            $contact = $lead->email ?: ($lead->phone ?: '<em>anonyme</em>');
-            echo '<tr>'
-                . '<td><a href="' . esc_url(admin_url('admin.php?page=bem-lead-ai-leads&lead_id=' . (int) $lead->id)) . '">#' . (int) $lead->id . '</a></td>'
-                . '<td>' . wp_kses_post($contact) . ($lead->prenom ? ' (' . esc_html($lead->prenom) . ')' : '') . '</td>'
+            $url = admin_url('admin.php?page=bem-lead-ai-leads&lead_id=' . (int) $lead->id);
+            $name = $lead->prenom ?: '<em>anonyme</em>';
+            echo '<tr style="cursor:pointer;" onclick="window.location=\'' . esc_url($url) . '\';">'
+                . '<td><a href="' . esc_url($url) . '"><strong>#' . (int) $lead->id . '</strong></a></td>'
+                . '<td>' . wp_kses_post($name) . '</td>'
+                . '<td>' . esc_html($lead->email ?: '—') . '</td>'
+                . '<td>' . esc_html($lead->phone ?: '—') . '</td>'
                 . '<td>' . esc_html($lead->formation_interet ?: '—') . '</td>'
                 . '<td><strong>' . esc_html((string) round((float) $lead->score_final)) . '</strong>/100</td>'
                 . '<td><span style="color:' . esc_attr($bandColors[$band]) . ';font-weight:600;">' . esc_html(str_replace('_', ' ', $band)) . '</span></td>'
-                . '<td>' . esc_html($lead->channels) . '</td>'
                 . '<td>' . esc_html($lead->statut) . '</td>'
                 . '<td>' . esc_html($lead->last_seen) . '</td>'
+                . '<td><a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Voir la fiche', 'bem-lead-ai') . ' →</a></td>'
                 . '</tr>';
         }
         echo '</tbody></table>';

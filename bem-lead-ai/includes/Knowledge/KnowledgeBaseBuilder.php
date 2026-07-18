@@ -112,7 +112,7 @@ final class KnowledgeBaseBuilder
             $content = mb_substr($content, 0, $maxChars) . '…';
         }
         return sprintf(
-            "# %s\n(Source : %s)\n\n%s",
+            "# %s\nLien officiel (à partager avec le prospect) : %s\n\n%s",
             $post->post_title,
             get_permalink($post),
             $content

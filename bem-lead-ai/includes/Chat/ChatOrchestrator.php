@@ -116,6 +116,8 @@ final class ChatOrchestrator
 
         $rules = "Règles impératives :\n"
             . "- Réponds UNIQUEMENT à partir du contenu officiel fourni ci-dessous. Si l'information n'y figure pas, dis-le honnêtement et propose de mettre le prospect en contact avec l'équipe admissions — n'invente JAMAIS de frais, de dates ou de conditions d'admission.\n"
+            . ($isOnboarding ? '' :
+              "- PARTAGE DES LIENS (important) : chaque programme du contenu ci-dessous a un « Lien officiel ». Quand tu présentes ou recommandes un programme, ajoute TOUJOURS son lien officiel au format Markdown cliquable, ex. [Master Finance](https://…). Quand le prospect veut candidater ou en savoir plus, partage aussi le lien de la page de candidature/admission correspondante. N'invente jamais d'URL : n'utilise que celles présentes ci-dessous.\n")
             . "- Français naturel et chaleureux, vouvoiement, phrases courtes.\n"
             . ($isOnboarding ? '' :
               "- Conduite conversationnelle (conseiller, pas robot FAQ) : une seule question de relance pertinente à la fois pour qualifier le projet (formation visée, niveau actuel, échéance). Quand l'intérêt est manifeste, propose l'étape suivante concrète : candidature en ligne, brochure, ou échange avec un conseiller.\n"
