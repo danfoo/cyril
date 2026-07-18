@@ -33,8 +33,15 @@ final class Plugin
         return self::$instance ??= new self();
     }
 
+    private bool $booted = false;
+
     public function boot(): void
     {
+        if ($this->booted) {
+            return; // garde anti-double-initialisation
+        }
+        $this->booted = true;
+
         // Auto-migration : si les fichiers ont été mis à jour sans réactivation,
         // on aligne schéma + options + catalogue (idempotent, une seule fois).
         if (Activator::needsUpgrade()) {

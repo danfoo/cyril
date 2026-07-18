@@ -1,0 +1,106 @@
+/* BEM Lead AI — habillage des écrans d'administration. Scopé aux pages du plugin
+   via la classe body .bem-admin-page (ajoutée à l'enqueue). */
+
+.bem-admin-page #wpcontent { background: #f3f5f9; }
+
+.bem-admin-page .wrap { max-width: 1180px; }
+
+.bem-admin-page .wrap > h1 {
+  font-size: 23px;
+  font-weight: 700;
+  color: #10233f;
+  margin: 8px 0 18px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid #e6eaf2;
+}
+.bem-admin-page .wrap > h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0b3d91;
+  margin: 26px 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* Cartes KPI (tableau de bord) */
+.bem-admin-page .wrap > div[style*="display:flex"] > div,
+.bem-cards > .bem-card {
+  border: 1px solid #e2e7f0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 1px 3px rgba(16, 35, 63, 0.06);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.bem-admin-page .wrap > div[style*="display:flex"] > div:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(16, 35, 63, 0.1); }
+
+/* Tables */
+.bem-admin-page .widefat {
+  border: 1px solid #e2e7f0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(16, 35, 63, 0.05);
+}
+.bem-admin-page .widefat thead th {
+  background: #0b3d91;
+  color: #fff;
+  font-weight: 600;
+  border: none;
+}
+.bem-admin-page .widefat thead th a,
+.bem-admin-page .widefat thead th { color: #fff; }
+.bem-admin-page .widefat tbody tr:hover { background: #eef3fc; }
+.bem-admin-page .widefat td, .bem-admin-page .widefat th { padding: 12px 14px; }
+
+/* Formulaire de réglages */
+.bem-admin-page .form-table {
+  background: #fff;
+  border: 1px solid #e2e7f0;
+  border-radius: 12px;
+  padding: 6px 18px;
+  box-shadow: 0 1px 3px rgba(16, 35, 63, 0.05);
+  margin-top: 8px;
+}
+.bem-admin-page .form-table th { font-weight: 600; color: #223; padding: 16px 10px 16px 14px; }
+.bem-admin-page .form-table td { padding: 12px 10px; }
+.bem-admin-page .form-table input[type="text"],
+.bem-admin-page .form-table input[type="password"],
+.bem-admin-page .form-table input[type="number"],
+.bem-admin-page .form-table textarea,
+.bem-admin-page .form-table select {
+  border-radius: 8px;
+  border: 1px solid #d3dae6;
+  padding: 7px 11px;
+}
+.bem-admin-page .form-table input:focus,
+.bem-admin-page .form-table textarea:focus,
+.bem-admin-page .form-table select:focus {
+  border-color: #0b3d91;
+  box-shadow: 0 0 0 3px rgba(11, 61, 145, 0.14);
+  outline: none;
+}
+.bem-admin-page .description { color: #6b7688; }
+
+/* Boutons */
+.bem-admin-page .button-primary {
+  background: #0b3d91;
+  border-color: #0b3d91;
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 4px 16px;
+  height: auto;
+  line-height: 2.2;
+}
+.bem-admin-page .button-primary:hover { background: #082a66; border-color: #082a66; }
+.bem-admin-page .button { border-radius: 8px; }
+
+/* Blocs cartes personnalisés (fiches, résumés) */
+.bem-panel-card {
+  background: #fff;
+  border: 1px solid #e2e7f0;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 1px 3px rgba(16, 35, 63, 0.05);
+  max-width: 780px;
+}
+
+/* Notices arrondies */
+.bem-admin-page .notice { border-radius: 8px; }

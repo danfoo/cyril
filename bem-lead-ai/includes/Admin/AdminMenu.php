@@ -21,9 +21,17 @@ final class AdminMenu
         add_action('admin_enqueue_scripts', [$this, 'enqueueAdmin']);
     }
 
-    /** Charge le sélecteur média WordPress sur l'écran de réglages (avatar/logo). */
+    /** Assets d'admin : habillage des pages du plugin + sélecteur média sur les réglages. */
     public function enqueueAdmin(string $hook): void
     {
+        if (!str_contains($hook, 'bem-lead-ai')) {
+            return;
+        }
+        $file = BEM_LEAD_AI_DIR . 'assets/css/admin.css';
+        $ver = is_file($file) ? (string) filemtime($file) : BEM_LEAD_AI_VERSION;
+        wp_enqueue_style('bem-lead-ai-admin', BEM_LEAD_AI_URL . 'assets/css/admin.css', [], $ver);
+        add_filter('admin_body_class', static fn($c) => $c . ' bem-admin-page');
+
         if (str_contains($hook, 'bem-lead-ai-settings')) {
             wp_enqueue_media();
         }
@@ -40,7 +48,10 @@ final class AdminMenu
             'dashicons-networking',
             26
         );
-        add_submenu_page('bem-lead-ai', __('Tableau de bord', 'bem-lead-ai'), __('Tableau de bord', 'bem-lead-ai'), 'edit_posts', 'bem-lead-ai', [new DashboardPage(), 'render']);
+        // Pas de callback ici : ce sous-menu partage le slug du menu principal.
+        // En repasser un enregistrerait le rendu DEUX fois sur le même hook
+        // (d'où le tableau de bord affiché en double).
+        add_submenu_page('bem-lead-ai', __('Tableau de bord', 'bem-lead-ai'), __('Tableau de bord', 'bem-lead-ai'), 'edit_posts', 'bem-lead-ai');
         add_submenu_page('bem-lead-ai', __('Leads', 'bem-lead-ai'), __('Leads', 'bem-lead-ai'), 'edit_posts', 'bem-lead-ai-leads', [new DashboardPage(), 'renderLeads']);
         add_submenu_page('bem-lead-ai', __('Inbox conseiller', 'bem-lead-ai'), __('Inbox conseiller', 'bem-lead-ai'), 'edit_posts', 'bem-lead-ai-inbox', [new InboxPage(), 'render']);
         add_submenu_page('bem-lead-ai', __('Veille concurrentielle', 'bem-lead-ai'), __('Veille concurrentielle', 'bem-lead-ai'), 'edit_posts', 'bem-lead-ai-competitors', [new CompetitorsPage(), 'render']);
