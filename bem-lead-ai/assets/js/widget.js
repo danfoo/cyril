@@ -150,7 +150,7 @@
   function buildWidget() {
     var design = CFG.design || {};
     var root = document.createElement('div');
-    root.className = 'bem-widget';
+    root.className = 'bem-widget ' + (design.position === 'left' ? 'bem-pos-left' : 'bem-pos-right');
 
     // Avatar/logo utilisé dans l'en-tête, devant chaque réponse, et comme icône du lanceur.
     var hasImage = !!design.avatar;
@@ -165,7 +165,14 @@
         '<span class="bem-wa-icon">✆</span> ' + escapeHtml(CFG.whatsappLabel || 'Continuer sur WhatsApp') + '</button>'
       : '';
 
+    var teaserText = (CFG.teaser || '').trim();
+    var teaserHtml = teaserText
+      ? '<div class="bem-teaser" hidden><span class="bem-teaser-text">' + escapeHtml(teaserText) + '</span>' +
+        '<button type="button" class="bem-teaser-close" data-bem="teaser-close" aria-label="Fermer">×</button></div>'
+      : '';
+
     root.innerHTML =
+      teaserHtml +
       '<button class="bem-launcher' + (hasImage ? ' bem-has-image' : '') + '" aria-label="Ouvrir le conseiller">' +
       '  <span class="bem-launcher-icon">' + launcherIcon + '</span>' +
       '  <span class="bem-launcher-close">×</span>' +
@@ -194,8 +201,42 @@
         waBtn.disabled = true;
         api('/whatsapp-link', { session_id: sessionId() }).then(function (res) {
           waBtn.disabled = false;
-          if (res && res.url) { window.open(res.url, '_blank', 'noopener'); }
+          if (!res) { return; }
+          var list = res.numbers || [];
+          // Plusieurs numéros : on affiche un choix (meilleure expérience).
+          if (list.length > 1) { openWhatsAppChooser(list); }
+          else if (res.url) { window.open(res.url, '_blank', 'noopener'); }
         }).catch(function () { waBtn.disabled = false; });
+      });
+    }
+
+    /* Feuille de choix des numéros WhatsApp (école avec plusieurs contacts). */
+    function openWhatsAppChooser(list) {
+      var existing = root.querySelector('.bem-wa-sheet');
+      if (existing) { existing.remove(); }
+      var sheet = document.createElement('div');
+      sheet.className = 'bem-wa-sheet';
+      var items = list.map(function (n) {
+        return '<a class="bem-wa-choice" href="' + encodeURI(n.url) + '" target="_blank" rel="noopener">' +
+          '<span class="bem-wa-choice-icon">✆</span>' +
+          '<span class="bem-wa-choice-text"><strong>' + escapeHtml(n.label || 'WhatsApp') + '</strong>' +
+          '<em>' + escapeHtml(n.number || '') + '</em></span></a>';
+      }).join('');
+      sheet.innerHTML =
+        '<div class="bem-wa-sheet-backdrop" data-bem="wa-close"></div>' +
+        '<div class="bem-wa-sheet-card">' +
+        '  <div class="bem-wa-sheet-head">' +
+        '    <strong>' + escapeHtml(CFG.whatsappChooseTitle || 'Choisissez un contact WhatsApp') + '</strong>' +
+        '    <button type="button" class="bem-wa-sheet-close" data-bem="wa-close" aria-label="Fermer">×</button>' +
+        '  </div>' +
+        '  <div class="bem-wa-choices">' + items + '</div>' +
+        '</div>';
+      panel.appendChild(sheet);
+      sheet.querySelectorAll('[data-bem="wa-close"]').forEach(function (el) {
+        el.addEventListener('click', function () { sheet.remove(); });
+      });
+      sheet.querySelectorAll('.bem-wa-choice').forEach(function (el) {
+        el.addEventListener('click', function () { setTimeout(function () { sheet.remove(); }, 100); });
       });
     }
 
@@ -229,11 +270,45 @@
         .then(function () { startPolling(); });
     }
 
+    /* ---- Accroche animée : incite au premier clic --------------------- */
+    var teaser = root.querySelector('.bem-teaser');
+    var TEASER_KEY = 'bem_teaser_seen';
+    function teaserDismissed() {
+      try { return sessionStorage.getItem(TEASER_KEY) === '1'; } catch (e) { return false; }
+    }
+    function dismissTeaser(remember) {
+      if (!teaser) return;
+      teaser.classList.remove('bem-teaser-in');
+      teaser.hidden = true;
+      if (remember) { try { sessionStorage.setItem(TEASER_KEY, '1'); } catch (e) {} }
+    }
+    if (teaser) {
+      root.querySelector('[data-bem="teaser-close"]').addEventListener('click', function (e) {
+        e.stopPropagation();
+        dismissTeaser(true);
+      });
+      // Cliquer sur la bulle ouvre directement le chat.
+      teaser.querySelector('.bem-teaser-text').addEventListener('click', function () {
+        dismissTeaser(true);
+        setOpen(true);
+      });
+      // Apparition différée (le temps que la page se pose), une fois par session.
+      if (!teaserDismissed()) {
+        setTimeout(function () {
+          if (!chatOpen && !teaserDismissed()) {
+            teaser.hidden = false;
+            requestAnimationFrame(function () { teaser.classList.add('bem-teaser-in'); });
+          }
+        }, 2600);
+      }
+    }
+
     function setOpen(open) {
       chatOpen = open;
       panel.hidden = !open;
       launcher.classList.toggle('bem-open', open);
       root.classList.toggle('bem-panel-open', open);
+      if (open) { dismissTeaser(true); }
       if (open && !initialized) {
         initialized = true;
         loadHistory(); // recharge la conversation existante (continuité entre visites)

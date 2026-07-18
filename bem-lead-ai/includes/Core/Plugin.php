@@ -112,6 +112,7 @@ final class Plugin
             'title' => $clean(Options::get('widget_title')),
             'subtitle' => $clean(Options::get('widget_subtitle')),
             'greeting' => $clean(Options::get('widget_greeting')),
+            'teaser' => $clean(Options::get('widget_teaser')),
             'pageContext' => $this->currentPageContext(),
             'whatsappEnabled' => (new \BemLeadAi\Channels\WhatsAppHandoff())->isEnabled(),
             'whatsappLabel' => $clean(Options::get('whatsapp_cta_label')),

@@ -280,6 +280,9 @@ final class RestController
             'number' => $link['number'],
         ], 'whatsapp');
 
+        // On renvoie AUSSI la liste complète : si l'école a plusieurs numéros,
+        // le widget affiche un choix plutôt qu'une redirection unique.
+        $link['numbers'] = $handoff->allLinks($lead);
         return rest_ensure_response($link);
     }
 

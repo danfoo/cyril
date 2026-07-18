@@ -89,6 +89,9 @@ final class Options
             'widget_title' => 'Conseiller d\'orientation BEM',
             'widget_subtitle' => 'Réponses en quelques secondes',
             'widget_greeting' => 'Bonjour 👋 Je suis le conseiller d\'orientation virtuel de BEM Dakar. Posez-moi vos questions sur nos formations, les admissions ou le financement.',
+            // Bulle d'accroche animée près du lanceur (incite au premier clic).
+            // Vide = pas d'accroche.
+            'widget_teaser' => '👋 Une question sur nos formations ? Discutons !',
             'rate_limit_per_minute' => 20,
             // Widget — design personnalisable
             'widget_primary_color' => '#0b3d91',

@@ -17,8 +17,64 @@
   position: fixed;
   bottom: 22px;
   right: 22px;
-  z-index: 99998;
+  /* z-index très élevé : passe AU-DESSUS des barres de navigation fixes de
+     certains thèmes mobiles qui masquaient la zone de saisie du chat. */
+  z-index: 2147483000;
   font-family: var(--bem-font);
+}
+
+/* ---- Accroche animée (teaser) ------------------------------------- */
+.bem-teaser {
+  position: absolute;
+  bottom: 76px;
+  max-width: 230px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: var(--bem-bot, #fff);
+  color: var(--bem-text, #1f2430);
+  border: 1px solid rgba(120, 130, 150, 0.16);
+  border-radius: 16px;
+  padding: 11px 12px 11px 14px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+  font-size: 13.5px;
+  line-height: 1.4;
+  opacity: 0;
+  transform: translateY(8px) scale(0.94);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.4, 0.5, 1);
+  pointer-events: none;
+}
+.bem-pos-right .bem-teaser { right: 6px; transform-origin: bottom right; }
+.bem-pos-left .bem-teaser { left: 6px; transform-origin: bottom left; }
+.bem-teaser.bem-teaser-in { opacity: 1; transform: none; pointer-events: auto; animation: bem-teaser-bob 3.2s ease-in-out 0.4s infinite; }
+.bem-teaser-text { cursor: pointer; }
+.bem-teaser::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  width: 14px;
+  height: 14px;
+  background: inherit;
+  border-right: inherit;
+  border-bottom: inherit;
+  transform: rotate(45deg);
+}
+.bem-pos-right .bem-teaser::after { right: 22px; }
+.bem-pos-left .bem-teaser::after { left: 22px; }
+.bem-teaser-close {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--bem-muted, #8a93a6);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.bem-teaser-close:hover { color: var(--bem-text, #1f2430); }
+@keyframes bem-teaser-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 
 /* ---- Lanceur ------------------------------------------------------- */
@@ -259,12 +315,54 @@
 .bem-wa:disabled { opacity: 0.6; cursor: default; transform: none; }
 .bem-wa-icon { font-size: 17px; }
 
+/* ---- Choix des numéros WhatsApp (plusieurs contacts) --------------- */
+.bem-wa-sheet { position: absolute; inset: 0; z-index: 5; display: flex; align-items: flex-end; }
+.bem-wa-sheet-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45); animation: bem-fade 0.2s ease; }
+.bem-wa-sheet-card {
+  position: relative;
+  width: 100%;
+  background: var(--bem-bot, #fff);
+  color: var(--bem-text, #1f2430);
+  border-radius: 18px 18px var(--bem-radius, 20px) var(--bem-radius, 20px);
+  padding: 16px 16px 18px;
+  box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.25);
+  animation: bem-sheet-up 0.28s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+.bem-wa-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 14.5px; }
+.bem-wa-sheet-close { background: transparent; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--bem-muted, #8a93a6); }
+.bem-wa-choices { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.bem-wa-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(120, 130, 150, 0.18);
+  background: var(--bem-conv-bg, #f6f7fb);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+.bem-wa-choice:hover { transform: translateY(-1px); border-color: #25d366; }
+.bem-wa-choice-icon {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #25d366, #1da851); color: #fff; font-size: 18px;
+}
+.bem-wa-choice-text { display: flex; flex-direction: column; line-height: 1.3; }
+.bem-wa-choice-text strong { font-size: 14px; }
+.bem-wa-choice-text em { font-style: normal; font-size: 12.5px; color: var(--bem-muted, #8a93a6); }
+@keyframes bem-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bem-sheet-up { from { transform: translateY(30px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+
 /* ---- Saisie -------------------------------------------------------- */
 .bem-input {
   flex: 0 0 auto;
   display: flex;
   gap: 8px;
   padding: 12px 14px;
+  /* Respecte l'encoche/la barre système (iOS) pour ne jamais masquer la saisie. */
+  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   background: var(--bem-bot);
   border-top: 1px solid var(--bem-input-border);
 }
@@ -339,6 +437,8 @@
   }
   /* En plein écran mobile, le lanceur flottant chevauche le panneau : on le masque quand le chat est ouvert. */
   .bem-widget.bem-panel-open .bem-launcher { display: none; }
+  .bem-widget.bem-panel-open .bem-teaser { display: none; }
+  .bem-teaser { max-width: min(230px, calc(100vw - 40px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -60,15 +60,35 @@ final class WhatsAppHandoff
         if (!$entry) {
             return null;
         }
+        return $this->entryToLink($entry, $lead);
+    }
+
+    /**
+     * Tous les numéros WhatsApp disponibles, chacun avec son lien pré-rempli.
+     * Sert à proposer un choix au prospect quand l'école a plusieurs numéros
+     * (meilleure expérience qu'une redirection « aveugle »).
+     *
+     * @return array<int, array{url:string, label:string, number:string}>
+     */
+    public function allLinks(object $lead): array
+    {
+        $links = [];
+        foreach (Options::whatsappNumbers() as $entry) {
+            $links[] = $this->entryToLink($entry, $lead);
+        }
+        return $links;
+    }
+
+    /** @param array{label:string, number:string} $entry */
+    private function entryToLink(array $entry, object $lead): array
+    {
         $template = (string) Options::get('whatsapp_prefill');
         $text = strtr($template, [
             '{prenom}' => $lead->prenom ?: '',
             '{formation}' => $lead->formation_interet ?: 'vos formations',
         ]);
-        $url = 'https://wa.me/' . $entry['number'] . '?text=' . rawurlencode(trim($text));
-
         return [
-            'url' => $url,
+            'url' => 'https://wa.me/' . $entry['number'] . '?text=' . rawurlencode(trim($text)),
             'label' => $entry['label'],
             'number' => '+' . $entry['number'],
         ];

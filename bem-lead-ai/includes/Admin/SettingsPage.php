@@ -125,6 +125,7 @@ final class SettingsPage
             $this->text('widget_title', 'Titre du widget', $o),
             $this->text('widget_subtitle', 'Sous-titre (sous le titre)', $o),
             $this->textarea('widget_greeting', 'Message d\'accueil', $o),
+            $this->text('widget_teaser', 'Bulle d\'accroche animée (près du bouton, incite au clic — laisser vide pour la désactiver)', $o),
             $this->number('rate_limit_per_minute', 'Limite messages / minute', $o),
         ]);
 
