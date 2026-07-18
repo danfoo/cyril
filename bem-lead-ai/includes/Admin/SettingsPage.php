@@ -33,10 +33,8 @@ final class SettingsPage
         }
 
         // Diagnostic de persistance visible (valeur réellement stockée en base).
-        global $wpdb;
-        $raw = $wpdb->get_var($wpdb->prepare("SELECT option_value FROM {$wpdb->options} WHERE option_name = %s", Options::optionName()));
-        $persisted = is_string($raw) ? maybe_unserialize($raw) : null;
-        $storedTitle = is_array($persisted) ? ($persisted['widget_title'] ?? '—') : '(option absente en base)';
+        $persisted = Options::persistedFromDb();
+        $storedTitle = $persisted ? ($persisted['widget_title'] ?? '—') : '(option absente ou illisible en base)';
         echo '<p class="description">' . esc_html__('Valeur actuellement stockée en base (titre du widget) :', 'bem-lead-ai')
             . ' <code>' . esc_html((string) $storedTitle) . '</code></p>';
 
@@ -290,16 +288,10 @@ final class SettingsPage
         }
         Options::update($clean);
 
-        // Vérifie que l'écriture a réellement persisté (relecture directe en
-        // base, cache d'objet contourné). Un échec ici = couche de cache/DB,
-        // pas notre code : on le signale honnêtement.
-        global $wpdb;
-        $raw = $wpdb->get_var($wpdb->prepare(
-            "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
-            Options::optionName()
-        ));
-        $persisted = is_string($raw) ? maybe_unserialize($raw) : [];
-        $ok = is_array($persisted) && ($persisted['widget_title'] ?? null) === $clean['widget_title'];
+        // Vérifie que l'écriture a réellement persisté (relecture DIRECTE en
+        // base, cache contourné). Un échec ici = couche DB, pas notre code.
+        $persisted = Options::persistedFromDb();
+        $ok = ($persisted['widget_title'] ?? null) === $clean['widget_title'];
 
         $flag = $ok ? 'saved=1' : 'saveerror=1';
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings&' . $flag));

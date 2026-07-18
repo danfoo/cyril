@@ -115,20 +115,58 @@ final class Options
 
     public static function all(): array
     {
-        $stored = get_option(self::OPTION, []);
-        return array_merge(self::defaults(), is_array($stored) ? $stored : []);
+        return array_merge(self::defaults(), self::decodeStored(get_option(self::OPTION, null)));
+    }
+
+    /** Lecture DIRECTE en base (cache contourné) pour vérifier la persistance. */
+    public static function persistedFromDb(): array
+    {
+        global $wpdb;
+        $raw = $wpdb->get_var($wpdb->prepare(
+            "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+            self::OPTION
+        ));
+        return self::decodeStored($raw);
     }
 
     /**
-     * Écrit l'option en base ET purge les caches d'objet susceptibles de
-     * servir une valeur périmée (alloptions + entrée directe). Sans cette
-     * purge, certains hébergements à cache persistant (Redis/Memcached)
-     * réaffichent l'ancienne valeur après enregistrement → « rien ne s'applique ».
-     * L'option est non-autoloadée pour sortir du bloc « alloptions » mis en cache.
+     * Décode la valeur stockée. Format actuel : chaîne JSON ASCII. Formats
+     * hérités tolérés : tableau déjà désérialisé (get_option) ou chaîne
+     * PHP-sérialisée.
+     */
+    private static function decodeStored(mixed $stored): array
+    {
+        if (is_array($stored)) {
+            return $stored;
+        }
+        if (is_string($stored) && $stored !== '') {
+            $json = json_decode($stored, true);
+            if (is_array($json)) {
+                return $json;
+            }
+            $unser = maybe_unserialize($stored);
+            if (is_array($unser)) {
+                return $unser;
+            }
+        }
+        return [];
+    }
+
+    /**
+     * Écrit l'option en base de façon robuste :
+     *  1. Stockage en JSON ASCII (emojis échappés \uXXXX) → aucune troncature
+     *     possible sur une table wp_options en utf8 non-utf8mb4 (cause du bug
+     *     « les réglages ne s'enregistrent pas » quand une valeur contient un
+     *     emoji 4 octets).
+     *  2. Option non-autoloadée + purge du cache d'objet (alloptions + entrée
+     *     directe) pour que la relecture renvoie toujours la valeur fraîche.
      */
     private static function persist(array $value): void
     {
-        update_option(self::OPTION, $value, false);
+        // JSON_UNESCAPED_UNICODE volontairement ABSENT : les non-ASCII sont
+        // échappés → chaîne 100 % ASCII, stockable sur tout jeu de caractères.
+        $json = wp_json_encode($value);
+        update_option(self::OPTION, $json, false);
         if (function_exists('wp_cache_delete')) {
             wp_cache_delete(self::OPTION, 'options');
             wp_cache_delete('alloptions', 'options');

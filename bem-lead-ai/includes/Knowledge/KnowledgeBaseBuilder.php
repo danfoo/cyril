@@ -24,18 +24,33 @@ final class KnowledgeBaseBuilder
     /** Bloc de connaissance pour une base donnée ('formations' | 'onboarding'). */
     public function block(string $kb): string
     {
-        $store = get_option(self::OPTION, []);
-        if (!is_array($store) || empty($store[$kb])) {
+        $store = $this->read();
+        if (empty($store[$kb])) {
             $this->rebuild();
-            $store = get_option(self::OPTION, []);
+            $store = $this->read();
         }
-        return is_array($store) ? (string) ($store[$kb] ?? '') : '';
+        return (string) ($store[$kb] ?? '');
     }
 
     public function builtAt(): ?string
     {
-        $store = get_option(self::OPTION, []);
-        return is_array($store) ? ($store['built_at'] ?? null) : null;
+        return $this->read()['built_at'] ?? null;
+    }
+
+    /** Lecture décodée (stockage JSON ASCII, formats hérités tolérés). */
+    private function read(): array
+    {
+        $stored = get_option(self::OPTION, null);
+        if (is_array($stored)) {
+            return $stored;
+        }
+        if (is_string($stored) && $stored !== '') {
+            $json = json_decode($stored, true);
+            if (is_array($json)) {
+                return $json;
+            }
+        }
+        return [];
     }
 
     /** Reconstruit les deux bases et les mémorise. Retourne des stats. */
@@ -66,7 +81,13 @@ final class KnowledgeBaseBuilder
             'onboarding' => $this->wrap('ONBOARDING / VIE ADMINISTRATIVE — ÉTUDIANTS INSCRITS', $blocks['onboarding']),
             'built_at' => current_time('mysql'),
         ];
-        update_option(self::OPTION, $store, false);
+        // Stockage JSON ASCII : robuste même si un contenu contient un emoji
+        // (table wp_options en utf8 non-utf8mb4).
+        update_option(self::OPTION, wp_json_encode($store), false);
+        if (function_exists('wp_cache_delete')) {
+            wp_cache_delete(self::OPTION, 'options');
+            wp_cache_delete('alloptions', 'options');
+        }
 
         return [
             'formations' => count($blocks['formations']),
