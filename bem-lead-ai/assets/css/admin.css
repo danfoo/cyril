@@ -3,7 +3,7 @@
 
 .bem-admin-page #wpcontent { background: #f3f5f9; }
 
-.bem-admin-page .wrap { max-width: 1180px; }
+.bem-admin-page .wrap { max-width: 1180px; margin-left: auto; margin-right: auto; }
 
 .bem-admin-page .wrap > h1 {
   font-size: 23px;
@@ -308,3 +308,29 @@
   background: #fff; border: 1px dashed #cfd8e6; border-radius: 14px; padding: 40px;
   text-align: center; color: #6b7688;
 }
+
+/* ================= Icônes SVG (remplacent les emojis) ================= */
+.bem-ico { width: 1em; height: 1em; display: inline-block; vertical-align: -0.15em; flex: 0 0 auto; }
+
+/* KPI : l'icône prend la couleur d'accent de la carte */
+.bem-kpi-ico { color: var(--k, #0b3d91); }
+.bem-kpi-ico .bem-ico { width: 22px; height: 22px; }
+
+/* Boutons d'action rapide */
+.bem-quick .button { display: inline-flex; align-items: center; gap: 6px; }
+.bem-quick .button .bem-ico { width: 16px; height: 16px; }
+
+/* Fil d'activité : icône colorée selon le type */
+.bem-tl-ico .bem-ico { width: 16px; height: 16px; color: #55627a; }
+.bem-tl-note .bem-tl-ico { color: #b8860b; }
+.bem-tl-task .bem-tl-ico { color: #2271b1; }
+.bem-tl-stage_change .bem-tl-ico { background: #efe6ff; color: #8250df; }
+.bem-tl-assignment .bem-tl-ico { background: #e3f2ff; color: #2271b1; }
+
+/* Résumé IA mis en évidence : ampoule ambre */
+.bem-panel-card.bem-highlight h3 { display: flex; align-items: center; gap: 8px; }
+.bem-panel-card.bem-highlight h3 .bem-ico { width: 18px; height: 18px; color: #dba617; }
+
+/* Bouton « marquer fait » : coche visible au survol */
+.bem-task-check { display: inline-flex; align-items: center; justify-content: center; }
+.bem-task-check-ico { width: 15px; height: 15px; }

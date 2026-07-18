@@ -45,17 +45,17 @@ final class DashboardPage
 
         // ---- Cartes KPI premium ----
         $cards = [
-            ['icon' => '👥', 'accent' => 'blue', 'label' => __('Leads total', 'bem-lead-ai'), 'value' => $total],
-            ['icon' => '🔥', 'accent' => 'red', 'label' => __('Leads chauds à traiter', 'bem-lead-ai'), 'value' => $hot],
-            ['icon' => '📇', 'accent' => 'violet', 'label' => __('Identifiés (email/tél.)', 'bem-lead-ai'), 'value' => $identified],
-            ['icon' => '💬', 'accent' => 'teal', 'label' => __('Conversations (7 j)', 'bem-lead-ai'), 'value' => $conversations7d],
-            ['icon' => '⏰', 'accent' => 'amber', 'label' => __('Suivis à traiter', 'bem-lead-ai'), 'value' => count($dueTasks)],
-            ['icon' => '🎓', 'accent' => 'green', 'label' => __('Inscrits', 'bem-lead-ai'), 'value' => $inscrits, 'sub' => $convRate . '% ' . __('de conversion', 'bem-lead-ai')],
+            ['icon' => 'users', 'accent' => 'blue', 'label' => __('Leads total', 'bem-lead-ai'), 'value' => $total],
+            ['icon' => 'flame', 'accent' => 'red', 'label' => __('Leads chauds à traiter', 'bem-lead-ai'), 'value' => $hot],
+            ['icon' => 'user-check', 'accent' => 'violet', 'label' => __('Identifiés (email/tél.)', 'bem-lead-ai'), 'value' => $identified],
+            ['icon' => 'message', 'accent' => 'teal', 'label' => __('Conversations (7 j)', 'bem-lead-ai'), 'value' => $conversations7d],
+            ['icon' => 'clock', 'accent' => 'amber', 'label' => __('Suivis à traiter', 'bem-lead-ai'), 'value' => count($dueTasks)],
+            ['icon' => 'award', 'accent' => 'green', 'label' => __('Inscrits', 'bem-lead-ai'), 'value' => $inscrits, 'sub' => $convRate . '% ' . __('de conversion', 'bem-lead-ai')],
         ];
         echo '<div class="bem-kpis">';
         foreach ($cards as $c) {
             echo '<div class="bem-kpi bem-kpi-' . esc_attr($c['accent']) . '">'
-                . '<div class="bem-kpi-ico">' . $c['icon'] . '</div>'
+                . '<div class="bem-kpi-ico">' . Icons::get($c['icon']) . '</div>'
                 . '<div class="bem-kpi-txt"><div class="bem-kpi-val">' . esc_html((string) $c['value']) . '</div>'
                 . '<div class="bem-kpi-lbl">' . esc_html($c['label']) . '</div>'
                 . (!empty($c['sub']) ? '<div class="bem-kpi-sub">' . esc_html($c['sub']) . '</div>' : '')
@@ -102,7 +102,7 @@ final class DashboardPage
                 $url = admin_url('admin.php?page=bem-lead-ai-leads&lead_id=' . (int) $t->lead_id);
                 $overdue = strtotime($t->due_at) < current_time('timestamp');
                 $who = $t->prenom ?: ($t->email ?: ($t->phone ?: 'Lead #' . (int) $t->lead_id));
-                echo '<tr><td>' . ($overdue ? '<strong style="color:#d63638;">' : '') . esc_html(mysql2date('d/m/Y', $t->due_at)) . ($overdue ? ' ⚠</strong>' : '') . '</td>'
+                echo '<tr><td>' . ($overdue ? '<strong style="color:#d63638;">' : '') . esc_html(mysql2date('d/m/Y', $t->due_at)) . ($overdue ? ' · ' . esc_html__('en retard', 'bem-lead-ai') . '</strong>' : '') . '</td>'
                     . '<td><a href="' . esc_url($url) . '">' . esc_html($who) . '</a></td>'
                     . '<td>' . esc_html($t->content) . '</td>'
                     . '<td><a class="button button-small" href="' . esc_url($url) . '">' . esc_html__('Ouvrir', 'bem-lead-ai') . '</a></td></tr>';
@@ -395,7 +395,7 @@ final class DashboardPage
                 echo '<li class="bem-task' . ($overdue ? ' is-overdue' : '') . '">';
                 echo '<form method="post" action="' . $postUrl . '" style="display:inline;">';
                 echo '<input type="hidden" name="action" value="bem_crm_task_toggle"><input type="hidden" name="lead_id" value="' . (int) $leadId . '"><input type="hidden" name="activity_id" value="' . (int) $t->id . '"><input type="hidden" name="_wpnonce" value="' . esc_attr($nonce) . '">';
-                echo '<button type="submit" class="bem-task-check" title="' . esc_attr__('Marquer comme fait', 'bem-lead-ai') . '">○</button>';
+                echo '<button type="submit" class="bem-task-check" title="' . esc_attr__('Marquer comme fait', 'bem-lead-ai') . '">' . Icons::get('check-circle', 'bem-ico bem-task-check-ico') . '</button>';
                 echo '</form>';
                 echo '<span class="bem-task-text">' . esc_html($t->content) . '</span>';
                 if ($t->due_at) {
@@ -422,7 +422,7 @@ final class DashboardPage
         // Résumé IA & approche recommandée (mis en évidence).
         $summary = get_option('bem_lead_ai_last_summary_' . $leadId);
         if ($summary) {
-            echo '<div class="bem-panel-card bem-highlight"><h3>💡 ' . esc_html__('Résumé IA & approche recommandée', 'bem-lead-ai') . '</h3>';
+            echo '<div class="bem-panel-card bem-highlight"><h3>' . Icons::get('bulb') . ' ' . esc_html__('Résumé IA & approche recommandée', 'bem-lead-ai') . '</h3>';
             echo '<div class="bem-highlight-body" style="white-space:pre-wrap;">' . esc_html($summary) . '</div></div>';
         }
 
@@ -490,16 +490,16 @@ final class DashboardPage
         if ($wa->isEnabled()) {
             $link = $wa->buildLink($lead);
             if ($link) {
-                $out .= '<a class="button bem-quick-wa" target="_blank" rel="noopener" href="' . esc_url($link['url']) . '">✆ WhatsApp</a> ';
+                $out .= '<a class="button bem-quick-wa" target="_blank" rel="noopener" href="' . esc_url($link['url']) . '">' . Icons::get('message') . ' WhatsApp</a> ';
             }
         }
         if ($lead->email) {
             $school = trim((string) \BemLeadAi\Core\Options::get('school_name')) ?: 'BEM Conakry';
             $subject = rawurlencode(sprintf(__('%s — votre projet de formation', 'bem-lead-ai'), $school));
-            $out .= '<a class="button" href="' . esc_url('mailto:' . $lead->email . '?subject=' . $subject) . '">✉ ' . esc_html__('Email', 'bem-lead-ai') . '</a> ';
+            $out .= '<a class="button" href="' . esc_url('mailto:' . $lead->email . '?subject=' . $subject) . '">' . Icons::get('mail') . ' ' . esc_html__('Email', 'bem-lead-ai') . '</a> ';
         }
         if ($lead->phone) {
-            $out .= '<a class="button" href="' . esc_attr('tel:' . preg_replace('/[^0-9+]/', '', $lead->phone)) . '">☎ ' . esc_html__('Appeler', 'bem-lead-ai') . '</a>';
+            $out .= '<a class="button" href="' . esc_attr('tel:' . preg_replace('/[^0-9+]/', '', $lead->phone)) . '">' . Icons::get('phone') . ' ' . esc_html__('Appeler', 'bem-lead-ai') . '</a>';
         }
         return $out . '</div>';
     }
@@ -573,7 +573,7 @@ final class DashboardPage
     private function chatItemHtml(object $m): string
     {
         $who = $m->role === 'user' ? __('Prospect', 'bem-lead-ai') : ($m->role === 'agent' ? __('Conseiller', 'bem-lead-ai') : 'IA');
-        $icon = $m->role === 'user' ? '🧑' : ($m->role === 'agent' ? '👤' : '🤖');
+        $icon = Icons::get($m->role === 'user' ? 'user' : ($m->role === 'agent' ? 'headset' : 'cpu'));
         return '<li class="bem-tl bem-tl-chat"><span class="bem-tl-ico">' . $icon . '</span>'
             . '<div><div class="bem-tl-meta"><strong>' . esc_html($who) . '</strong> · ' . esc_html($m->canal . ' · ' . mysql2date('d/m/Y H:i', $m->created_at)) . '</div>'
             . '<div class="bem-tl-body">' . esc_html($m->contenu) . '</div></div></li>';
@@ -594,18 +594,18 @@ final class DashboardPage
         return $html . '</div></li>';
     }
 
-    /** @return array{0:string,1:string} [icône, libellé] d'une activité. */
+    /** @return array{0:string,1:string} [icône SVG, libellé] d'une activité. */
     private function activityLabel(object $a): array
     {
         $meta = $a->meta ? json_decode($a->meta, true) : [];
         switch ($a->type) {
-            case 'note': return ['📝', __('Note', 'bem-lead-ai')];
-            case 'task': return [$a->done ? '✅' : '⏰', $a->done ? __('Tâche terminée', 'bem-lead-ai') : __('Tâche de suivi', 'bem-lead-ai')];
+            case 'note': return [Icons::get('edit'), __('Note', 'bem-lead-ai')];
+            case 'task': return [Icons::get($a->done ? 'check-circle' : 'clock'), $a->done ? __('Tâche terminée', 'bem-lead-ai') : __('Tâche de suivi', 'bem-lead-ai')];
             case 'stage_change':
                 $to = $meta['to'] ?? '';
-                return ['🔀', sprintf(__('Étape → %s', 'bem-lead-ai'), CrmRepository::stageLabel((string) $to))];
-            case 'assignment': return ['👥', __('Attribution', 'bem-lead-ai')];
-            default: return ['•', ucfirst($a->type)];
+                return [Icons::get('shuffle'), sprintf(__('Étape → %s', 'bem-lead-ai'), CrmRepository::stageLabel((string) $to))];
+            case 'assignment': return [Icons::get('user-plus'), __('Attribution', 'bem-lead-ai')];
+            default: return [Icons::get('edit'), ucfirst($a->type)];
         }
     }
 
