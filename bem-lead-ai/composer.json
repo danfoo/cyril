@@ -1,0 +1,17 @@
+{
+  "name": "bem-dakar/bem-lead-ai",
+  "description": "Conseiller IA & Lead Scoring Comportemental pour BEM Dakar — plugin WordPress.",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "BemLeadAi\\": "includes/"
+    }
+  },
+  "config": {
+    "optimize-autoloader": true
+  }
+}
