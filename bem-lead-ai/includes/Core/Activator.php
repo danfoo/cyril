@@ -13,10 +13,24 @@ defined('ABSPATH') || exit;
  */
 final class Activator
 {
+    /** Activation du plugin (hook register_activation_hook). */
     public static function activate(): void
     {
-        self::createTables();
-        self::seedDefaults();
+        self::runMigrations();
+        flush_rewrite_rules();
+    }
+
+    /**
+     * Migration idempotente exécutée à l'activation ET automatiquement lorsque
+     * la version stockée diffère de la version du code (mise à jour par simple
+     * remplacement des fichiers, sans désactivation/réactivation manuelle).
+     * `dbDelta` aligne le schéma, les seeds ne se dupliquent pas, les crons ne
+     * se re-planifient pas s'ils existent déjà.
+     */
+    public static function runMigrations(): void
+    {
+        self::createTables(); // dbDelta : idempotent
+        self::seedDefaults(); // insère seulement si vide
         Options::ensureDefaults();
 
         if (!wp_next_scheduled('bem_lead_ai_cron_disengagement')) {
@@ -29,10 +43,18 @@ final class Activator
             wp_schedule_event(time() + 900, 'hourly', 'bem_lead_ai_cron_bandit');
         }
 
-        // Première construction du catalogue en contexte.
-        (new \BemLeadAi\Knowledge\KnowledgeBaseBuilder())->rebuild();
+        // (Re)construction du catalogue différée : à `plugins_loaded` les CPT
+        // (ex. « formation ») ne sont pas encore enregistrés. On la planifie ;
+        // KnowledgeBaseBuilder reconstruit aussi paresseusement au 1er accès.
+        Queue::dispatchIn(15, 'bem_lead_ai_job_rebuild_kb');
 
-        flush_rewrite_rules();
+        update_option('bem_lead_ai_db_version', BEM_LEAD_AI_VERSION);
+    }
+
+    /** True si le code est plus récent que ce qui a été migré en base. */
+    public static function needsUpgrade(): bool
+    {
+        return get_option('bem_lead_ai_db_version') !== BEM_LEAD_AI_VERSION;
     }
 
     private static function createTables(): void

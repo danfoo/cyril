@@ -35,6 +35,12 @@ final class Plugin
 
     public function boot(): void
     {
+        // Auto-migration : si les fichiers ont été mis à jour sans réactivation,
+        // on aligne schéma + options + catalogue (idempotent, une seule fois).
+        if (Activator::needsUpgrade()) {
+            Activator::runMigrations();
+        }
+
         add_action('rest_api_init', fn() => (new RestController())->registerRoutes());
 
         if (is_admin()) {
@@ -71,13 +77,23 @@ final class Plugin
         });
     }
 
+    /** Version d'un asset = son filemtime (cache-busting fiable), repli sur la version du plugin. */
+    private static function assetVersion(string $relPath): string
+    {
+        $file = BEM_LEAD_AI_DIR . $relPath;
+        $mtime = is_file($file) ? filemtime($file) : 0;
+        return $mtime ? (string) $mtime : BEM_LEAD_AI_VERSION;
+    }
+
     public function enqueueWidget(): void
     {
         if (!(int) Options::get('widget_enabled')) {
             return;
         }
-        wp_enqueue_style('bem-lead-ai-widget', BEM_LEAD_AI_URL . 'assets/css/widget.css', [], BEM_LEAD_AI_VERSION);
-        wp_enqueue_script('bem-lead-ai-widget', BEM_LEAD_AI_URL . 'assets/js/widget.js', [], BEM_LEAD_AI_VERSION, true);
+        // Version basée sur filemtime : toute édition des assets casse le cache
+        // navigateur automatiquement (fini les designs "qui ne s'appliquent pas").
+        wp_enqueue_style('bem-lead-ai-widget', BEM_LEAD_AI_URL . 'assets/css/widget.css', [], self::assetVersion('assets/css/widget.css'));
+        wp_enqueue_script('bem-lead-ai-widget', BEM_LEAD_AI_URL . 'assets/js/widget.js', [], self::assetVersion('assets/js/widget.js'), true);
 
         wp_localize_script('bem-lead-ai-widget', 'BemLeadAiConfig', [
             'restUrl' => esc_url_raw(rest_url(BEM_LEAD_AI_REST_NS)),
