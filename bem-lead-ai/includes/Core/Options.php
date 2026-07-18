@@ -104,10 +104,11 @@ final class Options
 
     public static function ensureDefaults(): void
     {
-        $stored = get_option(self::OPTION, []);
-        if (!is_array($stored)) {
-            $stored = [];
-        }
+        // CRITIQUE : les réglages sont stockés en JSON (chaîne), pas en tableau.
+        // Il faut donc les DÉCODER avant de compléter, sinon la config
+        // enregistrée est prise pour vide et écrasée par les valeurs par défaut
+        // à chaque montée de version (cause du bug « l'upload efface la config »).
+        $stored = self::decodeStored(get_option(self::OPTION, null));
         $merged = array_merge(self::defaults(), $stored);
         // N'écrit que si des clés manquent réellement — évite de réécrire (et
         // potentiellement d'écraser avec du cache périmé) à chaque migration.
