@@ -14,19 +14,41 @@
   var STORAGE_KEY = 'bem_lead_session';
   var CONSENT_KEY = 'bem_lead_consent';
 
-  /* ---- Session unifiée (persistée en localStorage) ------------------- */
+  /* ---- Persistance (localStorage + cookie de secours) ---------------- */
+  function readCookie(name) {
+    var m = document.cookie.match('(?:^|; )' + name + '=([^;]*)');
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function writeCookie(name, value, days) {
+    try {
+      var d = new Date();
+      d.setTime(d.getTime() + days * 864e5);
+      document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + d.toUTCString() + '; path=/; SameSite=Lax';
+    } catch (e) {}
+  }
+
+  /* Session unifiée : lue depuis localStorage OU le cookie (robuste même si
+     le localStorage est vidé/cloisonné), écrite dans les deux → un visiteur =
+     un seul lead, la navigation entre pages ne crée plus de doublons. */
   function sessionId() {
     var id = null;
     try { id = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+    if (!id) { id = readCookie(STORAGE_KEY); }
     if (!id) {
       id = 'web_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-      try { localStorage.setItem(STORAGE_KEY, id); } catch (e) {}
     }
+    try { localStorage.setItem(STORAGE_KEY, id); } catch (e) {}
+    writeCookie(STORAGE_KEY, id, 365);
     return id;
   }
 
   function hasConsent() {
-    try { return localStorage.getItem(CONSENT_KEY) === '1'; } catch (e) { return false; }
+    try { if (localStorage.getItem(CONSENT_KEY) === '1') return true; } catch (e) {}
+    return readCookie(CONSENT_KEY) === '1';
+  }
+  function setConsent(val) {
+    try { localStorage.setItem(CONSENT_KEY, val); } catch (e) {}
+    writeCookie(CONSENT_KEY, val, 365);
   }
 
   function api(path, body, method) {
@@ -58,13 +80,13 @@
     document.body.appendChild(banner);
 
     banner.querySelector('[data-bem="accept"]').addEventListener('click', function () {
-      try { localStorage.setItem(CONSENT_KEY, '1'); } catch (e) {}
+      setConsent('1');
       track('consent_given');
       trackPageView();
       banner.remove();
     });
     banner.querySelector('[data-bem="refuse"]').addEventListener('click', function () {
-      try { localStorage.setItem(CONSENT_KEY, '0'); } catch (e) {}
+      setConsent('0');
       banner.remove();
     });
   }
@@ -190,7 +212,7 @@
     messages.addEventListener('touchmove', function (e) { e.stopPropagation(); }, { passive: true });
 
     function loadHistory() {
-      api('/history?session_id=' + encodeURIComponent(sessionId()), null, 'GET')
+      api('/history?session_id=' + encodeURIComponent(sessionId()) + '&_=' + Date.now(), null, 'GET')
         .then(function (res) {
           var msgs = (res && res.messages) || [];
           if (msgs.length) {
@@ -258,8 +280,9 @@
         bubble.className += ' bem-msg-plain';
         bubble.textContent = text;
       } else {
-        // Réponses du conseiller : Markdown léger rendu proprement.
-        bubble.innerHTML = renderMarkdown(text);
+        // Réponses du conseiller : Markdown léger rendu proprement (avec filet de sécurité).
+        try { bubble.innerHTML = renderMarkdown(text); }
+        catch (e) { bubble.className += ' bem-msg-plain'; bubble.textContent = String(text); }
         var av = document.createElement('div');
         av.className = 'bem-row-avatar';
         av.innerHTML = botAvatar;
@@ -280,12 +303,13 @@
       return row;
     }
 
-    /* Polling : relances proactives + réponses conseiller (handoff). */
+    /* Polling : relances proactives + réponses conseiller (handoff).
+       Cache-buster (&_=) pour contourner un éventuel cache de page sur les GET. */
     function startPolling() {
       if (pollTimer) return;
       pollTimer = setInterval(function () {
         if (document.hidden) return;
-        api('/messages?session_id=' + encodeURIComponent(sessionId()) + '&after_id=' + lastMessageId, null, 'GET')
+        api('/messages?session_id=' + encodeURIComponent(sessionId()) + '&after_id=' + lastMessageId + '&_=' + Date.now(), null, 'GET')
           .then(function (res) {
             (res.messages || []).forEach(function (m) {
               addMessage(m.role === 'user' ? 'user' : 'assistant', m.contenu);
@@ -293,7 +317,7 @@
             });
             root.querySelector('.bem-handoff-note').hidden = !res.handoff;
           }).catch(function () {});
-      }, 8000);
+      }, 5000);
     }
   }
 

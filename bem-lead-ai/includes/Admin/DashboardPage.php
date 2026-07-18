@@ -29,6 +29,10 @@ final class DashboardPage
 
         echo '<div class="wrap"><h1>BEM Lead AI — ' . esc_html__('Tableau de bord', 'bem-lead-ai') . '</h1>';
 
+        if (isset($_GET['purged'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Leads de test supprimés.', 'bem-lead-ai') . '</p></div>';
+        }
+
         if ($openHandoffs > 0) {
             echo '<div class="notice notice-warning"><p><strong>' . sprintf(esc_html__('%d escalade(s) humaine(s) en attente dans l\'inbox conseiller.', 'bem-lead-ai'), $openHandoffs)
                 . '</strong> <a href="' . esc_url(admin_url('admin.php?page=bem-lead-ai-inbox')) . '">' . esc_html__('Répondre maintenant', 'bem-lead-ai') . '</a></p></div>';
@@ -49,8 +53,36 @@ final class DashboardPage
         }
         echo '</div>';
 
+        // Outil de nettoyage des données de test (admin).
+        if (current_user_can('manage_options')) {
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:8px 0 16px;" '
+                . 'onsubmit="return confirm(\'' . esc_js(__('Supprimer TOUS les leads, événements et conversations ? (règles, triggers et catalogue conservés)', 'bem-lead-ai')) . '\');">';
+            wp_nonce_field('bem_purge_leads');
+            echo '<input type="hidden" name="action" value="bem_purge_leads">';
+            submit_button(__('Vider les leads (données de test)', 'bem-lead-ai'), 'delete', 'submit', false);
+            echo ' <span class="description">' . esc_html__('Remet à zéro leads, événements, conversations et veille. À utiliser après vos tests.', 'bem-lead-ai') . '</span>';
+            echo '</form>';
+        }
+
         $this->renderLeadTable(20);
         echo '</div>';
+    }
+
+    public static function handlePurgeLeads(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Forbidden');
+        }
+        check_admin_referer('bem_purge_leads');
+        global $wpdb;
+        $p = $wpdb->prefix;
+        foreach (['bem_leads', 'bem_events', 'bem_chat_messages', 'bem_competitor_mentions', 'bem_handoffs'] as $t) {
+            $wpdb->query("TRUNCATE TABLE {$p}{$t}");
+        }
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE 'bem_lead_ai_last_summary_%'");
+        delete_option('bem_lead_ai_wa_cursor');
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai&purged=1'));
+        exit;
     }
 
     public function renderLeads(): void

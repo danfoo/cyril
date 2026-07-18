@@ -28,7 +28,9 @@ Tu analyses des messages envoyés par un prospect au conseiller d'orientation vi
   "urgency": <"none"|"low"|"high" : "high" si le prospect exprime une échéance pressante, une détresse, une hésitation critique de dernière minute, ou demande explicitement à parler à un humain>,
   "price_sensitivity": <true|false : questions ou inquiétudes sur les frais, le coût, les bourses, les facilités de paiement>,
   "competitors": [<liste des écoles/universités concurrentes explicitement mentionnées, avec pour chacune {"name": string, "context": string extrait court}>],
-  "prenom": <string|null : prénom du prospect s'il s'est présenté>
+  "prenom": <string|null : prénom du prospect s'il s'est présenté>,
+  "email": <string|null : adresse email si le prospect en a communiqué une>,
+  "phone": <string|null : numéro de téléphone si le prospect en a communiqué un>
 }
 
 Sois factuel : n'invente aucun signal absent des messages.
@@ -80,6 +82,18 @@ PROMPT;
         }
         if ($updates) {
             $leads->update($leadId, $updates);
+        }
+
+        // Coordonnées communiquées en conversation → rattachées au lead (events
+        // email_captured/phone_captured = signaux de forte intention).
+        $email = !empty($result['email']) && is_email((string) $result['email']) ? sanitize_email((string) $result['email']) : null;
+        $phone = !empty($result['phone']) ? preg_replace('/[^0-9+\s]/', '', (string) $result['phone']) : null;
+        if (($email && empty($lead->email)) || ($phone && empty($lead->phone))) {
+            (new \BemLeadAi\Chat\ChannelAdapter())->attachIdentity(
+                $leads->findById($leadId),
+                empty($lead->email) ? $email : null,
+                empty($lead->phone) ? $phone : null
+            );
         }
 
         $signals = [
