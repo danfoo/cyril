@@ -71,11 +71,14 @@ final class ChatOrchestrator
             (string) Options::get('chat_model'),
             $this->systemBlocks($lead),
             $messages,
-            800,
-            0.5
+            800
         );
 
-        return is_wp_error($reply) || trim((string) $reply) === '' ? $fallback : trim($reply);
+        if (is_wp_error($reply)) {
+            error_log('[bem-lead-ai] Échec réponse chat : ' . $reply->get_error_message());
+            return $fallback;
+        }
+        return trim((string) $reply) === '' ? $fallback : trim($reply);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace BemLeadAi\Admin;
 
+use BemLeadAi\Ai\ClaudeClient;
 use BemLeadAi\Core\Options;
 use BemLeadAi\Knowledge\KnowledgeBaseBuilder;
 
@@ -37,6 +38,27 @@ final class SettingsPage
         $storedTitle = $persisted ? ($persisted['widget_title'] ?? '—') : '(option absente ou illisible en base)';
         echo '<p class="description">' . esc_html__('Valeur actuellement stockée en base (titre du widget) :', 'bem-lead-ai')
             . ' <code>' . esc_html((string) $storedTitle) . '</code></p>';
+
+        // Résultat du test de connexion Claude (le cas échéant).
+        $test = get_transient('bem_lead_ai_claude_test');
+        if (is_array($test)) {
+            delete_transient('bem_lead_ai_claude_test');
+            if (!empty($test['ok'])) {
+                echo '<div class="notice notice-success"><p><strong>' . esc_html__('Connexion Claude OK.', 'bem-lead-ai') . '</strong> '
+                    . esc_html__('Réponse du modèle :', 'bem-lead-ai') . ' <code>' . esc_html((string) $test['msg']) . '</code></p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p><strong>' . esc_html__('Échec de la connexion à Claude.', 'bem-lead-ai') . '</strong><br>'
+                    . '<code>' . esc_html((string) $test['msg']) . '</code></p></div>';
+            }
+        }
+
+        // Bouton de test de connexion (diagnostic de l'erreur "souci technique momentané").
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:12px 0;">';
+        wp_nonce_field('bem_test_claude');
+        echo '<input type="hidden" name="action" value="bem_test_claude">';
+        submit_button(__('Tester la connexion à Claude', 'bem-lead-ai'), 'secondary', 'submit', false);
+        echo ' <span class="description">' . esc_html__('Vérifie la clé API et le modèle choisi, et affiche l\'erreur exacte le cas échéant.', 'bem-lead-ai') . '</span>';
+        echo '</form>';
 
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('bem_save_settings');
@@ -306,6 +328,28 @@ final class SettingsPage
         check_admin_referer('bem_rebuild_kb');
         (new KnowledgeBaseBuilder())->rebuild();
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings&rebuilt=1'));
+        exit;
+    }
+
+    public static function handleTestClaude(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Forbidden');
+        }
+        check_admin_referer('bem_test_claude');
+
+        $res = (new ClaudeClient())->complete(
+            (string) Options::get('chat_model'),
+            'Tu es un assistant de test. Réponds en un mot.',
+            [['role' => 'user', 'content' => 'Réponds exactement : OK']],
+            16
+        );
+        if (is_wp_error($res)) {
+            set_transient('bem_lead_ai_claude_test', ['ok' => false, 'msg' => $res->get_error_message()], 180);
+        } else {
+            set_transient('bem_lead_ai_claude_test', ['ok' => true, 'msg' => trim((string) $res)], 180);
+        }
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
         exit;
     }
 }
