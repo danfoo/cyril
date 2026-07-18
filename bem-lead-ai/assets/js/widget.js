@@ -182,17 +182,39 @@
     var messages = root.querySelector('.bem-messages');
     var form = root.querySelector('.bem-input');
     var input = form.querySelector('input');
-    var greeted = false;
+    var initialized = false;
+
+    // Molette : empêche les thèmes qui « détournent » le scroll (smooth-scroll
+    // global) de voler l'événement — le défilement à la souris fonctionne alors.
+    messages.addEventListener('wheel', function (e) { e.stopPropagation(); }, { passive: true });
+    messages.addEventListener('touchmove', function (e) { e.stopPropagation(); }, { passive: true });
+
+    function loadHistory() {
+      api('/history?session_id=' + encodeURIComponent(sessionId()), null, 'GET')
+        .then(function (res) {
+          var msgs = (res && res.messages) || [];
+          if (msgs.length) {
+            msgs.forEach(function (m) {
+              addMessage(m.role === 'user' ? 'user' : 'assistant', m.contenu);
+              lastMessageId = Math.max(lastMessageId, m.id);
+            });
+            if (res.handoff) { root.querySelector('.bem-handoff-note').hidden = false; }
+          } else {
+            addMessage('assistant', CFG.greeting || 'Bonjour ! Comment puis-je vous aider ?');
+          }
+        })
+        .catch(function () { addMessage('assistant', CFG.greeting || 'Bonjour ! Comment puis-je vous aider ?'); })
+        .then(function () { startPolling(); });
+    }
 
     function setOpen(open) {
       chatOpen = open;
       panel.hidden = !open;
       launcher.classList.toggle('bem-open', open);
       root.classList.toggle('bem-panel-open', open);
-      if (open && !greeted) {
-        addMessage('assistant', CFG.greeting || 'Bonjour ! Comment puis-je vous aider ?');
-        greeted = true;
-        startPolling();
+      if (open && !initialized) {
+        initialized = true;
+        loadHistory(); // recharge la conversation existante (continuité entre visites)
       }
       if (open) { setTimeout(function () { input.focus(); }, 60); }
     }

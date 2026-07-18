@@ -124,9 +124,29 @@ final class ChatOrchestrator
             . "- Si le prospect souhaite parler à un conseiller humain, ou hésite sur une décision importante, invite-le à utiliser le bouton « WhatsApp » sous la conversation pour échanger de vive voix avec l'équipe admissions.\n");
 
         return $persona . "\n\n" . $rules
+            . $this->programLinksSection($isOnboarding)
             . "\n=== CONTENU OFFICIEL BEM DAKAR ===\n"
             . ($catalogue !== '' ? $catalogue : "(catalogue non encore indexé — réponds prudemment et propose le contact humain)")
             . "\n=== FIN DU CONTENU OFFICIEL ===";
+    }
+
+    /** Liens officiels des programmes, que le conseiller doit partager. */
+    private function programLinksSection(bool $isOnboarding): string
+    {
+        if ($isOnboarding) {
+            return '';
+        }
+        $links = Options::programLinks();
+        if (!$links) {
+            return '';
+        }
+        $lines = ["\n=== LIENS OFFICIELS DES PROGRAMMES ==="];
+        foreach ($links as $l) {
+            $lines[] = '- ' . $l['label'] . ' : ' . $l['url'];
+        }
+        $lines[] = "Quand tu présentes ou recommandes un programme figurant ci-dessus, partage son lien officiel exact (format Markdown [nom](url)). N'invente jamais d'URL.";
+        $lines[] = "=== FIN DES LIENS ===\n";
+        return implode("\n", $lines);
     }
 
     private function volatileSystem(object $lead): string

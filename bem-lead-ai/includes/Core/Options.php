@@ -55,6 +55,9 @@ final class Options
             // Base de connaissance (catalogue en contexte, mis en cache LLM)
             'indexed_post_types' => 'formation,page',
             'onboarding_category' => 'onboarding',
+            // Liens officiels des programmes, partagés par le conseiller.
+            // Une ligne par programme : « Nom du programme | https://… ».
+            'program_links' => '',
             'kb_cache_ttl' => '1h', // 5m | 1h — durée de vie du cache de préfixe LLM
             'kb_max_chars_per_post' => 4000,
             // Scoring — logique marketing
@@ -235,6 +238,29 @@ final class Options
             ];
         }
         return $numbers;
+    }
+
+    /**
+     * Liens de programmes parsés depuis le réglage texte.
+     * @return array<int, array{label:string, url:string}>
+     */
+    public static function programLinks(): array
+    {
+        $raw = stripslashes((string) self::get('program_links'));
+        $links = [];
+        foreach (preg_split('/\r\n|\r|\n/', $raw) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            $parts = array_map('trim', explode('|', $line, 2));
+            $url = $parts[1] ?? '';
+            if ($url === '' || !preg_match('#^https?://#i', $url)) {
+                continue;
+            }
+            $links[] = ['label' => $parts[0] !== '' ? $parts[0] : $url, 'url' => $url];
+        }
+        return $links;
     }
 
     private static function encryptionKey(): string

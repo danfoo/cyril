@@ -83,7 +83,8 @@ final class SettingsPage
             $this->text('onboarding_category', 'Catégorie/tag onboarding', $o),
             $this->select('kb_cache_ttl', 'Durée du cache LLM', $o, ['1h' => '1 heure', '5m' => '5 minutes']),
             $this->number('kb_max_chars_per_post', 'Caractères max par page', $o),
-        ], __('Le contenu des formations est injecté directement dans le prompt et mis en cache côté Claude (pas de vector store). Il est reconstruit automatiquement à chaque modification de contenu.', 'bem-lead-ai'));
+            $this->textarea('program_links', 'Liens des programmes — une ligne par programme : Nom du programme | https://…', $o),
+        ], __('Le contenu des formations est injecté dans le prompt et mis en cache côté Claude. Ajoutez les liens de vos programmes ci-dessus : le conseiller les partagera (cliquables) quand il recommande un programme.', 'bem-lead-ai'));
 
         // --- Scoring ---
         $this->section(__('Scoring (logique marketing)', 'bem-lead-ai'), [
@@ -144,6 +145,14 @@ final class SettingsPage
             $this->number('bandit_epsilon', 'Taux d\'exploration epsilon (0-1)', $o),
             $this->number('bandit_conversion_window_hours', 'Fenêtre de conversion (heures)', $o),
         ]);
+
+        // --- Données ---
+        $purge = get_option('bem_lead_ai_delete_data') === '1';
+        echo '<h2>' . esc_html__('Données', 'bem-lead-ai') . '</h2>';
+        echo '<p class="description">' . esc_html__('Par défaut, vos données (clé, design, leads, historique) sont CONSERVÉES si vous désinstallez le plugin — une mise à jour n\'efface donc rien.', 'bem-lead-ai') . '</p>';
+        echo '<table class="form-table"><tbody><tr><th scope="row">' . esc_html__('Suppression à la désinstallation', 'bem-lead-ai') . '</th><td>'
+            . '<label><input type="checkbox" name="purge_on_uninstall" value="1" ' . checked(true, $purge, false) . '> '
+            . esc_html__('Tout supprimer (tables + réglages) quand le plugin est désinstallé', 'bem-lead-ai') . '</label></td></tr></tbody></table>';
 
         submit_button(__('Enregistrer les réglages', 'bem-lead-ai'));
         echo '</form>';
@@ -287,7 +296,7 @@ final class SettingsPage
         $input = wp_unslash((array) ($_POST['s'] ?? []));
         $defaults = Options::defaults();
         $checkboxes = ['whatsapp_enabled', 'widget_enabled'];
-        $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill'];
+        $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill', 'program_links'];
         $clean = [];
         foreach ($defaults as $key => $default) {
             if (in_array($key, Options::SECRET_KEYS, true)) {
@@ -312,6 +321,9 @@ final class SettingsPage
             }
         }
         Options::update($clean);
+
+        // Option de purge à la désinstallation (option autonome, lue par uninstall.php).
+        update_option('bem_lead_ai_delete_data', !empty($_POST['purge_on_uninstall']) ? '1' : '0');
 
         // Vérifie que l'écriture a réellement persisté (relecture DIRECTE en
         // base, cache contourné). Un échec ici = couche DB, pas notre code.

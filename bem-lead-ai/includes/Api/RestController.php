@@ -40,6 +40,12 @@ final class RestController
             'permission_callback' => '__return_true',
         ]);
 
+        register_rest_route($ns, '/history', [
+            'methods' => 'GET',
+            'callback' => [$this, 'history'],
+            'permission_callback' => '__return_true',
+        ]);
+
         register_rest_route($ns, '/track', [
             'methods' => 'POST',
             'callback' => [$this, 'track'],
@@ -134,6 +140,35 @@ final class RestController
             'handoff' => $result['handoff'],
             'last_message_id' => $result['message_id'],
             'whatsapp' => $result['whatsapp'],
+        ]);
+    }
+
+    /** Historique complet de la conversation d'une session (rechargé à l'ouverture du widget). */
+    public function history(WP_REST_Request $request): WP_REST_Response|WP_Error
+    {
+        if (!RateLimiter::allow('history', RateLimiter::clientKey($request), 30)) {
+            return new WP_Error('bem_rate_limited', 'Rate limited', ['status' => 429]);
+        }
+        $sessionId = sanitize_text_field((string) $request->get_param('session_id'));
+        $lead = $sessionId !== '' ? (new LeadRepository())->findBySessionId($sessionId) : null;
+        if (!$lead) {
+            return rest_ensure_response(['messages' => [], 'handoff' => false]);
+        }
+        $rows = (new ConversationRepository())->history((int) $lead->id, 100);
+        $messages = [];
+        foreach ($rows as $m) {
+            if ($m->canal === 'whatsapp') {
+                continue; // les échanges WhatsApp se poursuivent hors du widget
+            }
+            $messages[] = [
+                'id' => (int) $m->id,
+                'role' => $m->role,
+                'contenu' => $m->contenu,
+            ];
+        }
+        return rest_ensure_response([
+            'messages' => $messages,
+            'handoff' => (int) $lead->handoff_active === 1,
         ]);
     }
 
