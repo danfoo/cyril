@@ -37,9 +37,7 @@ final class Activator
         if (!wp_next_scheduled('bem_lead_ai_cron_disengagement')) {
             wp_schedule_event(time() + 300, 'hourly', 'bem_lead_ai_cron_disengagement');
         }
-        if (!wp_next_scheduled('bem_lead_ai_cron_rebuild_kb')) {
-            wp_schedule_event(time() + 600, 'daily', 'bem_lead_ai_cron_rebuild_kb');
-        }
+        self::syncKbCron();
         if (!wp_next_scheduled('bem_lead_ai_cron_bandit')) {
             wp_schedule_event(time() + 900, 'hourly', 'bem_lead_ai_cron_bandit');
         }
@@ -86,6 +84,30 @@ final class Activator
         }
         if ($patch) {
             Options::update($patch);
+        }
+    }
+
+    /**
+     * (Re)planifie la reconstruction périodique du catalogue selon le réglage
+     * `kb_rebuild_frequency` (manual | weekly | daily). À appeler après tout
+     * changement de ce réglage. « manual » = aucune tâche planifiée (le
+     * catalogue reste reconstruit à chaque modification de contenu + bouton).
+     */
+    public static function syncKbCron(): void
+    {
+        $freq = (string) Options::get('kb_rebuild_frequency');
+        $recurrence = in_array($freq, ['daily', 'weekly'], true) ? $freq : '';
+        $current = wp_get_schedule('bem_lead_ai_cron_rebuild_kb'); // false si non planifié
+
+        if ($recurrence === '') {
+            if ($current !== false) {
+                wp_clear_scheduled_hook('bem_lead_ai_cron_rebuild_kb');
+            }
+            return;
+        }
+        if ($current !== $recurrence) {
+            wp_clear_scheduled_hook('bem_lead_ai_cron_rebuild_kb');
+            wp_schedule_event(time() + 600, $recurrence, 'bem_lead_ai_cron_rebuild_kb');
         }
     }
 

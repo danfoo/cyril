@@ -95,9 +95,14 @@ final class SettingsPage
             $this->text('indexed_post_types', 'Types de contenu inclus (csv)', $o),
             $this->text('onboarding_category', 'Catégorie/tag onboarding', $o),
             $this->select('kb_cache_ttl', 'Durée du cache LLM', $o, ['1h' => '1 heure', '5m' => '5 minutes']),
+            $this->select('kb_rebuild_frequency', 'Reconstruction automatique du catalogue', $o, [
+                'manual' => __('Manuelle uniquement (+ à chaque modification de contenu)', 'bem-lead-ai'),
+                'weekly' => __('Chaque semaine (recommandé)', 'bem-lead-ai'),
+                'daily' => __('Chaque jour', 'bem-lead-ai'),
+            ]),
             $this->number('kb_max_chars_per_post', 'Caractères max par page', $o),
             $this->textarea('program_links', 'Liens des programmes — une ligne par programme : Nom du programme | https://…', $o),
-        ], __('Le contenu des formations est injecté dans le prompt et mis en cache côté Claude. Ajoutez les liens de vos programmes ci-dessus : le conseiller les partagera (cliquables) quand il recommande un programme.', 'bem-lead-ai'));
+        ], __('Le contenu des formations est injecté dans le prompt et mis en cache côté Claude. Le catalogue est reconstruit automatiquement à chaque modification d\'une page/formation ; la reconstruction périodique n\'est qu\'un filet de sécurité (hebdomadaire suffit si vous mettez rarement à jour). Vous pouvez aussi le reconstruire manuellement plus bas.', 'bem-lead-ai'));
 
         // --- Intégrations formulaires ---
         $this->section(__('Formulaires (Gravity Forms, Contact Form 7, WPForms, Ninja Forms)', 'bem-lead-ai'), [
@@ -384,6 +389,10 @@ final class SettingsPage
             }
         }
         Options::update($clean);
+
+        // Aligne la tâche périodique de reconstruction du catalogue sur le
+        // nouveau réglage de fréquence (manual | weekly | daily).
+        \BemLeadAi\Core\Activator::syncKbCron();
 
         // Option de purge à la désinstallation (option autonome, lue par uninstall.php).
         update_option('bem_lead_ai_delete_data', !empty($_POST['purge_on_uninstall']) ? '1' : '0');

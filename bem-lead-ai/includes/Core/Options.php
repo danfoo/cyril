@@ -67,6 +67,10 @@ final class Options
             'program_links' => '',
             'kb_cache_ttl' => '1h', // 5m | 1h — durée de vie du cache de préfixe LLM
             'kb_max_chars_per_post' => 4000,
+            // Reconstruction auto du catalogue : manual | weekly | daily.
+            // (Le catalogue est de toute façon reconstruit à chaque modification
+            // de contenu ; cette tâche périodique n'est qu'un filet de sécurité.)
+            'kb_rebuild_frequency' => 'weekly',
             // Scoring — logique marketing
             'score_decay_half_life_days' => 7,
             'score_blend_intent_weight' => 0.55, // l'intention conversationnelle pèse plus que le comportement
