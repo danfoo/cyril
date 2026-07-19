@@ -182,6 +182,9 @@ final class SettingsPage
         submit_button(__('Enregistrer les réglages', 'bem-lead-ai'));
         echo '</form>';
 
+        // Hors formulaire principal (évite tout formulaire imbriqué).
+        $this->renderRebuildButton();
+
         echo '<hr><h2>' . esc_html__('Webhook à configurer côté CRM', 'bem-lead-ai') . '</h2>';
         echo '<table class="widefat" style="max-width:820px;"><tbody>';
         echo '<tr><th>' . esc_html__('Retour CRM (statut inscrit)', 'bem-lead-ai') . '</th><td><code>' . esc_html(rest_url(BEM_LEAD_AI_REST_NS . '/crm-status-webhook')) . '</code> <em>(header <code>X-Bem-Secret</code>)</em></td></tr>';
@@ -223,15 +226,24 @@ final class SettingsPage
                 echo '</ul></details>';
             }
         }
+        // IMPORTANT : pas de <form> ici — cette carte est affichée À L'INTÉRIEUR
+        // du formulaire de réglages. Un formulaire imbriqué casserait le bouton
+        // « Enregistrer ». Le bouton « Reconstruire » est rendu après le
+        // formulaire principal (renderRebuildButton).
+        echo '<p class="description" style="margin:12px 0 0;">' . esc_html__('Bouton « Reconstruire le catalogue maintenant » disponible en bas de page.', 'bem-lead-ai') . '</p>';
+        echo '</div>';
+    }
 
-        // Bouton de reconstruction immédiate, ici pour la visibilité.
-        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:12px 0 0;">';
+    /** Bouton de reconstruction manuelle — rendu HORS du formulaire de réglages. */
+    private function renderRebuildButton(): void
+    {
+        echo '<hr><h2>' . esc_html__('Catalogue de connaissance', 'bem-lead-ai') . '</h2>';
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('bem_rebuild_kb');
         echo '<input type="hidden" name="action" value="bem_rebuild_kb">';
         submit_button(__('Reconstruire le catalogue maintenant', 'bem-lead-ai'), 'secondary', 'submit', false);
         echo ' <span class="description">' . esc_html__('À faire après avoir modifié une formation si vous voulez forcer la prise en compte immédiate.', 'bem-lead-ai') . '</span>';
         echo '</form>';
-        echo '</div>';
     }
 
     /** Zone de maintenance des données (déplacée ici pour éviter les clics accidentels). */
