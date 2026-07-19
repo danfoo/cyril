@@ -22,6 +22,8 @@ Plugin WordPress qui transforme le site de **BEM Dakar** en conseiller d'orienta
 | **Sélection des modèles Claude** + lien vers la console Anthropic | `Admin\SettingsPage`, `Core\Options` |
 | Extension post-inscription (bascule base de connaissance onboarding) | webhook `/crm-status-webhook` |
 | Connecteurs CRM : Perfex (prioritaire), HubSpot (optionnel) | `Crm\*` |
+| **Assistant de configuration** en 4 étapes au premier lancement (réexécutable) | `Admin\SetupWizard` |
+| **Export des leads** en CSV (Excel-compatible, BOM UTF-8) et **XLSX natif**, filtres conservés | `Admin\LeadExporter` |
 
 ## Architecture (résumé)
 

@@ -58,6 +58,12 @@ final class SettingsPage
             }
         }
 
+        // Raccourci vers l'assistant de configuration (relance guidée).
+        echo '<p style="margin:12px 0;"><a class="button button-secondary" href="'
+            . esc_url(admin_url('admin.php?page=' . SetupWizard::PAGE)) . '">'
+            . Icons::get('cap', 'bem-ico') . ' ' . esc_html__('Relancer l\'assistant de configuration', 'bem-lead-ai') . '</a>'
+            . ' <span class="description">' . esc_html__('Reprend la configuration guidée en 4 étapes (vos réglages sont préremplis).', 'bem-lead-ai') . '</span></p>';
+
         // Bouton de test de connexion (diagnostic de l'erreur "souci technique momentané").
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:12px 0;">';
         wp_nonce_field('bem_test_claude');

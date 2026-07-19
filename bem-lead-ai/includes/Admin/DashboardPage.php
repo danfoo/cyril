@@ -237,10 +237,13 @@ final class DashboardPage
         }
         echo '</form>';
 
-        // Compteur + pagination haute.
-        echo '<div class="bem-section-head"><p class="description" style="margin:0;">'
+        // Compteur + export + pagination haute.
+        $filters = ['s' => $search, 'stage' => $fStage, 'band' => $fBand, 'owner' => $fOwner];
+        echo '<div class="bem-section-head"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">'
+            . '<p class="description" style="margin:0;">'
             . sprintf(esc_html(_n('%s lead trouvé', '%s leads trouvés', $total, 'bem-lead-ai')), '<strong>' . number_format_i18n($total) . '</strong>')
-            . '</p>' . $this->paginationLinks($paged, $pages) . '</div>';
+            . '</p>' . $this->exportButtons($filters, $total) . '</div>'
+            . $this->paginationLinks($paged, $pages) . '</div>';
 
         $this->renderLeadRows($leads);
 
@@ -277,6 +280,20 @@ final class DashboardPage
             $out .= '<a class="button button-small" href="' . $link($paged + 1) . '">›</a>';
         }
         return $out . '</span>';
+    }
+
+    /** Boutons d'export (CSV / Excel) conservant les filtres actifs. */
+    private function exportButtons(array $filters, int $total): string
+    {
+        if ($total < 1) {
+            return '';
+        }
+        $csv = esc_url(LeadExporter::url('csv', $filters));
+        $xlsx = esc_url(LeadExporter::url('xlsx', $filters));
+        return '<span class="bem-export-actions">'
+            . '<a class="button button-secondary" href="' . $csv . '">' . Icons::get('send', 'bem-ico') . ' ' . esc_html__('Exporter CSV', 'bem-lead-ai') . '</a> '
+            . '<a class="button button-secondary" href="' . $xlsx . '">' . Icons::get('send', 'bem-ico') . ' ' . esc_html__('Exporter Excel', 'bem-lead-ai') . '</a>'
+            . '</span>';
     }
 
     /** Rend le tableau des leads (en-tête + lignes) à partir d'une liste. */

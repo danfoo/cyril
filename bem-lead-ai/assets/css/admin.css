@@ -506,3 +506,7 @@
   .bem-wizard-label { display: none; }
   .bem-wizard-card .form-table th { width: auto; }
 }
+
+/* ================= Boutons d'export / icônes dans boutons ================= */
+.bem-admin-page .button .bem-ico { width: 15px; height: 15px; vertical-align: -3px; }
+.bem-export-actions { display: inline-flex; gap: 8px; flex-wrap: wrap; }
