@@ -20,6 +20,7 @@ final class AdminMenu
         add_action('admin_post_bem_test_claude', [SettingsPage::class, 'handleTestClaude']);
         add_action('admin_post_bem_lead_delete', [DashboardPage::class, 'handleLeadDelete']);
         add_action('admin_post_bem_purge_leads', [DashboardPage::class, 'handlePurgeLeads']);
+        add_action('admin_post_bem_purge_anon', [DashboardPage::class, 'handlePurgeAnonymous']);
         // CRM natif : actions de suivi sur la fiche lead.
         add_action('admin_post_bem_crm_stage', [DashboardPage::class, 'handleCrmStage']);
         add_action('admin_post_bem_crm_assign', [DashboardPage::class, 'handleCrmAssign']);

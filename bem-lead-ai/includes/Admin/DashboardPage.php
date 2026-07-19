@@ -89,6 +89,23 @@ final class DashboardPage
             submit_button(__('Vider les leads (données de test)', 'bem-lead-ai'), 'delete', 'submit', false);
             echo ' <span class="description">' . esc_html__('Remet à zéro leads, événements, conversations et veille. À utiliser après vos tests.', 'bem-lead-ai') . '</span>';
             echo '</form>';
+
+            // Nettoyage ciblé : leads anonymes sans engagement (souvent du bruit/robots).
+            global $wpdb;
+            $anon = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->prefix}bem_leads l
+                 WHERE l.email IS NULL AND l.phone IS NULL AND (l.prenom IS NULL OR l.prenom = '')
+                   AND NOT EXISTS (SELECT 1 FROM {$wpdb->prefix}bem_chat_messages m WHERE m.lead_id = l.id)"
+            );
+            if ($anon > 0) {
+                echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:0 0 16px;" '
+                    . 'onsubmit="return confirm(\'' . esc_js(__('Supprimer les leads anonymes sans conversation ni coordonnées ?', 'bem-lead-ai')) . '\');">';
+                wp_nonce_field('bem_purge_anon');
+                echo '<input type="hidden" name="action" value="bem_purge_anon">';
+                submit_button(sprintf(__('Nettoyer les leads sans engagement (%d)', 'bem-lead-ai'), $anon), 'secondary', 'submit', false);
+                echo ' <span class="description">' . esc_html__('Supprime uniquement les fiches anonymes, sans email/téléphone ni message — typiquement du trafic robot.', 'bem-lead-ai') . '</span>';
+                echo '</form>';
+            }
         }
 
         // À faire : tâches de suivi à échéance (ou en retard).
@@ -130,6 +147,28 @@ final class DashboardPage
         }
         $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE 'bem_lead_ai_last_summary_%'");
         delete_option('bem_lead_ai_wa_cursor');
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai&purged=1'));
+        exit;
+    }
+
+    /** Supprime les leads anonymes sans engagement (email/téléphone/conversation). */
+    public static function handlePurgeAnonymous(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Forbidden');
+        }
+        check_admin_referer('bem_purge_anon');
+        global $wpdb;
+        $p = $wpdb->prefix;
+        $ids = $wpdb->get_col(
+            "SELECT l.id FROM {$p}bem_leads l
+             WHERE l.email IS NULL AND l.phone IS NULL AND (l.prenom IS NULL OR l.prenom = '')
+               AND NOT EXISTS (SELECT 1 FROM {$p}bem_chat_messages m WHERE m.lead_id = l.id)"
+        ) ?: [];
+        $repo = new LeadRepository();
+        foreach ($ids as $id) {
+            $repo->delete((int) $id);
+        }
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai&purged=1'));
         exit;
     }

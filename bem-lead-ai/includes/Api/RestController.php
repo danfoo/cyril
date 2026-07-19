@@ -112,6 +112,10 @@ final class RestController
 
     public function chat(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        // Robots/scanners : on n'engage ni lead ni appel LLM.
+        if (\BemLeadAi\Core\BotDetector::isBot()) {
+            return new WP_Error('bem_forbidden', 'Forbidden', ['status' => 403]);
+        }
         if (!RateLimiter::allow('chat', RateLimiter::clientKey($request))) {
             return new WP_Error('bem_rate_limited', __('Trop de messages, réessayez dans une minute.', 'bem-lead-ai'), ['status' => 429]);
         }
@@ -204,6 +208,10 @@ final class RestController
 
     public function track(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        // Trafic non humain : jamais de création de lead ni d'événement.
+        if (\BemLeadAi\Core\BotDetector::isBot()) {
+            return rest_ensure_response(['ok' => false, 'reason' => 'bot']);
+        }
         if (!RateLimiter::allow('track', RateLimiter::clientKey($request), 60)) {
             return new WP_Error('bem_rate_limited', 'Rate limited', ['status' => 429]);
         }
@@ -216,12 +224,20 @@ final class RestController
         }
 
         $adapter = new ChannelAdapter();
-        $lead = $adapter->resolveWebLead($sessionId);
         $leads = new LeadRepository();
 
+        // Le lead n'est CRÉÉ qu'au consentement explicite (opt-in). Les autres
+        // événements ne font que compléter un lead déjà consentant — un simple
+        // ping sans opt-in ne crée donc jamais de fiche (fini les faux leads).
         if ($type === 'consent_given') {
+            $lead = $adapter->resolveWebLead($sessionId);
             $leads->update((int) $lead->id, ['consent' => 1]);
             return rest_ensure_response(['ok' => true]);
+        }
+
+        $lead = $leads->findBySessionId($sessionId);
+        if (!$lead) {
+            return rest_ensure_response(['ok' => false, 'reason' => 'no_lead']);
         }
 
         // Loi n°2008-12 : pas de tracking comportemental sans consentement.
@@ -255,6 +271,9 @@ final class RestController
      */
     public function whatsappLink(WP_REST_Request $request): WP_REST_Response|WP_Error
     {
+        if (\BemLeadAi\Core\BotDetector::isBot()) {
+            return new WP_Error('bem_forbidden', 'Forbidden', ['status' => 403]);
+        }
         if (!RateLimiter::allow('whatsapp', RateLimiter::clientKey($request), 30)) {
             return new WP_Error('bem_rate_limited', 'Rate limited', ['status' => 429]);
         }
@@ -263,8 +282,9 @@ final class RestController
             return new WP_Error('bem_disabled', __('WhatsApp non configuré.', 'bem-lead-ai'), ['status' => 404]);
         }
 
+        // Lecture seule : on ne crée pas de lead depuis un clic WhatsApp isolé.
         $sessionId = sanitize_text_field((string) $request->get_param('session_id'));
-        $lead = $sessionId !== '' ? (new ChannelAdapter())->resolveWebLead($sessionId) : null;
+        $lead = $sessionId !== '' ? (new LeadRepository())->findBySessionId($sessionId) : null;
         if (!$lead) {
             return new WP_Error('bem_bad_request', 'Session invalide.', ['status' => 400]);
         }
