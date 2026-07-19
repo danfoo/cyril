@@ -63,22 +63,20 @@ final class DashboardPage
         }
         echo '</div>';
 
-        // ---- Entonnoir du pipeline ----
+        // ---- Pipeline en ligne (points de couleur reliés) ----
         $stageCounts = [];
         foreach ($wpdb->get_results("SELECT pipeline_stage AS s, COUNT(*) AS n FROM {$p}bem_leads GROUP BY pipeline_stage") ?: [] as $r) {
             $stageCounts[(string) $r->s] = (int) $r->n;
         }
-        $maxStage = max(1, $stageCounts ? max($stageCounts) : 1);
         echo '<div class="bem-panel-card bem-funnel-card" style="max-width:none;"><h3>' . esc_html__('Pipeline d\'admission', 'bem-lead-ai') . '</h3>';
-        echo '<div class="bem-funnel">';
+        echo '<div class="bem-pipeflow">';
         foreach (CrmRepository::stages() as $slug => $conf) {
             $n = $stageCounts[$slug] ?? 0;
-            $pct = round($n / $maxStage * 100);
             $url = admin_url('admin.php?page=bem-lead-ai-leads&stage=' . $slug);
-            echo '<a class="bem-funnel-row" href="' . esc_url($url) . '">'
-                . '<span class="bem-funnel-name">' . esc_html($conf['label']) . '</span>'
-                . '<span class="bem-funnel-bar"><span class="bem-funnel-fill" style="width:' . (int) max(6, $pct) . '%;background:' . esc_attr($conf['color']) . ';"></span></span>'
-                . '<span class="bem-funnel-n">' . (int) $n . '</span></a>';
+            echo '<a class="bem-pipeflow-step" href="' . esc_url($url) . '" style="--c:' . esc_attr($conf['color']) . ';">'
+                . '<span class="bem-pipeflow-count">' . (int) $n . '</span>'
+                . '<span class="bem-pipeflow-track"><span class="bem-pipeflow-dot"></span></span>'
+                . '<span class="bem-pipeflow-label">' . esc_html($conf['label']) . '</span></a>';
         }
         echo '</div></div>';
 
