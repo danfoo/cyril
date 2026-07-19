@@ -11,6 +11,12 @@ final class AdminMenu
         add_action('admin_menu', [$this, 'addMenus']);
         add_action('in_admin_header', [$this, 'brandBar']);
         add_action('admin_footer', [$this, 'brandFooter']);
+        // Assistant de configuration (premier lancement + réexécutable).
+        add_action('admin_init', [SetupWizard::class, 'maybeRedirect']);
+        add_action('admin_notices', [SetupWizard::class, 'notice']);
+        add_action('admin_post_bem_setup_save', [SetupWizard::class, 'handleSave']);
+        add_action('admin_post_bem_setup_finish', [SetupWizard::class, 'handleFinish']);
+        add_action('admin_post_bem_setup_skip', [SetupWizard::class, 'handleSkip']);
         add_action('admin_post_bem_save_settings', [SettingsPage::class, 'handleSave']);
         add_action('admin_post_bem_crud_save', [CrudPage::class, 'handleSave']);
         add_action('admin_post_bem_crud_delete', [CrudPage::class, 'handleDelete']);
@@ -42,7 +48,7 @@ final class AdminMenu
         wp_enqueue_style('bem-lead-ai-admin', BEM_LEAD_AI_URL . 'assets/css/admin.css', [], $ver);
         add_filter('admin_body_class', static fn($c) => $c . ' bem-admin-page');
 
-        if (str_contains($hook, 'bem-lead-ai-settings')) {
+        if (str_contains($hook, 'bem-lead-ai-settings') || str_contains($hook, SetupWizard::PAGE)) {
             wp_enqueue_media();
         }
     }
@@ -93,5 +99,6 @@ final class AdminMenu
         }
 
         add_submenu_page('bem-lead-ai', __('Réglages', 'bem-lead-ai'), __('Réglages', 'bem-lead-ai'), 'manage_options', 'bem-lead-ai-settings', [new SettingsPage(), 'render']);
+        add_submenu_page('bem-lead-ai', __('Assistant de configuration', 'bem-lead-ai'), __('Assistant de configuration', 'bem-lead-ai'), 'manage_options', SetupWizard::PAGE, [new SetupWizard(), 'render']);
     }
 }

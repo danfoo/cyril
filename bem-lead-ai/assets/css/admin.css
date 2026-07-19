@@ -450,3 +450,59 @@
   text-align: center; color: #98a2b3; font-size: 12px; letter-spacing: 0.03em;
   text-transform: uppercase; padding: 24px 0 8px; margin-top: 20px;
 }
+
+/* ================= Assistant de configuration (wizard) ================= */
+.bem-wizard .bem-wizard-steps {
+  display: flex; list-style: none; margin: 18px 0 22px; padding: 0; counter-reset: none;
+}
+.bem-wizard-step {
+  flex: 1; display: flex; flex-direction: column; align-items: center; position: relative;
+  gap: 8px; color: #98a2b3; font-size: 13px; font-weight: 600; text-align: center;
+}
+.bem-wizard-step::before,
+.bem-wizard-step::after {
+  content: ""; position: absolute; top: 17px; height: 2px; background: #e2e7f0; z-index: 0;
+}
+.bem-wizard-step::before { left: 0; right: 50%; }
+.bem-wizard-step::after  { left: 50%; right: 0; }
+.bem-wizard-step:first-child::before,
+.bem-wizard-step:last-child::after { display: none; }
+.bem-wizard-step.is-done::before,
+.bem-wizard-step.is-done::after,
+.bem-wizard-step.is-active::before { background: #0b3d91; }
+.bem-wizard-dot {
+  position: relative; z-index: 1; width: 36px; height: 36px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #fff; border: 2px solid #e2e7f0; color: #98a2b3; font-weight: 700;
+}
+.bem-wizard-dot .bem-ico { width: 18px; height: 18px; }
+.bem-wizard-step.is-active .bem-wizard-dot { border-color: #0b3d91; color: #0b3d91; box-shadow: 0 0 0 4px rgba(11,61,145,.12); }
+.bem-wizard-step.is-done .bem-wizard-dot { border-color: #0b3d91; background: #0b3d91; color: #fff; }
+.bem-wizard-step.is-active .bem-wizard-label { color: #10233f; }
+.bem-wizard-step.is-done .bem-wizard-label { color: #0b3d91; }
+
+.bem-wizard-card {
+  background: #fff; border: 1px solid #e2e7f0; border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(16,35,63,.06); padding: 22px 26px 26px; max-width: 900px;
+}
+.bem-wizard-card h2 {
+  display: flex; align-items: center; gap: 10px; margin: 4px 0 6px !important;
+  font-size: 17px !important; color: #10233f !important; text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+.bem-wizard-card h2 .bem-ico { width: 22px; height: 22px; color: #0b3d91; }
+.bem-wizard-card .form-table th { width: 260px; }
+
+.bem-wizard-actions {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 18px; padding-top: 18px; border-top: 1px solid #eef1f6;
+}
+.bem-wizard-actions .button-hero { min-width: 220px; text-align: center; }
+.bem-wizard-skip { text-align: center; margin: 16px 0 0; }
+.bem-wizard-skip a { color: #98a2b3; text-decoration: none; font-size: 13px; }
+.bem-wizard-skip a:hover { color: #0b3d91; text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .bem-wizard-label { display: none; }
+  .bem-wizard-card .form-table th { width: auto; }
+}

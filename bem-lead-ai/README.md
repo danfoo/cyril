@@ -65,7 +65,8 @@ montée en charge (multilingue / multi-campus) — voir « À revisiter en cas d
 ## Installation
 
 1. Copier le dossier `bem-lead-ai/` dans `wp-content/plugins/` et activer le plugin (création automatique des tables + valeurs par défaut + première construction du catalogue).
-2. **Réglages → BEM Lead AI** : renseigner la clé API Anthropic (lien direct vers `console.anthropic.com`), choisir les **modèles Claude** (conseiller / classification), l'email admissions.
+2. **Assistant de configuration** : à la première activation, le plugin ouvre automatiquement un assistant en 4 étapes (établissement + clé IA → WhatsApp → widget → catalogue) pour être opérationnel en quelques minutes. Réexécutable à tout moment via le menu **School IA → Assistant de configuration**. L'assistant ne dispense pas de la page de réglages complète ci-dessous.
+3. **Réglages → School IA** : renseigner la clé API Anthropic (lien direct vers `console.anthropic.com`), choisir les **modèles Claude** (conseiller / classification), l'email admissions.
 3. Le catalogue se reconstruit tout seul à chaque modification de page ; bouton **Reconstruire le catalogue maintenant** disponible au besoin.
 4. **WhatsApp** : activer la passerelle et lister vos numéros (`Label|indicatif+numéro|formation`). Aucune API WhatsApp Business requise.
 5. **Design** : couleurs, avatar/logo (sélecteur média WordPress), position du widget.

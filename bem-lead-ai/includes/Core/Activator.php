@@ -17,6 +17,9 @@ final class Activator
     public static function activate(): void
     {
         self::runMigrations();
+        // Déclenche la redirection unique vers l'assistant de configuration
+        // (uniquement si la configuration n'a jamais été finalisée).
+        \BemLeadAi\Admin\SetupWizard::armRedirect();
         flush_rewrite_rules();
     }
 
