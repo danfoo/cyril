@@ -55,31 +55,31 @@ final class ActionRunner
 
     private function notify(object $lead, array $args): void
     {
-        $subject = (string) ($args['subject'] ?? __('Alerte lead BEM', 'bem-lead-ai'));
+        $subject = (string) ($args['subject'] ?? __('Alerte lead', 'bem-lead-ai'));
         $band = ScoringEngine::band((float) $lead->score_final);
         $adminUrl = admin_url('admin.php?page=bem-lead-ai-leads&lead_id=' . (int) $lead->id);
 
-        $lines = [
-            sprintf('Lead #%d — score %s/100 (%s)', $lead->id, $lead->score_final, str_replace('_', ' ', $band)),
-            'Formation d\'intérêt : ' . ($lead->formation_interet ?: '—'),
-            'Email : ' . ($lead->email ?: '—') . ' | Téléphone : ' . ($lead->phone ?: '—'),
-            'Canaux : ' . $lead->channels,
-            'Fiche : ' . $adminUrl,
-        ];
-        $body = implode("\n", $lines);
+        // E-mail HTML brandé (respecte l'interrupteur « lead chaud »).
+        $bodyHtml = '<p>' . esc_html__('Un lead mérite votre attention :', 'bem-lead-ai') . '</p>'
+            . \BemLeadAi\Notifications\Mailer::detailList([
+                __('Lead', 'bem-lead-ai') => '#' . (int) $lead->id,
+                __('Score', 'bem-lead-ai') => $lead->score_final . '/100 (' . str_replace('_', ' ', $band) . ')',
+                __('Formation d\'intérêt', 'bem-lead-ai') => $lead->formation_interet ?: '—',
+                __('Email', 'bem-lead-ai') => $lead->email ?: '—',
+                __('Téléphone', 'bem-lead-ai') => $lead->phone ?: '—',
+                __('Canaux', 'bem-lead-ai') => $lead->channels,
+            ]);
+        \BemLeadAi\Notifications\Mailer::sendEvent('hot_lead', $subject, $bodyHtml, $adminUrl, __('Ouvrir la fiche lead', 'bem-lead-ai'));
 
-        $to = (string) Options::get('admissions_email');
-        if ($to) {
-            $brand = defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA';
-            wp_mail($to, '[' . $brand . '] ' . $subject, $body);
-        }
-
+        // Slack (texte), inchangé.
         $slack = (string) Options::get('slack_webhook_url');
         if ($slack) {
+            $text = sprintf("*%s*\nLead #%d — score %s/100 (%s)\n%s",
+                $subject, (int) $lead->id, $lead->score_final, str_replace('_', ' ', $band), $adminUrl);
             wp_remote_post($slack, [
                 'timeout' => 10,
                 'headers' => ['Content-Type' => 'application/json'],
-                'body' => wp_json_encode(['text' => '*' . $subject . "*\n" . $body]),
+                'body' => wp_json_encode(['text' => $text]),
             ]);
         }
     }

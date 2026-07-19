@@ -85,6 +85,13 @@ final class Options
             // Notifications
             'admissions_email' => get_option('admin_email'),
             'slack_webhook_url' => '',
+            // Notifications e-mail : interrupteur maître + par événement, et
+            // nom d'expéditeur affiché. Les e-mails sont HTML et brandés.
+            'notify_email_enabled' => 1,
+            'notify_hot_lead' => 1,      // lead chaud/très chaud détecté
+            'notify_handoff' => 1,       // escalade vers un conseiller humain
+            'notify_task_reminder' => 1, // rappel de tâche CRM à échéance
+            'notify_from_name' => '',    // vide = nom de la marque (School IA)
             // WhatsApp — passerelle "click-to-chat" (pas d'API Business)
             'whatsapp_enabled' => 1,
             'whatsapp_cta_label' => 'Continuer sur WhatsApp',

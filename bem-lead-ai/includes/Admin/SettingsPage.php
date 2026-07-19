@@ -64,6 +64,16 @@ final class SettingsPage
             . Icons::get('cap', 'bem-ico') . ' ' . esc_html__('Relancer l\'assistant de configuration', 'bem-lead-ai') . '</a>'
             . ' <span class="description">' . esc_html__('Reprend la configuration guidée en 4 étapes (vos réglages sont préremplis).', 'bem-lead-ai') . '</span></p>';
 
+        // Résultat du test d'e-mail (le cas échéant).
+        $mailTest = get_transient('bem_lead_ai_email_test');
+        if (is_array($mailTest)) {
+            delete_transient('bem_lead_ai_email_test');
+            $cls = !empty($mailTest['ok']) ? 'notice-success' : 'notice-error';
+            $head = !empty($mailTest['ok']) ? __('E-mail de test envoyé.', 'bem-lead-ai') : __('Échec de l\'envoi de l\'e-mail de test.', 'bem-lead-ai');
+            echo '<div class="notice ' . esc_attr($cls) . '"><p><strong>' . esc_html($head) . '</strong><br>'
+                . esc_html((string) ($mailTest['msg'] ?? '')) . '</p></div>';
+        }
+
         // Bouton de test de connexion (diagnostic de l'erreur "souci technique momentané").
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:12px 0;">';
         wp_nonce_field('bem_test_claude');
@@ -128,10 +138,15 @@ final class SettingsPage
         ]);
 
         // --- Notifications ---
-        $this->section(__('Notifications', 'bem-lead-ai'), [
-            $this->text('admissions_email', 'Email équipe admissions', $o),
-            $this->text('slack_webhook_url', 'Webhook Slack (optionnel)', $o),
-        ]);
+        $this->section(__('Notifications par e-mail', 'bem-lead-ai'), [
+            $this->text('admissions_email', 'E-mail équipe admissions (destinataire des alertes)', $o),
+            $this->text('notify_from_name', 'Nom de l\'expéditeur (vide = School IA)', $o),
+            $this->checkbox('notify_email_enabled', 'Activer les notifications e-mail', $o),
+            $this->checkbox('notify_hot_lead', '→ Alerte quand un lead devient chaud / très chaud', $o),
+            $this->checkbox('notify_handoff', '→ Alerte lors d\'une escalade vers un conseiller humain', $o),
+            $this->checkbox('notify_task_reminder', '→ Rappel quotidien des tâches de suivi à échéance', $o),
+            $this->text('slack_webhook_url', 'Webhook Slack (optionnel, en plus de l\'e-mail)', $o),
+        ], __('Les e-mails sont envoyés en HTML brandé à l\'adresse ci-dessus. Astuce : si vous ne recevez rien, utilisez le bouton « Envoyer un e-mail de test » en bas de page — la plupart des hébergeurs exigent un plugin SMTP (ex. « WP Mail SMTP ») pour que wp_mail fonctionne réellement.', 'bem-lead-ai'));
 
         // --- WhatsApp click-to-chat ---
         $this->section(__('WhatsApp (continuer la discussion)', 'bem-lead-ai'), [
@@ -189,6 +204,7 @@ final class SettingsPage
         echo '</form>';
 
         // Hors formulaire principal (évite tout formulaire imbriqué).
+        $this->renderEmailTestButton($o);
         $this->renderRebuildButton();
 
         echo '<hr><h2>' . esc_html__('Webhook à configurer côté CRM', 'bem-lead-ai') . '</h2>';
@@ -238,6 +254,19 @@ final class SettingsPage
         // formulaire principal (renderRebuildButton).
         echo '<p class="description" style="margin:12px 0 0;">' . esc_html__('Bouton « Reconstruire le catalogue maintenant » disponible en bas de page.', 'bem-lead-ai') . '</p>';
         echo '</div>';
+    }
+
+    /** Bouton d'envoi d'un e-mail de test — HORS du formulaire de réglages. */
+    private function renderEmailTestButton(array $o): void
+    {
+        $to = trim((string) ($o['admissions_email'] ?? '')) ?: (string) get_option('admin_email');
+        echo '<hr><h2>' . esc_html__('Vérifier l\'envoi des e-mails', 'bem-lead-ai') . '</h2>';
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:8px 0;">';
+        wp_nonce_field('bem_test_email');
+        echo '<input type="hidden" name="action" value="bem_test_email">';
+        submit_button(__('Envoyer un e-mail de test', 'bem-lead-ai'), 'secondary', 'submit', false);
+        echo ' <span class="description">' . esc_html(sprintf(__('Envoie un e-mail brandé à %s et affiche l\'erreur exacte en cas d\'échec. Enregistrez d\'abord vos réglages si vous venez de changer l\'adresse.', 'bem-lead-ai'), $to)) . '</span>';
+        echo '</form>';
     }
 
     /** Bouton de reconstruction manuelle — rendu HORS du formulaire de réglages. */
@@ -414,7 +443,8 @@ final class SettingsPage
         // et les antislashs s'accumulent à chaque enregistrement.
         $input = wp_unslash((array) ($_POST['s'] ?? []));
         $defaults = Options::defaults();
-        $checkboxes = ['whatsapp_enabled', 'widget_enabled', 'capture_forms'];
+        $checkboxes = ['whatsapp_enabled', 'widget_enabled', 'capture_forms',
+            'notify_email_enabled', 'notify_hot_lead', 'notify_handoff', 'notify_task_reminder'];
         $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill', 'program_links'];
         $clean = [];
         foreach ($defaults as $key => $default) {
@@ -466,6 +496,20 @@ final class SettingsPage
         check_admin_referer('bem_rebuild_kb');
         (new KnowledgeBaseBuilder())->rebuild();
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings&rebuilt=1'));
+        exit;
+    }
+
+    public static function handleTestEmail(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Forbidden');
+        }
+        check_admin_referer('bem_test_email');
+
+        $to = \BemLeadAi\Notifications\Mailer::recipient();
+        $result = \BemLeadAi\Notifications\Mailer::sendTest($to);
+        set_transient('bem_lead_ai_email_test', $result, 180);
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
         exit;
     }
 

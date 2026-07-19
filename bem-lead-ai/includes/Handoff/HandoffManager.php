@@ -42,27 +42,27 @@ final class HandoffManager
         $transition = __("Je vous mets en relation avec un conseiller de l'équipe admissions qui va prendre le relais tout de suite. Un instant…", 'bem-lead-ai');
         (new ConversationRepository())->add((int) $lead->id, 'assistant', $transition, 'web');
 
-        // Alerte immédiate des conseillers (email + Slack).
+        // Alerte immédiate des conseillers (email HTML brandé + Slack).
         $inbox = admin_url('admin.php?page=bem-lead-ai-inbox');
-        $body = sprintf(
-            "Escalade humaine demandée.\nLead #%d — %s\nMotif : %s\nScore : %s/100\nRépondre : %s",
-            $lead->id,
-            $lead->email ?: ($lead->phone ?: 'contact inconnu'),
-            $motif,
-            $lead->score_final,
-            $inbox
-        );
         $brand = defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA';
-        $to = (string) Options::get('admissions_email');
-        if ($to) {
-            wp_mail($to, sprintf(__('[%s] Escalade humaine — réponse attendue', 'bem-lead-ai'), $brand), $body);
-        }
+
+        $bodyHtml = '<p style="color:#d63638;font-weight:600;">' . esc_html__('Un prospect demande à parler à un conseiller humain.', 'bem-lead-ai') . '</p>'
+            . \BemLeadAi\Notifications\Mailer::detailList([
+                __('Lead', 'bem-lead-ai') => '#' . (int) $lead->id . ' — ' . ($lead->email ?: ($lead->phone ?: __('contact inconnu', 'bem-lead-ai'))),
+                __('Motif', 'bem-lead-ai') => $motif,
+                __('Score', 'bem-lead-ai') => $lead->score_final . '/100',
+            ]);
+        \BemLeadAi\Notifications\Mailer::sendEvent('handoff', __('Escalade humaine — réponse attendue', 'bem-lead-ai'), $bodyHtml, $inbox, __('Répondre dans l\'inbox', 'bem-lead-ai'));
+
         $slack = (string) Options::get('slack_webhook_url');
         if ($slack) {
+            $text = sprintf("*%s*\nLead #%d — %s\nMotif : %s\n%s",
+                sprintf(__('Escalade humaine — %s', 'bem-lead-ai'), $brand),
+                (int) $lead->id, $lead->email ?: ($lead->phone ?: '—'), $motif, $inbox);
             wp_remote_post($slack, [
                 'timeout' => 10,
                 'headers' => ['Content-Type' => 'application/json'],
-                'body' => wp_json_encode(['text' => "*" . sprintf(__('Escalade humaine — %s', 'bem-lead-ai'), $brand) . "*\n" . $body]),
+                'body' => wp_json_encode(['text' => $text]),
             ]);
         }
     }
