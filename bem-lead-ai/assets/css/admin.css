@@ -350,7 +350,7 @@
 .bem-brand-txt { display: flex; flex-direction: column; line-height: 1.1; }
 .bem-brand-name { font-size: 18px; font-weight: 800; color: #16324f; letter-spacing: -0.01em; }
 .bem-brand-by { font-size: 11px; font-weight: 600; color: #c9a86a; text-transform: uppercase; letter-spacing: 0.08em; }
-.bem-brand-logo { max-height: 44px; max-width: 240px; width: auto; }
+.bem-brand-logo { max-height: 58px; max-width: 260px; width: auto; height: auto; display: block; }
 
 /* ================= Empty states ================= */
 .bem-empty-ico { width: 44px; height: 44px; color: #b3bccb; margin-bottom: 4px; }

@@ -23,9 +23,21 @@ final class Branding
         return defined('BEM_LEAD_AI_VENDOR') ? BEM_LEAD_AI_VENDOR : 'Maestro Dan';
     }
 
+    /** Logo personnalisé (réglage média) ou, à défaut, le logo Maestro Dan fourni. */
     public static function logoUrl(): string
     {
-        return trim((string) Options::get('brand_logo_url'));
+        $custom = trim((string) Options::get('brand_logo_url'));
+        return $custom !== '' ? $custom : self::defaultLogoUrl();
+    }
+
+    /** Logo Maestro Dan livré avec le plugin (colorimétrie pour fond clair). */
+    public static function defaultLogoUrl(): string
+    {
+        $rel = 'assets/images/logo-maestrodan-white.png';
+        if (defined('BEM_LEAD_AI_DIR') && is_file(BEM_LEAD_AI_DIR . $rel)) {
+            return BEM_LEAD_AI_URL . $rel;
+        }
+        return '';
     }
 
     /** Icône du menu (data URI SVG monochrome, teintée par WordPress). */

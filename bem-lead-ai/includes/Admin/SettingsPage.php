@@ -69,7 +69,7 @@ final class SettingsPage
             $this->text('school_name', 'Nom de l\'école (ex. BEM Conakry)', $o),
             $this->text('school_location', 'Ville / pays (ex. Conakry, Guinée)', $o),
             $this->image('brand_logo_url', 'Logo affiché en haut de l\'administration (School IA)', $o),
-        ], __('Le nom de l\'école est utilisé par le conseiller IA (« Je suis le conseiller de… ») et dans les messages. Le logo s\'affiche en haut des pages d\'administration ; laissez vide pour le logo School IA par défaut.', 'bem-lead-ai'));
+        ], __('Le nom de l\'école est utilisé par le conseiller IA (« Je suis le conseiller de… ») et dans les messages. Le logo s\'affiche centré en haut des pages d\'administration ; laissez vide pour le logo Maestro Dan fourni.', 'bem-lead-ai'));
 
         // --- IA ---
         $consoleLink = '<a href="' . esc_url(Options::ANTHROPIC_CONSOLE_URL) . '" target="_blank" rel="noopener">console.anthropic.com</a>';

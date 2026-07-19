@@ -3,7 +3,7 @@
  * Plugin Name:       School IA — Conseiller IA & CRM d'admission
  * Plugin URI:        https://maestrodan.art
  * Description:       Transforme le site d'une école en conseiller d'orientation actif : chatbot IA ancré dans le catalogue (contexte + cache LLM), lead scoring comportemental et intentionnel, CRM d'admission natif, escalade humaine, passerelle WhatsApp, veille concurrentielle et relances auto-apprenantes. Modèles Claude et design du widget configurables. Nom de l'école modifiable dans les réglages.
- * Version:           2.5.1
+ * Version:           2.5.2
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Maestro Dan
@@ -15,7 +15,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BEM_LEAD_AI_VERSION', '2.5.1');
+define('BEM_LEAD_AI_VERSION', '2.5.2');
 // Marque produit (éditeur : Maestro Dan). Les identifiants internes (slug,
 // options, namespace) restent inchangés pour préserver les données existantes.
 define('BEM_LEAD_AI_BRAND', 'School IA');
