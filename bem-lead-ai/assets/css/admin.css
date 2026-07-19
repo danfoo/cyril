@@ -531,3 +531,39 @@
   border-radius: 10px; color: #7a5c00; font-size: 13.5px; max-width: 760px;
 }
 .bem-license-form { max-width: 760px; }
+
+/* ================= Modale (formulaires CRUD en pop-up) ================= */
+.bem-modal { position: fixed; inset: 0; z-index: 100000; display: none; }
+.bem-modal.is-open { display: block; }
+.bem-modal-overlay {
+  position: absolute; inset: 0; background: rgba(16, 35, 63, .55);
+  backdrop-filter: blur(1px);
+}
+.bem-modal-box {
+  position: relative; z-index: 1; width: 92%; max-width: 780px;
+  margin: 6vh auto; background: #fff; border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(16, 35, 63, .35);
+  max-height: 86vh; display: flex; flex-direction: column;
+  animation: bemModalIn .16s ease-out;
+}
+@keyframes bemModalIn { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+.bem-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 22px; border-bottom: 1px solid #eef1f6;
+}
+.bem-modal-head h2 { font-size: 17px !important; color: #10233f !important; text-transform: none !important; letter-spacing: 0 !important; }
+.bem-modal-close {
+  border: none; background: transparent; cursor: pointer; font-size: 26px;
+  line-height: 1; color: #98a2b3; padding: 0 4px; border-radius: 8px;
+}
+.bem-modal-close:hover { color: #d63638; background: #f6f7fb; }
+.bem-modal-body { padding: 6px 22px 18px; overflow-y: auto; }
+.bem-modal-body .form-table th { width: 220px; }
+.bem-modal-actions {
+  display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+  margin-top: 12px; padding-top: 14px; border-top: 1px solid #eef1f6;
+}
+@media (max-width: 600px) {
+  .bem-modal-box { width: 96%; margin: 3vh auto; max-height: 92vh; }
+  .bem-modal-body .form-table th { width: auto; }
+}

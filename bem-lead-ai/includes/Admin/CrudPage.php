@@ -78,15 +78,35 @@ final class CrudPage
         $editId = isset($_GET['edit']) ? (int) $_GET['edit'] : 0;
         $editRow = $editId ? $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $editId)) : null;
 
+        $cleanUrl = admin_url('admin.php?page=bem-lead-ai-' . $slug);
+
         echo '<div class="wrap"><h1>' . esc_html($config['title']) . '</h1>';
 
         if ($slug === 'variants') {
             echo '<p>' . esc_html__('Le bandit teste ces variantes en continu et privilégie automatiquement celles qui reconvertissent le mieux. Impressions et conversions sont mises à jour automatiquement.', 'bem-lead-ai') . '</p>';
         }
 
-        // Formulaire d'édition / création.
-        echo '<h2>' . ($editRow ? esc_html__('Modifier', 'bem-lead-ai') : esc_html__('Ajouter', 'bem-lead-ai')) . '</h2>';
-        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="max-width:760px;">';
+        // Barre d'action : bouton d'ouverture de la modale d'ajout.
+        echo '<div class="bem-section-head" style="margin:8px 0 12px;">';
+        echo '<h2 style="margin:0;">' . esc_html__('Existants', 'bem-lead-ai') . '</h2>';
+        if ($editRow) {
+            // En mode édition : repartir d'un ajout vierge = revenir à la page propre.
+            echo '<a class="button button-primary" href="' . esc_url($cleanUrl) . '">＋ ' . esc_html__('Ajouter', 'bem-lead-ai') . '</a>';
+        } else {
+            echo '<button type="button" class="button button-primary" data-bem-modal-open="bem-crud-modal">＋ ' . esc_html__('Ajouter', 'bem-lead-ai') . '</button>';
+        }
+        echo '</div>';
+
+        // --- Modale de création / édition ---
+        $open = $editRow ? ' is-open' : '';
+        echo '<div class="bem-modal' . $open . '" id="bem-crud-modal" role="dialog" aria-modal="true" aria-labelledby="bem-crud-modal-title">';
+        echo '<div class="bem-modal-overlay" data-bem-modal-close></div>';
+        echo '<div class="bem-modal-box">';
+        echo '<div class="bem-modal-head"><h2 id="bem-crud-modal-title" style="margin:0;">'
+            . ($editRow ? esc_html__('Modifier', 'bem-lead-ai') : esc_html__('Ajouter', 'bem-lead-ai'))
+            . '</h2><button type="button" class="bem-modal-close" data-bem-modal-close aria-label="' . esc_attr__('Fermer', 'bem-lead-ai') . '">&times;</button></div>';
+        echo '<div class="bem-modal-body">';
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('bem_crud_' . $slug);
         echo '<input type="hidden" name="action" value="bem_crud_save"><input type="hidden" name="entity" value="' . esc_attr($slug) . '">';
         echo '<input type="hidden" name="id" value="' . (int) $editId . '"><table class="form-table">';
@@ -113,11 +133,16 @@ final class CrudPage
             echo '</td></tr>';
         }
         echo '</table>';
-        submit_button($editRow ? __('Enregistrer', 'bem-lead-ai') : __('Ajouter', 'bem-lead-ai'));
+        echo '<div class="bem-modal-actions">';
+        echo '<button type="button" class="button" data-bem-modal-close>' . esc_html__('Annuler', 'bem-lead-ai') . '</button> ';
+        submit_button($editRow ? __('Enregistrer', 'bem-lead-ai') : __('Ajouter', 'bem-lead-ai'), 'primary', 'submit', false);
+        echo '</div>';
         echo '</form>';
+        echo '</div></div></div>'; // body, box, modal
+
+        $this->modalScript();
 
         // Liste.
-        echo '<h2>' . esc_html__('Existants', 'bem-lead-ai') . '</h2>';
         $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY id ASC") ?: [];
         echo '<table class="widefat striped"><thead><tr><th>ID</th>';
         foreach ($config['columns'] as $col) {
@@ -140,6 +165,32 @@ final class CrudPage
             echo '<button type="submit" class="button-link delete" style="color:#b32d2e;">' . esc_html__('Supprimer', 'bem-lead-ai') . '</button></form></td></tr>';
         }
         echo '</tbody></table></div>';
+    }
+
+    /** Ouverture/fermeture de la modale (clic bouton, overlay, croix, Échap). */
+    private function modalScript(): void
+    {
+        ?>
+        <script>
+        (function () {
+            var modal = document.getElementById('bem-crud-modal');
+            if (!modal) { return; }
+            function open() { modal.classList.add('is-open'); document.body.style.overflow = 'hidden'; }
+            function close() { modal.classList.remove('is-open'); document.body.style.overflow = ''; }
+            document.querySelectorAll('[data-bem-modal-open="bem-crud-modal"]').forEach(function (b) {
+                b.addEventListener('click', open);
+            });
+            modal.querySelectorAll('[data-bem-modal-close]').forEach(function (b) {
+                b.addEventListener('click', close);
+            });
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && modal.classList.contains('is-open')) { close(); }
+            });
+            // Si la modale est déjà ouverte (mode édition), verrouille le défilement.
+            if (modal.classList.contains('is-open')) { document.body.style.overflow = 'hidden'; }
+        })();
+        </script>
+        <?php
     }
 
     public static function handleSave(): void
