@@ -46,8 +46,8 @@ final class CrudPage
                     'formation_label' => ['label' => 'Formation', 'type' => 'text'],
                     'frais_total' => ['label' => 'Frais total', 'type' => 'number'],
                     'devise' => ['label' => 'Devise', 'type' => 'text', 'default' => 'XOF'],
-                    'options_paiement' => ['label' => 'Plans de paiement (JSON: [{"label","detail"}])', 'type' => 'json'],
-                    'bourses' => ['label' => 'Bourses (JSON: [{"label","detail"}])', 'type' => 'json'],
+                    'options_paiement' => ['label' => 'Plans de paiement', 'type' => 'pairs', 'cols' => ['Intitulé (ex. Paiement en 3 fois)', 'Détail (ex. 40% à l\'inscription, 30% en janvier…)']],
+                    'bourses' => ['label' => 'Bourses', 'type' => 'pairs', 'cols' => ['Intitulé (ex. Bourse d\'excellence)', 'Détail (conditions, montant…)']],
                     'actif' => ['label' => 'Actif', 'type' => 'bool'],
                 ],
                 'columns' => ['formation_label', 'frais_total', 'devise', 'actif'],
@@ -117,6 +117,9 @@ final class CrudPage
             $value = $editRow->{$field} ?? ($meta['default'] ?? '');
             echo '<tr><th scope="row"><label>' . esc_html($meta['label']) . '</label></th><td>';
             switch ($meta['type']) {
+                case 'pairs':
+                    $this->renderPairs($field, (string) $value, $meta);
+                    break;
                 case 'json':
                 case 'textarea':
                     echo '<textarea name="f[' . esc_attr($field) . ']" rows="' . ($meta['type'] === 'json' ? 4 : 3) . '" class="large-text code">' . esc_textarea((string) $value) . '</textarea>';
@@ -141,6 +144,7 @@ final class CrudPage
         echo '</div></div></div>'; // body, box, modal
 
         $this->modalScript();
+        $this->repeaterScript();
 
         // Liste.
         $rows = $wpdb->get_results("SELECT * FROM {$table} ORDER BY id ASC") ?: [];
@@ -165,6 +169,82 @@ final class CrudPage
             echo '<button type="submit" class="button-link delete" style="color:#b32d2e;">' . esc_html__('Supprimer', 'bem-lead-ai') . '</button></form></td></tr>';
         }
         echo '</tbody></table></div>';
+    }
+
+    /**
+     * Champ « pairs » : formulaire visuel à lignes (Intitulé + Détail) au lieu
+     * d'un JSON brut. Enregistré en JSON [{"label","detail"}] côté serveur.
+     */
+    private function renderPairs(string $field, string $value, array $meta): void
+    {
+        $items = json_decode($value, true);
+        if (!is_array($items)) {
+            $items = [];
+        }
+        $cols = $meta['cols'] ?? [__('Intitulé', 'bem-lead-ai'), __('Détail', 'bem-lead-ai')];
+
+        echo '<div class="bem-repeater">';
+        echo '<div class="bem-repeater-rows">';
+        $i = 0;
+        foreach ($items as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            echo $this->pairRow($field, (string) $i, (string) ($item['label'] ?? ''), (string) ($item['detail'] ?? ''), $cols);
+            $i++;
+        }
+        if ($i === 0) {
+            echo $this->pairRow($field, '0', '', '', $cols); // au moins une ligne vierge
+            $i = 1;
+        }
+        echo '</div>';
+        echo '<button type="button" class="button bem-repeater-add">＋ ' . esc_html__('Ajouter une ligne', 'bem-lead-ai') . '</button>';
+        // Modèle cloné par JS (index remplacé au clic) — inerte tant qu'inutilisé.
+        echo '<template>' . $this->pairRow($field, '__i__', '', '', $cols) . '</template>';
+        echo '<input type="hidden" class="bem-repeater-next" value="' . (int) $i . '" disabled>';
+        echo '</div>';
+    }
+
+    /** Une ligne du répéteur (deux champs + suppression). */
+    private function pairRow(string $field, string $index, string $label, string $detail, array $cols): string
+    {
+        $base = 'f[' . $field . '][' . $index . ']';
+        return '<div class="bem-repeater-row">'
+            . '<input type="text" class="bem-rep-label" name="' . esc_attr($base . '[label]') . '" value="' . esc_attr($label) . '" placeholder="' . esc_attr((string) ($cols[0] ?? '')) . '">'
+            . '<input type="text" class="bem-rep-detail" name="' . esc_attr($base . '[detail]') . '" value="' . esc_attr($detail) . '" placeholder="' . esc_attr((string) ($cols[1] ?? '')) . '">'
+            . '<button type="button" class="bem-repeater-del" aria-label="' . esc_attr__('Supprimer la ligne', 'bem-lead-ai') . '">&times;</button>'
+            . '</div>';
+    }
+
+    /** Ajout/suppression dynamique des lignes des répéteurs de la page. */
+    private function repeaterScript(): void
+    {
+        ?>
+        <script>
+        (function () {
+            document.querySelectorAll('.bem-repeater').forEach(function (rep) {
+                var add = rep.querySelector('.bem-repeater-add');
+                var tpl = rep.querySelector('template');
+                var next = rep.querySelector('.bem-repeater-next');
+                var rows = rep.querySelector('.bem-repeater-rows');
+                if (add && tpl && rows) {
+                    add.addEventListener('click', function () {
+                        var idx = (next ? parseInt(next.value, 10) : 0) || 0;
+                        rows.insertAdjacentHTML('beforeend', tpl.innerHTML.replace(/__i__/g, idx));
+                        if (next) { next.value = idx + 1; }
+                    });
+                }
+                rep.addEventListener('click', function (e) {
+                    var t = e.target;
+                    if (t && t.classList && t.classList.contains('bem-repeater-del')) {
+                        var row = t.closest('.bem-repeater-row');
+                        if (row) { row.remove(); }
+                    }
+                });
+            });
+        })();
+        </script>
+        <?php
     }
 
     /** Ouverture/fermeture de la modale (clic bouton, overlay, croix, Échap). */
@@ -207,13 +287,32 @@ final class CrudPage
 
         global $wpdb;
         $table = $wpdb->prefix . $config['table'];
-        $input = (array) ($_POST['f'] ?? []);
+        // wp_unslash : WordPress ajoute des antislashs à $_POST. Sans ça, le JSON
+        // et les apostrophes seraient corrompus à l'enregistrement.
+        $input = wp_unslash((array) ($_POST['f'] ?? []));
         $data = [];
         foreach ($config['fields'] as $field => $meta) {
             if (in_array($field, $config['readonly'] ?? [], true)) {
                 continue;
             }
             switch ($meta['type']) {
+                case 'pairs':
+                    $pairs = [];
+                    $raw = $input[$field] ?? [];
+                    if (is_array($raw)) {
+                        foreach ($raw as $item) {
+                            if (!is_array($item)) {
+                                continue;
+                            }
+                            $label = trim(sanitize_text_field((string) ($item['label'] ?? '')));
+                            $detail = trim(sanitize_text_field((string) ($item['detail'] ?? '')));
+                            if ($label !== '' || $detail !== '') {
+                                $pairs[] = ['label' => $label, 'detail' => $detail];
+                            }
+                        }
+                    }
+                    $data[$field] = wp_json_encode($pairs);
+                    break;
                 case 'bool':
                     $data[$field] = isset($input[$field]) ? 1 : 0;
                     break;

@@ -567,3 +567,20 @@
   .bem-modal-box { width: 96%; margin: 3vh auto; max-height: 92vh; }
   .bem-modal-body .form-table th { width: auto; }
 }
+
+/* ================= Répéteur (formulaire visuel à lignes) ================= */
+.bem-repeater-rows { display: flex; flex-direction: column; gap: 8px; }
+.bem-repeater-row { display: flex; gap: 8px; align-items: center; }
+.bem-repeater-row input { margin: 0 !important; }
+.bem-rep-label { flex: 1 1 34%; min-width: 0; }
+.bem-rep-detail { flex: 1 1 66%; min-width: 0; }
+.bem-repeater-del {
+  flex: 0 0 auto; width: 30px; height: 30px; border: 1px solid #e2c2c2; border-radius: 6px;
+  background: #fff; color: #b32d2e; font-size: 18px; line-height: 1; cursor: pointer;
+}
+.bem-repeater-del:hover { background: #fbeaea; border-color: #d99; }
+.bem-repeater-add { margin-top: 10px !important; }
+@media (max-width: 600px) {
+  .bem-repeater-row { flex-wrap: wrap; }
+  .bem-rep-label, .bem-rep-detail { flex: 1 1 100%; }
+}
