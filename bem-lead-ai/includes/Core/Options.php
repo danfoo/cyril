@@ -18,6 +18,7 @@ final class Options
         'perfex_api_key',
         'hubspot_api_key',
         'crm_webhook_secret',
+        'license_key',
     ];
 
     /**
@@ -53,6 +54,8 @@ final class Options
             'school_location' => 'Conakry, Guinée',
             // Logo affiché en haut de l'administration (School IA / Maestro Dan).
             'brand_logo_url' => '',
+            // Licence (abonnement annuel) — clé chiffrée au repos.
+            'license_key' => '',
             // IA
             'anthropic_api_key' => '',
             'chat_model' => 'claude-sonnet-5',

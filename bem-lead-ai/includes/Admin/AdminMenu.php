@@ -29,6 +29,11 @@ final class AdminMenu
         add_action('admin_post_bem_purge_anon', [DashboardPage::class, 'handlePurgeAnonymous']);
         // Export de la liste des leads (CSV / Excel), filtres conservés.
         add_action('admin_post_bem_export_leads', [LeadExporter::class, 'handleExport']);
+        // Licence (abonnement annuel) : activation, désactivation, revalidation.
+        add_action('admin_notices', ['\BemLeadAi\License\LicensePage', 'notice']);
+        add_action('admin_post_bem_license_activate', ['\BemLeadAi\License\LicensePage', 'handleActivate']);
+        add_action('admin_post_bem_license_deactivate', ['\BemLeadAi\License\LicensePage', 'handleDeactivate']);
+        add_action('admin_post_bem_license_refresh', ['\BemLeadAi\License\LicensePage', 'handleRefresh']);
         // CRM natif : actions de suivi sur la fiche lead.
         add_action('admin_post_bem_crm_stage', [DashboardPage::class, 'handleCrmStage']);
         add_action('admin_post_bem_crm_assign', [DashboardPage::class, 'handleCrmAssign']);
@@ -102,5 +107,6 @@ final class AdminMenu
 
         add_submenu_page('bem-lead-ai', __('Réglages', 'bem-lead-ai'), __('Réglages', 'bem-lead-ai'), 'manage_options', 'bem-lead-ai-settings', [new SettingsPage(), 'render']);
         add_submenu_page('bem-lead-ai', __('Assistant de configuration', 'bem-lead-ai'), __('Assistant de configuration', 'bem-lead-ai'), 'manage_options', SetupWizard::PAGE, [new SetupWizard(), 'render']);
+        add_submenu_page('bem-lead-ai', __('Licence', 'bem-lead-ai'), __('Licence', 'bem-lead-ai'), 'manage_options', \BemLeadAi\License\LicensePage::PAGE, [new \BemLeadAi\License\LicensePage(), 'render']);
     }
 }

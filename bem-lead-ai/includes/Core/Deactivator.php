@@ -12,6 +12,7 @@ final class Deactivator
         wp_clear_scheduled_hook('bem_lead_ai_cron_rebuild_kb');
         wp_clear_scheduled_hook('bem_lead_ai_cron_bandit');
         wp_clear_scheduled_hook('bem_lead_ai_cron_crm_tasks');
+        wp_clear_scheduled_hook('bem_lead_ai_cron_license');
         flush_rewrite_rules();
     }
 }

@@ -54,6 +54,12 @@ final class Plugin
             (new AdminMenu())->register();
         }
 
+        // Mises à jour automatiques depuis le serveur de licences maison.
+        (new \BemLeadAi\License\Updater())->register();
+
+        // Revalidation périodique de la licence (abonnement annuel).
+        add_action('bem_lead_ai_cron_license', ['\BemLeadAi\License\LicenseClient', 'validate']);
+
         // Capture des leads depuis les plugins de formulaires (Gravity Forms, etc.).
         (new \BemLeadAi\Integrations\FormCapture())->register();
 

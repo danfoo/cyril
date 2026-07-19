@@ -510,3 +510,24 @@
 /* ================= Boutons d'export / icônes dans boutons ================= */
 .bem-admin-page .button .bem-ico { width: 15px; height: 15px; vertical-align: -3px; }
 .bem-export-actions { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+
+/* ================= Licence ================= */
+.bem-license-card {
+  background: #fff; border: 1px solid #e2e7f0; border-left-width: 5px; border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(16,35,63,.06); padding: 18px 22px; max-width: 760px; margin: 8px 0 18px;
+}
+.bem-license-ok   { border-left-color: #00a32a; }
+.bem-license-warn { border-left-color: #dba617; }
+.bem-license-off  { border-left-color: #98a2b3; }
+.bem-license-head { display: flex; align-items: center; gap: 14px; }
+.bem-license-head .bem-ico { width: 30px; height: 30px; flex: 0 0 auto; }
+.bem-license-ok  .bem-license-head .bem-ico { color: #00a32a; }
+.bem-license-warn .bem-license-head .bem-ico,
+.bem-license-off .bem-license-head .bem-ico { color: #dba617; }
+.bem-license-state { font-size: 16px; font-weight: 700; color: #10233f; }
+.bem-license-sub { color: #5b6577; font-size: 13px; margin-top: 2px; }
+.bem-license-renew {
+  margin: 12px 0 0; padding: 10px 14px; background: #fff8e5; border: 1px solid #f0d98a;
+  border-radius: 10px; color: #7a5c00; font-size: 13.5px; max-width: 760px;
+}
+.bem-license-form { max-width: 760px; }

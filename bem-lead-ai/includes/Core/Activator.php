@@ -48,6 +48,10 @@ final class Activator
             // Rappels quotidiens des tâches de suivi à échéance.
             wp_schedule_event(time() + 1200, 'daily', 'bem_lead_ai_cron_crm_tasks');
         }
+        if (!wp_next_scheduled('bem_lead_ai_cron_license')) {
+            // Revalidation quotidienne de la licence (expiration, révocation).
+            wp_schedule_event(time() + 1500, 'daily', 'bem_lead_ai_cron_license');
+        }
 
         // (Re)construction du catalogue différée : à `plugins_loaded` les CPT
         // (ex. « formation ») ne sont pas encore enregistrés. On la planifie ;

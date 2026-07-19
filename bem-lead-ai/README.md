@@ -24,6 +24,7 @@ Plugin WordPress qui transforme le site de **BEM Dakar** en conseiller d'orienta
 | Connecteurs CRM : Perfex (prioritaire), HubSpot (optionnel) | `Crm\*` |
 | **Assistant de configuration** en 4 étapes au premier lancement (réexécutable) | `Admin\SetupWizard` |
 | **Export des leads** en CSV (Excel-compatible, BOM UTF-8) et **XLSX natif**, filtres conservés | `Admin\LeadExporter` |
+| **Licence & mises à jour automatiques** (abonnement annuel, serveur maison, dégradation douce) | `License\LicenseClient`, `License\Updater`, `License\LicensePage` |
 
 ## Architecture (résumé)
 

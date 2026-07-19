@@ -3,7 +3,7 @@
  * Plugin Name:       School IA — Conseiller IA & CRM d'admission
  * Plugin URI:        https://maestrodan.art
  * Description:       Transforme le site d'une école en conseiller d'orientation actif : chatbot IA ancré dans le catalogue (contexte + cache LLM), lead scoring comportemental et intentionnel, CRM d'admission natif, escalade humaine, passerelle WhatsApp, veille concurrentielle et relances auto-apprenantes. Modèles Claude et design du widget configurables. Nom de l'école modifiable dans les réglages.
- * Version:           2.11.0
+ * Version:           2.12.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Maestro Dan
@@ -15,7 +15,7 @@
 
 defined('ABSPATH') || exit;
 
-define('BEM_LEAD_AI_VERSION', '2.11.0');
+define('BEM_LEAD_AI_VERSION', '2.12.0');
 // Marque produit (éditeur : Maestro Dan). Les identifiants internes (slug,
 // options, namespace) restent inchangés pour préserver les données existantes.
 define('BEM_LEAD_AI_BRAND', 'School IA');
@@ -24,6 +24,11 @@ define('BEM_LEAD_AI_FILE', __FILE__);
 define('BEM_LEAD_AI_DIR', plugin_dir_path(__FILE__));
 define('BEM_LEAD_AI_URL', plugin_dir_url(__FILE__));
 define('BEM_LEAD_AI_REST_NS', 'bem-lead-ai/v1');
+// Serveur de licences (édité par Maestro Dan). Surchargable via le filtre
+// `bem_lead_ai_license_server` ou en redéfinissant la constante avant chargement.
+defined('BEM_LEAD_AI_LICENSE_SERVER') || define('BEM_LEAD_AI_LICENSE_SERVER', 'https://maestrodan.art');
+// Identifiant produit reconnu par le serveur de licences.
+defined('BEM_LEAD_AI_PRODUCT_SLUG') || define('BEM_LEAD_AI_PRODUCT_SLUG', 'school-ia');
 
 require_once BEM_LEAD_AI_DIR . 'includes/Core/Autoloader.php';
 \BemLeadAi\Core\Autoloader::register();
