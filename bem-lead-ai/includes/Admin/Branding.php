@@ -50,7 +50,7 @@ final class Branding
         return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 
-    /** Barre de marque affichée en haut des pages d'administration du plugin. */
+    /** Logo + navigation horizontale, en haut des pages d'administration. */
     public static function bar(): void
     {
         $logo = self::logoUrl();
@@ -63,5 +63,33 @@ final class Branding
                 . '<span class="bem-brand-by">' . esc_html(sprintf(__('par %s', 'bem-lead-ai'), self::vendor())) . '</span></span>';
         }
         echo '</div>';
+        self::nav();
+    }
+
+    /** Barre de navigation horizontale (onglets des sections du CRM). */
+    public static function nav(): void
+    {
+        $current = isset($_GET['page']) ? sanitize_text_field((string) $_GET['page']) : '';
+        $items = [
+            'bem-lead-ai'             => __('Tableau de bord', 'bem-lead-ai'),
+            'bem-lead-ai-leads'       => __('Leads', 'bem-lead-ai'),
+            'bem-lead-ai-inbox'       => __('Inbox conseiller', 'bem-lead-ai'),
+            'bem-lead-ai-competitors' => __('Veille concurrentielle', 'bem-lead-ai'),
+            'bem-lead-ai-settings'    => __('Réglages', 'bem-lead-ai'),
+        ];
+        echo '<nav class="bem-topnav"><div class="bem-topnav-inner">';
+        foreach ($items as $slug => $label) {
+            $active = $current === $slug ? ' is-active' : '';
+            echo '<a class="bem-topnav-link' . $active . '" href="' . esc_url(admin_url('admin.php?page=' . $slug)) . '">' . esc_html($label) . '</a>';
+        }
+        echo '</div></nav>';
+    }
+
+    /** Pied de page « VERSION DU CRM x.y.z ». */
+    public static function footer(): void
+    {
+        $version = defined('BEM_LEAD_AI_VERSION') ? BEM_LEAD_AI_VERSION : '';
+        echo '<div class="bem-crm-footer">' . esc_html(sprintf(__('Version du CRM %s', 'bem-lead-ai'), $version))
+            . ' · ' . esc_html(self::name()) . ' ' . esc_html__('par', 'bem-lead-ai') . ' ' . esc_html(self::vendor()) . '</div>';
     }
 }

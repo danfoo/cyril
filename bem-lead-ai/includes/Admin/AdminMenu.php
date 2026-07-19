@@ -10,6 +10,7 @@ final class AdminMenu
     {
         add_action('admin_menu', [$this, 'addMenus']);
         add_action('in_admin_header', [$this, 'brandBar']);
+        add_action('admin_footer', [$this, 'brandFooter']);
         add_action('admin_post_bem_save_settings', [SettingsPage::class, 'handleSave']);
         add_action('admin_post_bem_crud_save', [CrudPage::class, 'handleSave']);
         add_action('admin_post_bem_crud_delete', [CrudPage::class, 'handleDelete']);
@@ -48,10 +49,23 @@ final class AdminMenu
     /** Barre de marque (School IA) en haut des pages du plugin uniquement. */
     public function brandBar(): void
     {
-        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
-        if ($screen && str_contains((string) $screen->id, 'bem-lead-ai')) {
+        if ($this->onPluginPage()) {
             Branding::bar();
         }
+    }
+
+    /** Pied de page « Version du CRM » sur les pages du plugin. */
+    public function brandFooter(): void
+    {
+        if ($this->onPluginPage()) {
+            Branding::footer();
+        }
+    }
+
+    private function onPluginPage(): bool
+    {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        return $screen && str_contains((string) $screen->id, 'bem-lead-ai');
     }
 
     public function addMenus(): void
