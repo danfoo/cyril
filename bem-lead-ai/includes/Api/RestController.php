@@ -129,8 +129,12 @@ final class RestController
         $adapter = new ChannelAdapter();
         $lead = $adapter->resolveWebLead($sessionId);
 
-        // Écrire au chat vaut consentement d'échange ; le tracking navigation
-        // reste soumis au consentement explicite du bandeau.
+        // Écrire au chat = engagement réel : c'est ce message (pas la navigation)
+        // qui fait naître le lead. On marque le consentement d'échange.
+        if ((int) $lead->consent !== 1) {
+            (new LeadRepository())->update((int) $lead->id, ['consent' => 1]);
+        }
+
         $email = $request->get_param('email');
         $phone = $request->get_param('phone');
         if ($email || $phone) {
@@ -225,35 +229,38 @@ final class RestController
 
         $adapter = new ChannelAdapter();
         $leads = new LeadRepository();
-
-        // Le lead n'est CRÉÉ qu'au consentement explicite (opt-in). Les autres
-        // événements ne font que compléter un lead déjà consentant — un simple
-        // ping sans opt-in ne crée donc jamais de fiche (fini les faux leads).
-        if ($type === 'consent_given') {
-            $lead = $adapter->resolveWebLead($sessionId);
-            $leads->update((int) $lead->id, ['consent' => 1]);
-            return rest_ensure_response(['ok' => true]);
-        }
-
-        $lead = $leads->findBySessionId($sessionId);
-        if (!$lead) {
-            return rest_ensure_response(['ok' => false, 'reason' => 'no_lead']);
-        }
-
-        // Loi n°2008-12 : pas de tracking comportemental sans consentement.
-        if ((int) $lead->consent !== 1) {
-            return rest_ensure_response(['ok' => false, 'reason' => 'no_consent']);
-        }
-
         $payload = $request->get_param('payload');
         $payload = is_array($payload) ? array_map('sanitize_text_field', array_filter($payload, 'is_scalar')) : [];
 
+        // RÈGLE CLÉ : un lead n'est JAMAIS créé par la navigation ou l'acceptation
+        // du bandeau. Seul un ENGAGEMENT réel crée une fiche : message de chat,
+        // formulaire, ou communication de coordonnées. Résultat : plus de leads
+        // « anonymes » à score 0/1 issus de simples visites (ou de bots à UA
+        // de navigateur qui échappent au filtre User-Agent).
+
+        // Coordonnées fournies = engagement → on crée/compléte le lead.
         if ($type === 'email_captured' && !empty($payload['email'])) {
+            $lead = $leads->findBySessionId($sessionId) ?: $adapter->resolveWebLead($sessionId);
+            $leads->update((int) $lead->id, ['consent' => 1]);
             $adapter->attachIdentity($lead, (string) $payload['email'], null);
             return rest_ensure_response(['ok' => true]);
         }
         if ($type === 'phone_captured' && !empty($payload['phone'])) {
+            $lead = $leads->findBySessionId($sessionId) ?: $adapter->resolveWebLead($sessionId);
+            $leads->update((int) $lead->id, ['consent' => 1]);
             $adapter->attachIdentity($lead, null, (string) $payload['phone']);
+            return rest_ensure_response(['ok' => true]);
+        }
+
+        // Tous les autres événements (consentement, page vue, temps, CTA…) ne
+        // sont enregistrés que pour un lead DÉJÀ engagé — sinon on ne crée rien.
+        $lead = $leads->findBySessionId($sessionId);
+        if (!$lead) {
+            return rest_ensure_response(['ok' => false, 'reason' => 'not_engaged']);
+        }
+
+        if ($type === 'consent_given') {
+            $leads->update((int) $lead->id, ['consent' => 1]);
             return rest_ensure_response(['ok' => true]);
         }
 
