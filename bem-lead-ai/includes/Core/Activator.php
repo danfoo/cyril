@@ -274,6 +274,7 @@ final class Activator
                 ['Message envoyé au conseiller IA', 'event', ['event_type' => 'chat_message'], 3],
                 ['Email capturé', 'event', ['event_type' => 'email_captured'], 20],
                 ['Téléphone capturé', 'event', ['event_type' => 'phone_captured'], 15],
+                ['Formulaire soumis (Gravity Forms, CF7…)', 'event', ['event_type' => 'form_submitted'], 18],
                 ['Bascule vers WhatsApp (forte intention)', 'event', ['event_type' => 'whatsapp_handoff_clicked'], 14],
             ];
             foreach ($rules as [$nom, $type, $cond, $poids]) {

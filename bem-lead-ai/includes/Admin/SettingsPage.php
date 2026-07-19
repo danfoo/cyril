@@ -32,6 +32,12 @@ final class SettingsPage
         if (isset($_GET['rebuilt'])) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Catalogue reconstruit.', 'bem-lead-ai') . '</p></div>';
         }
+        if (isset($_GET['purged'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Tous les leads ont été supprimés.', 'bem-lead-ai') . '</p></div>';
+        }
+        if (isset($_GET['cleaned'])) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html(sprintf(__('%d lead(s) sans engagement supprimé(s).', 'bem-lead-ai'), (int) $_GET['cleaned'])) . '</p></div>';
+        }
 
         // Diagnostic de persistance visible (valeur réellement stockée en base).
         $persisted = Options::persistedFromDb();
@@ -92,6 +98,11 @@ final class SettingsPage
             $this->number('kb_max_chars_per_post', 'Caractères max par page', $o),
             $this->textarea('program_links', 'Liens des programmes — une ligne par programme : Nom du programme | https://…', $o),
         ], __('Le contenu des formations est injecté dans le prompt et mis en cache côté Claude. Ajoutez les liens de vos programmes ci-dessus : le conseiller les partagera (cliquables) quand il recommande un programme.', 'bem-lead-ai'));
+
+        // --- Intégrations formulaires ---
+        $this->section(__('Formulaires (Gravity Forms, Contact Form 7, WPForms, Ninja Forms)', 'bem-lead-ai'), [
+            $this->checkbox('capture_forms', 'Capturer les leads des formulaires', $o),
+        ], __('Quand un visiteur soumet un de vos formulaires, School IA crée automatiquement un lead (email, téléphone, prénom, formation détectés) — aucune configuration par formulaire nécessaire. La détection est automatique dès que le plugin de formulaire est actif.', 'bem-lead-ai'));
 
         // --- Scoring ---
         $this->section(__('Scoring (logique marketing)', 'bem-lead-ai'), [
@@ -179,8 +190,52 @@ final class SettingsPage
         echo '<tr><th>' . esc_html__('Retour CRM (statut inscrit)', 'bem-lead-ai') . '</th><td><code>' . esc_html(rest_url(BEM_LEAD_AI_REST_NS . '/crm-status-webhook')) . '</code> <em>(header <code>X-Bem-Secret</code>)</em></td></tr>';
         echo '</tbody></table>';
 
+        $this->renderMaintenance();
+
         echo '</div>';
         $this->mediaPickerScript();
+    }
+
+    /** Zone de maintenance des données (déplacée ici pour éviter les clics accidentels). */
+    private function renderMaintenance(): void
+    {
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        global $wpdb;
+        $p = $wpdb->prefix;
+        $postUrl = esc_url(admin_url('admin-post.php'));
+
+        echo '<hr><h2 style="color:#d63638;">' . esc_html__('Maintenance des données (zone sensible)', 'bem-lead-ai') . '</h2>';
+        echo '<div class="bem-panel-card" style="max-width:820px;border-color:#f3c2c2;">';
+
+        // Nettoyage ciblé des leads sans engagement (robots/bruit).
+        $anon = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$p}bem_leads l
+             WHERE l.email IS NULL AND l.phone IS NULL AND (l.prenom IS NULL OR l.prenom = '')
+               AND NOT EXISTS (SELECT 1 FROM {$p}bem_chat_messages m WHERE m.lead_id = l.id)"
+        );
+        echo '<p><strong>' . esc_html__('Nettoyer les leads sans engagement', 'bem-lead-ai') . '</strong><br>'
+            . '<span class="description">' . esc_html__('Supprime uniquement les fiches anonymes — sans email/téléphone ni conversation — typiquement du trafic robot. Vos vrais leads sont conservés.', 'bem-lead-ai') . '</span></p>';
+        echo '<form method="post" action="' . $postUrl . '" style="margin:0 0 18px;" '
+            . 'onsubmit="return confirm(\'' . esc_js(__('Supprimer les leads anonymes sans conversation ni coordonnées ?', 'bem-lead-ai')) . '\');">';
+        wp_nonce_field('bem_purge_anon');
+        echo '<input type="hidden" name="action" value="bem_purge_anon">';
+        submit_button(sprintf(__('Nettoyer les leads sans engagement (%d)', 'bem-lead-ai'), $anon), 'secondary', 'submit', false, $anon ? [] : ['disabled' => 'disabled']);
+        echo '</form>';
+
+        // Réinitialisation complète.
+        echo '<hr style="border:none;border-top:1px solid #f0e0e0;margin:16px 0;">';
+        echo '<p><strong style="color:#d63638;">' . esc_html__('Vider tous les leads (remise à zéro)', 'bem-lead-ai') . '</strong><br>'
+            . '<span class="description">' . esc_html__('Efface TOUS les leads, événements, conversations, tâches CRM et la veille. Règles, triggers, catalogue et réglages sont conservés. Irréversible.', 'bem-lead-ai') . '</span></p>';
+        echo '<form method="post" action="' . $postUrl . '" style="margin:0;" '
+            . 'onsubmit="return confirm(\'' . esc_js(__('Supprimer TOUS les leads, événements et conversations ? Cette action est irréversible.', 'bem-lead-ai')) . '\');">';
+        wp_nonce_field('bem_purge_leads');
+        echo '<input type="hidden" name="action" value="bem_purge_leads">';
+        submit_button(__('Vider tous les leads', 'bem-lead-ai'), 'delete', 'submit', false);
+        echo '</form>';
+
+        echo '</div>';
     }
 
     /* --- Rendu des champs --------------------------------------------- */
@@ -303,7 +358,7 @@ final class SettingsPage
         // et les antislashs s'accumulent à chaque enregistrement.
         $input = wp_unslash((array) ($_POST['s'] ?? []));
         $defaults = Options::defaults();
-        $checkboxes = ['whatsapp_enabled', 'widget_enabled'];
+        $checkboxes = ['whatsapp_enabled', 'widget_enabled', 'capture_forms'];
         $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill', 'program_links'];
         $clean = [];
         foreach ($defaults as $key => $default) {

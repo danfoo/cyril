@@ -54,6 +54,9 @@ final class Plugin
             (new AdminMenu())->register();
         }
 
+        // Capture des leads depuis les plugins de formulaires (Gravity Forms, etc.).
+        (new \BemLeadAi\Integrations\FormCapture())->register();
+
         add_action('wp_enqueue_scripts', [$this, 'enqueueWidget']);
 
         // Pipeline événement → scoring → triggers.

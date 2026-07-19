@@ -57,6 +57,8 @@ final class Options
             'anthropic_api_key' => '',
             'chat_model' => 'claude-sonnet-5',
             'classifier_model' => 'claude-haiku-4-5-20251001',
+            // Capture des leads depuis les formulaires (Gravity Forms, CF7, WPForms…)
+            'capture_forms' => 1,
             // Base de connaissance (catalogue en contexte, mis en cache LLM)
             'indexed_post_types' => 'formation,page',
             'onboarding_category' => 'onboarding',
