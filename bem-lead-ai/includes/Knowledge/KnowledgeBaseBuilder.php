@@ -37,6 +37,18 @@ final class KnowledgeBaseBuilder
         return $this->read()['built_at'] ?? null;
     }
 
+    /** Stats de la dernière construction (formations, onboarding, caractères). */
+    public function builtStats(): array
+    {
+        return (array) ($this->read()['stats'] ?? []);
+    }
+
+    /** Titres réellement indexés, par base — pour vérifier la fraîcheur. */
+    public function indexedTitles(): array
+    {
+        return (array) ($this->read()['titles'] ?? []);
+    }
+
     /** Lecture décodée (stockage JSON ASCII, formats hérités tolérés). */
     private function read(): array
     {
@@ -71,15 +83,23 @@ final class KnowledgeBaseBuilder
         ]);
 
         $blocks = ['formations' => [], 'onboarding' => []];
+        $titles = ['formations' => [], 'onboarding' => []];
         foreach ($posts as $post) {
             $kb = $this->knowledgeBaseFor($post);
             $blocks[$kb][] = $this->renderPost($post, $maxChars);
+            $titles[$kb][] = $post->post_title;
         }
 
         $store = [
             'formations' => $this->wrap('FORMATIONS BEM DAKAR', $blocks['formations']),
             'onboarding' => $this->wrap('ONBOARDING / VIE ADMINISTRATIVE — ÉTUDIANTS INSCRITS', $blocks['onboarding']),
             'built_at' => current_time('mysql'),
+            'titles' => $titles,
+            'stats' => [
+                'formations' => count($blocks['formations']),
+                'onboarding' => count($blocks['onboarding']),
+                'chars' => strlen($this->wrap('x', $blocks['formations'])) + strlen($this->wrap('x', $blocks['onboarding'])),
+            ],
         ];
         // Stockage JSON ASCII : robuste même si un contenu contient un emoji
         // (table wp_options en utf8 non-utf8mb4).

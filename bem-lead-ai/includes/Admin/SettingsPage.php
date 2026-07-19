@@ -91,6 +91,7 @@ final class SettingsPage
         );
 
         // --- Base de connaissance ---
+        $this->renderCatalogueStatus($kb);
         $this->section(__('Base de connaissance (catalogue en contexte)', 'bem-lead-ai'), [
             $this->text('indexed_post_types', 'Types de contenu inclus (csv)', $o),
             $this->text('onboarding_category', 'Catégorie/tag onboarding', $o),
@@ -181,15 +182,6 @@ final class SettingsPage
         submit_button(__('Enregistrer les réglages', 'bem-lead-ai'));
         echo '</form>';
 
-        // Reconstruction manuelle du catalogue.
-        echo '<hr><h2>' . esc_html__('Catalogue de connaissance', 'bem-lead-ai') . '</h2>';
-        echo '<p>' . esc_html__('Dernière reconstruction :', 'bem-lead-ai') . ' <code>' . esc_html((string) ($kb->builtAt() ?: '—')) . '</code></p>';
-        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
-        wp_nonce_field('bem_rebuild_kb');
-        echo '<input type="hidden" name="action" value="bem_rebuild_kb">';
-        submit_button(__('Reconstruire le catalogue maintenant', 'bem-lead-ai'), 'secondary');
-        echo '</form>';
-
         echo '<hr><h2>' . esc_html__('Webhook à configurer côté CRM', 'bem-lead-ai') . '</h2>';
         echo '<table class="widefat" style="max-width:820px;"><tbody>';
         echo '<tr><th>' . esc_html__('Retour CRM (statut inscrit)', 'bem-lead-ai') . '</th><td><code>' . esc_html(rest_url(BEM_LEAD_AI_REST_NS . '/crm-status-webhook')) . '</code> <em>(header <code>X-Bem-Secret</code>)</em></td></tr>';
@@ -199,6 +191,47 @@ final class SettingsPage
 
         echo '</div>';
         $this->mediaPickerScript();
+    }
+
+    /** État du catalogue : dernière reconstruction, contenus indexés, bouton. */
+    private function renderCatalogueStatus(KnowledgeBaseBuilder $kb): void
+    {
+        $builtAt = $kb->builtAt();
+        $stats = $kb->builtStats();
+        $titles = $kb->indexedTitles();
+        $nbForm = (int) ($stats['formations'] ?? 0);
+        $nbOnb = (int) ($stats['onboarding'] ?? 0);
+
+        echo '<div class="bem-panel-card bem-highlight" style="max-width:none;margin:10px 0 6px;">';
+        echo '<h3 style="display:flex;align-items:center;gap:8px;">' . \BemLeadAi\Admin\Icons::get('bulb') . ' ' . esc_html__('État du catalogue', 'bem-lead-ai') . '</h3>';
+
+        if (!$builtAt) {
+            echo '<p>' . esc_html__('Le catalogue n\'a pas encore été construit. Cliquez sur « Reconstruire le catalogue maintenant » ci-dessous.', 'bem-lead-ai') . '</p>';
+        } else {
+            echo '<p style="margin:0 0 6px;"><strong>' . esc_html__('Dernière mise à jour :', 'bem-lead-ai') . '</strong> '
+                . esc_html(mysql2date('d/m/Y à H:i', $builtAt)) . ' · '
+                . esc_html(sprintf(_n('%d formation', '%d formations', $nbForm, 'bem-lead-ai'), $nbForm)) . ' · '
+                . esc_html(sprintf(_n('%d contenu onboarding', '%d contenus onboarding', $nbOnb, 'bem-lead-ai'), $nbOnb)) . '</p>';
+
+            $formTitles = (array) ($titles['formations'] ?? []);
+            if ($formTitles) {
+                echo '<details><summary style="cursor:pointer;font-weight:600;">' . esc_html__('Voir les formations indexées', 'bem-lead-ai') . '</summary>';
+                echo '<ul style="margin:8px 0 0 18px;list-style:disc;">';
+                foreach ($formTitles as $t) {
+                    echo '<li>' . esc_html($t) . '</li>';
+                }
+                echo '</ul></details>';
+            }
+        }
+
+        // Bouton de reconstruction immédiate, ici pour la visibilité.
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:12px 0 0;">';
+        wp_nonce_field('bem_rebuild_kb');
+        echo '<input type="hidden" name="action" value="bem_rebuild_kb">';
+        submit_button(__('Reconstruire le catalogue maintenant', 'bem-lead-ai'), 'secondary', 'submit', false);
+        echo ' <span class="description">' . esc_html__('À faire après avoir modifié une formation si vous voulez forcer la prise en compte immédiate.', 'bem-lead-ai') . '</span>';
+        echo '</form>';
+        echo '</div>';
     }
 
     /** Zone de maintenance des données (déplacée ici pour éviter les clics accidentels). */
