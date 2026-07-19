@@ -39,6 +39,7 @@ final class AdminMenu
         add_action('admin_post_bem_crm_stage', [DashboardPage::class, 'handleCrmStage']);
         add_action('admin_post_bem_crm_assign', [DashboardPage::class, 'handleCrmAssign']);
         add_action('admin_post_bem_crm_note', [DashboardPage::class, 'handleCrmNote']);
+        add_action('admin_post_bem_crm_summarize', [DashboardPage::class, 'handleCrmSummarize']);
         add_action('admin_post_bem_crm_task', [DashboardPage::class, 'handleCrmTask']);
         add_action('admin_post_bem_crm_task_toggle', [DashboardPage::class, 'handleCrmTaskToggle']);
         add_action('admin_post_bem_crm_activity_delete', [DashboardPage::class, 'handleCrmActivityDelete']);

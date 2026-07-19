@@ -445,12 +445,21 @@ final class DashboardPage
         // ================= Colonne latérale : infos =================
         echo '<div class="bem-crm-side">';
 
-        // Résumé IA & approche recommandée (mis en évidence).
+        // Résumé IA & approche recommandée. Généré automatiquement pour les
+        // leads très chauds (économie d'appels LLM) ; générable à la demande
+        // ici pour n'importe quel lead.
         $summary = get_option('bem_lead_ai_last_summary_' . $leadId);
+        echo '<div class="bem-panel-card bem-highlight"><h3>' . Icons::get('bulb') . ' ' . esc_html__('Résumé IA & approche recommandée', 'bem-lead-ai') . '</h3>';
         if ($summary) {
-            echo '<div class="bem-panel-card bem-highlight"><h3>' . Icons::get('bulb') . ' ' . esc_html__('Résumé IA & approche recommandée', 'bem-lead-ai') . '</h3>';
-            echo '<div class="bem-highlight-body" style="white-space:pre-wrap;">' . esc_html($summary) . '</div></div>';
+            echo '<div class="bem-highlight-body" style="white-space:pre-wrap;">' . esc_html($summary) . '</div>';
+        } else {
+            echo '<p class="bem-highlight-body">' . esc_html__('Aucun résumé pour l\'instant. Il est généré automatiquement pour les leads très chauds (score élevé) ; vous pouvez le générer manuellement dès maintenant à partir de la conversation.', 'bem-lead-ai') . '</p>';
         }
+        echo '<form method="post" action="' . $postUrl . '" style="margin-top:10px;">';
+        echo '<input type="hidden" name="action" value="bem_crm_summarize"><input type="hidden" name="lead_id" value="' . (int) $leadId . '"><input type="hidden" name="_wpnonce" value="' . esc_attr($nonce) . '">';
+        echo '<button type="submit" class="button">' . Icons::get('cpu', 'bem-ico') . ' '
+            . ($summary ? esc_html__('Régénérer le résumé IA', 'bem-lead-ai') : esc_html__('Générer le résumé IA', 'bem-lead-ai')) . '</button>';
+        echo '</form></div>';
 
         // Responsable.
         echo '<div class="bem-panel-card"><h3>' . esc_html__('Responsable du suivi', 'bem-lead-ai') . '</h3>';
@@ -644,10 +653,15 @@ final class DashboardPage
             'task_toggle' => __('Tâche mise à jour.', 'bem-lead-ai'),
             'assign' => __('Responsable mis à jour.', 'bem-lead-ai'),
             'deleted' => __('Activité supprimée.', 'bem-lead-ai'),
+            'summarized' => __('Résumé IA généré.', 'bem-lead-ai'),
         ];
         $k = isset($_GET['crm']) ? sanitize_key((string) $_GET['crm']) : '';
         if (isset($map[$k])) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html($map[$k]) . '</p></div>';
+        } elseif ($k === 'summarize_error') {
+            echo '<div class="notice notice-error is-dismissible"><p>'
+                . esc_html__('Impossible de générer le résumé IA. Vérifiez que la clé API Claude est configurée et que le lead a une conversation.', 'bem-lead-ai')
+                . '</p></div>';
         }
     }
 
@@ -705,6 +719,19 @@ final class DashboardPage
             (new CrmRepository())->log($leadId, 'note', $content);
         }
         self::crmRedirect($leadId, 'note');
+    }
+
+    /** Génère (ou régénère) le résumé IA & l'approche recommandée à la demande. */
+    public static function handleCrmSummarize(): void
+    {
+        $leadId = (int) ($_POST['lead_id'] ?? 0);
+        self::crmGuard($leadId);
+        $summary = (new \BemLeadAi\Ai\Summarizer())->summarize($leadId);
+        if (is_string($summary) && trim($summary) !== '') {
+            update_option('bem_lead_ai_last_summary_' . $leadId, $summary, false);
+            self::crmRedirect($leadId, 'summarized');
+        }
+        self::crmRedirect($leadId, 'summarize_error');
     }
 
     public static function handleCrmTask(): void
