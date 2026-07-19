@@ -27,7 +27,7 @@ final class PerfexConnector implements CrmConnectorInterface
             'name' => trim(($lead->prenom ?: 'Lead') . ' #' . $lead->id),
             'email' => (string) ($lead->email ?? ''),
             'phonenumber' => (string) ($lead->phone ?? ''),
-            'source' => 'BEM Lead AI',
+            'source' => defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA',
             'description' => sprintf(
                 "Score: %s/100 (%s)\nFormation d'intérêt: %s\nCanaux: %s\nDernière activité: %s",
                 $lead->score_final,

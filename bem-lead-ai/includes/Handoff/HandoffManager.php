@@ -52,16 +52,17 @@ final class HandoffManager
             $lead->score_final,
             $inbox
         );
+        $brand = defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA';
         $to = (string) Options::get('admissions_email');
         if ($to) {
-            wp_mail($to, __('[BEM Lead AI] 🚨 Escalade humaine — réponse attendue', 'bem-lead-ai'), $body);
+            wp_mail($to, sprintf(__('[%s] Escalade humaine — réponse attendue', 'bem-lead-ai'), $brand), $body);
         }
         $slack = (string) Options::get('slack_webhook_url');
         if ($slack) {
             wp_remote_post($slack, [
                 'timeout' => 10,
                 'headers' => ['Content-Type' => 'application/json'],
-                'body' => wp_json_encode(['text' => "🚨 *Escalade humaine BEM Lead AI*\n" . $body]),
+                'body' => wp_json_encode(['text' => "*" . sprintf(__('Escalade humaine — %s', 'bem-lead-ai'), $brand) . "*\n" . $body]),
             ]);
         }
     }

@@ -20,7 +20,7 @@ final class SettingsPage
         $o = Options::all();
         $kb = new KnowledgeBaseBuilder();
 
-        echo '<div class="wrap"><h1>' . esc_html__('BEM Lead AI — Réglages', 'bem-lead-ai') . '</h1>';
+        echo '<div class="wrap"><h1>' . esc_html(Branding::name()) . ' — ' . esc_html__('Réglages', 'bem-lead-ai') . '</h1>';
 
         if (isset($_GET['saved'])) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Réglages enregistrés.', 'bem-lead-ai') . '</p></div>';
@@ -68,7 +68,8 @@ final class SettingsPage
         $this->section(__('Identité de l\'établissement', 'bem-lead-ai'), [
             $this->text('school_name', 'Nom de l\'école (ex. BEM Conakry)', $o),
             $this->text('school_location', 'Ville / pays (ex. Conakry, Guinée)', $o),
-        ], __('Ce nom est utilisé par le conseiller IA (« Je suis le conseiller de… ») et dans les messages. Renseignez-le correctement pour éviter toute confusion de ville.', 'bem-lead-ai'));
+            $this->image('brand_logo_url', 'Logo affiché en haut de l\'administration (School IA)', $o),
+        ], __('Le nom de l\'école est utilisé par le conseiller IA (« Je suis le conseiller de… ») et dans les messages. Le logo s\'affiche en haut des pages d\'administration ; laissez vide pour le logo School IA par défaut.', 'bem-lead-ai'));
 
         // --- IA ---
         $consoleLink = '<a href="' . esc_url(Options::ANTHROPIC_CONSOLE_URL) . '" target="_blank" rel="noopener">console.anthropic.com</a>';
@@ -319,7 +320,7 @@ final class SettingsPage
                     : $default;
             } elseif (str_ends_with($key, '_color')) {
                 $clean[$key] = sanitize_hex_color((string) ($input[$key] ?? '')) ?: $default;
-            } elseif ($key === 'widget_avatar_url') {
+            } elseif ($key === 'widget_avatar_url' || $key === 'brand_logo_url') {
                 $clean[$key] = esc_url_raw((string) ($input[$key] ?? ''));
             } elseif (in_array($key, $textareas, true)) {
                 $clean[$key] = sanitize_textarea_field((string) ($input[$key] ?? $default));

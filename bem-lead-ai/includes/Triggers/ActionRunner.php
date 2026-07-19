@@ -70,7 +70,8 @@ final class ActionRunner
 
         $to = (string) Options::get('admissions_email');
         if ($to) {
-            wp_mail($to, '[BEM Lead AI] ' . $subject, $body);
+            $brand = defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA';
+            wp_mail($to, '[' . $brand . '] ' . $subject, $body);
         }
 
         $slack = (string) Options::get('slack_webhook_url');

@@ -9,6 +9,7 @@ final class AdminMenu
     public function register(): void
     {
         add_action('admin_menu', [$this, 'addMenus']);
+        add_action('in_admin_header', [$this, 'brandBar']);
         add_action('admin_post_bem_save_settings', [SettingsPage::class, 'handleSave']);
         add_action('admin_post_bem_crud_save', [CrudPage::class, 'handleSave']);
         add_action('admin_post_bem_crud_delete', [CrudPage::class, 'handleDelete']);
@@ -44,15 +45,24 @@ final class AdminMenu
         }
     }
 
+    /** Barre de marque (School IA) en haut des pages du plugin uniquement. */
+    public function brandBar(): void
+    {
+        $screen = function_exists('get_current_screen') ? get_current_screen() : null;
+        if ($screen && str_contains((string) $screen->id, 'bem-lead-ai')) {
+            Branding::bar();
+        }
+    }
+
     public function addMenus(): void
     {
         add_menu_page(
-            'BEM Lead AI',
-            'BEM Lead AI',
+            Branding::name(),
+            Branding::name(),
             'edit_posts',
             'bem-lead-ai',
             [new DashboardPage(), 'render'],
-            'dashicons-networking',
+            Branding::menuIcon(),
             26
         );
         // Pas de callback ici : ce sous-menu partage le slug du menu principal.

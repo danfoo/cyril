@@ -51,6 +51,8 @@ final class Options
             // Identité de l'école (injectée dans les prompts et messages).
             'school_name' => 'BEM Conakry',
             'school_location' => 'Conakry, Guinée',
+            // Logo affiché en haut de l'administration (School IA / Maestro Dan).
+            'brand_logo_url' => '',
             // IA
             'anthropic_api_key' => '',
             'chat_model' => 'claude-sonnet-5',

@@ -334,3 +334,68 @@
 /* Bouton « marquer fait » : coche visible au survol */
 .bem-task-check { display: inline-flex; align-items: center; justify-content: center; }
 .bem-task-check-ico { width: 15px; height: 15px; }
+
+/* ================= Marque School IA (barre haute) ================= */
+.bem-brandbar {
+  display: flex; align-items: center; gap: 12px; margin: 10px 20px 0;
+}
+.bem-brand-badge {
+  width: 40px; height: 40px; border-radius: 11px; flex: 0 0 auto;
+  background: linear-gradient(135deg, #1b3a5b, #0f2740);
+  display: flex; align-items: center; justify-content: center; color: #c9a86a;
+  box-shadow: 0 4px 12px rgba(16, 35, 63, 0.18);
+}
+.bem-brand-badge .bem-ico { width: 22px; height: 22px; }
+.bem-brand-txt { display: flex; flex-direction: column; line-height: 1.1; }
+.bem-brand-name { font-size: 18px; font-weight: 800; color: #16324f; letter-spacing: -0.01em; }
+.bem-brand-by { font-size: 11px; font-weight: 600; color: #c9a86a; text-transform: uppercase; letter-spacing: 0.08em; }
+.bem-brand-logo { max-height: 44px; max-width: 240px; width: auto; }
+
+/* ================= Empty states ================= */
+.bem-empty-ico { width: 44px; height: 44px; color: #b3bccb; margin-bottom: 4px; }
+.bem-empty p { margin: 4px 0; }
+
+/* ================= Inbox conseiller ================= */
+.bem-inbox { max-width: 860px; margin: 0 auto; }
+.bem-inbox-card { max-width: none; margin-bottom: 18px; }
+.bem-inbox-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.bem-avatar-lg { width: 44px; height: 44px; font-size: 17px; }
+.bem-inbox-id { display: flex; flex-direction: column; line-height: 1.3; }
+.bem-inbox-id a { text-decoration: none; color: #16324f; }
+.bem-inbox-contact { font-size: 12.5px; color: #6b7688; }
+.bem-inbox-meta { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bem-inbox-time { font-size: 12px; color: #98a2b3; }
+.bem-badge-urgent { background: #d63638 !important; display: inline-flex; align-items: center; gap: 5px; }
+.bem-badge-urgent .bem-ico { width: 13px; height: 13px; }
+
+.bem-inbox-summary { border: 1px solid #ffe4a6; background: #fffaf0; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+.bem-inbox-summary > summary { cursor: pointer; font-weight: 700; color: #7a5c00; display: flex; align-items: center; gap: 8px; list-style: none; }
+.bem-inbox-summary > summary .bem-ico { width: 16px; height: 16px; color: #dba617; }
+.bem-inbox-summary > summary::-webkit-details-marker { display: none; }
+
+.bem-inbox-thread {
+  max-height: 320px; overflow-y: auto; border: 1px solid #eef1f6; border-radius: 12px;
+  padding: 8px 14px; margin-bottom: 14px; background: #fbfcfe;
+}
+.bem-inbox-thread .bem-tl { padding: 10px 0; }
+.bem-msg-agent .bem-tl-body { background: #eaf3ff; }
+.bem-msg-agent .bem-tl-ico { color: #0b6bcb; background: #d7e9ff; }
+
+.bem-inbox-reply textarea { border-radius: 10px !important; border: 1px solid #d3dae6 !important; }
+.bem-inbox-actions { margin-top: 10px; }
+.bem-admin-page .bem-inbox-actions .button-primary,
+.bem-admin-page .bem-inbox-close .button { display: inline-flex; align-items: center; gap: 6px; }
+.bem-admin-page .bem-inbox-actions .button-primary .bem-ico,
+.bem-admin-page .bem-inbox-close .button .bem-ico { width: 15px; height: 15px; }
+.bem-inbox-close { margin-top: 8px; }
+
+/* ================= Veille — extraits ================= */
+.bem-quote-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.bem-quote {
+  background: #fff; border: 1px solid #e6eaf2; border-radius: 12px; padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(16, 35, 63, 0.05);
+}
+.bem-quote-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.bem-quote-meta { font-size: 12px; color: #98a2b3; }
+.bem-quote-meta a { text-decoration: none; }
+.bem-quote-text { margin: 0; color: #3a4a63; font-style: italic; line-height: 1.5; }

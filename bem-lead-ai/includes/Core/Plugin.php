@@ -78,7 +78,7 @@ final class Plugin
         // Export / effacement des données personnelles (droit à l'oubli, loi n°2008-12).
         add_filter('wp_privacy_personal_data_erasers', function (array $erasers): array {
             $erasers['bem-lead-ai'] = [
-                'eraser_friendly_name' => 'BEM Lead AI',
+                'eraser_friendly_name' => defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA',
                 'callback' => ['\BemLeadAi\Privacy\PrivacyManager', 'eraseByEmail'],
             ];
             return $erasers;

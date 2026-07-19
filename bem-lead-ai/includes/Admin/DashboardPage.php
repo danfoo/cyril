@@ -29,7 +29,7 @@ final class DashboardPage
         $openHandoffs = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$p}bem_handoffs WHERE statut IN ('open','assigned')");
         $conversations7d = (int) $wpdb->get_var("SELECT COUNT(DISTINCT lead_id) FROM {$p}bem_chat_messages WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
 
-        echo '<div class="wrap"><h1>BEM Lead AI — ' . esc_html__('Tableau de bord', 'bem-lead-ai') . '</h1>';
+        echo '<div class="wrap"><h1>' . esc_html(Branding::name()) . ' — ' . esc_html__('Tableau de bord', 'bem-lead-ai') . '</h1>';
 
         if (isset($_GET['purged'])) {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__('Leads de test supprimés.', 'bem-lead-ai') . '</p></div>';
