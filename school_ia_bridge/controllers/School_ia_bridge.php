@@ -86,6 +86,7 @@ class School_ia_bridge extends AdminController
         $id = (int) $id;
         $stage = $this->input->get('stage');
         $lead = $this->school_ia_bridge_model->get_lead($id);
+        $done = false;
         if ($lead && $stage) {
             $this->school_ia_bridge_model->set_stage($id, $stage);
             $this->school_ia_bridge_model->add_activity(
@@ -94,6 +95,17 @@ class School_ia_bridge extends AdminController
                 'Étape → ' . $this->school_ia_bridge_model->stageLabel($stage),
                 get_staff_user_id()
             );
+            $done = true;
+        }
+
+        // Appel AJAX (glisser-déposer) : réponse JSON, pas de redirection.
+        if ($this->input->is_ajax_request() || $this->input->get('ajax')) {
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => $done]);
+            return;
+        }
+
+        if ($done) {
             set_alert('success', 'Étape mise à jour.');
         }
         redirect($this->input->get('back') === 'pipeline'
