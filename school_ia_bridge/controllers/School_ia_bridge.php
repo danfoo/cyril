@@ -264,6 +264,40 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/pipeline', $data);
     }
 
+    /** Formulaire d'ajout manuel d'un lead. */
+    public function new_lead()
+    {
+        $data['title']    = 'School IA — Ajouter un lead';
+        $data['programs'] = $this->school_ia_bridge_model->programs();
+        $data['model']    = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/lead_new', $data);
+    }
+
+    /** Enregistre le lead saisi manuellement (form Perfex → CSRF). */
+    public function store_lead()
+    {
+        $name  = trim((string) $this->input->post('name'));
+        $email = trim((string) $this->input->post('email'));
+        $phone = trim((string) $this->input->post('phone'));
+
+        if ($name === '' && $email === '' && $phone === '') {
+            set_alert('warning', 'Renseignez au moins un nom, un e-mail ou un téléphone.');
+            redirect(admin_url('school_ia_bridge/new_lead'));
+        }
+
+        $id = $this->school_ia_bridge_model->create_lead([
+            'name'      => $name,
+            'email'     => $email,
+            'phone'     => $phone,
+            'formation' => $this->input->post('formation'),
+            'score'     => $this->input->post('score'),
+            'stage'     => $this->input->post('stage'),
+        ]);
+        $this->school_ia_bridge_model->add_activity($id, 'note', 'Lead créé manuellement.', get_staff_user_id());
+        set_alert('success', 'Lead ajouté.');
+        redirect(admin_url('school_ia_bridge/lead/' . $id));
+    }
+
     /** Fiche détaillée d'un lead. */
     public function lead($id = 0)
     {

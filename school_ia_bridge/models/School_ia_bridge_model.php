@@ -208,6 +208,25 @@ class School_ia_bridge_model extends App_Model
         return $this->db->where('id', $id)->get($this->table())->row();
     }
 
+    /** Création manuelle d'un lead (saisie depuis le CRM). */
+    public function create_lead(array $d): int
+    {
+        $this->ensure_schema();
+        $stage = in_array($d['stage'] ?? '', array_keys($this->stages()), true) ? $d['stage'] : 'nouveau';
+        $this->db->insert($this->table(), [
+            'name'        => substr(trim((string) ($d['name'] ?? '')), 0, 191) ?: null,
+            'email'       => substr(trim((string) ($d['email'] ?? '')), 0, 191) ?: null,
+            'phone'       => substr(trim((string) ($d['phone'] ?? '')), 0, 64) ?: null,
+            'formation'   => substr(trim((string) ($d['formation'] ?? '')), 0, 191) ?: null,
+            'score'       => isset($d['score']) && $d['score'] !== '' ? (float) $d['score'] : 0,
+            'stage'       => $stage,
+            'source_site' => 'Saisie manuelle',
+            'payload'     => json_encode($d, JSON_UNESCAPED_UNICODE),
+            'received_at' => date('Y-m-d H:i:s'),
+        ]);
+        return (int) $this->db->insert_id();
+    }
+
     /** Leads groupés par étape du pipeline (pour le Kanban). */
     public function by_stage(): array
     {

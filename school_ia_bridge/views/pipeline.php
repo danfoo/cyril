@@ -14,7 +14,10 @@
           <h4 class="no-margin pull-left"><i class="fa fa-columns"></i> Pipeline d'admission
             <small class="text-muted">— glissez-déposez les cartes</small>
           </h4>
-          <a href="<?php echo admin_url('school_ia_bridge'); ?>" class="btn btn-default pull-right">
+          <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
+            <i class="fa fa-user-plus"></i> Ajouter un lead
+          </a>
+          <a href="<?php echo admin_url('school_ia_bridge'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
             <i class="fa fa-inbox"></i> Boîte de réception
           </a>
         </div>

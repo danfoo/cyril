@@ -9,7 +9,10 @@
           <div class="panel-body">
             <div class="clearfix">
               <h4 class="no-margin pull-left"><i class="fa fa-graduation-cap"></i> School IA — Boîte de réception</h4>
-              <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-primary pull-right">
+              <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
+                <i class="fa fa-user-plus"></i> Ajouter un lead
+              </a>
+              <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
                 <i class="fa fa-columns"></i> Voir le pipeline
               </a>
             </div>
