@@ -109,6 +109,21 @@
                   <input type="text" name="subject" id="sia-email-subject" class="form-control" style="margin-bottom:6px;"
                          value="À propos de <?php echo htmlspecialchars($formation, ENT_QUOTES); ?>">
                   <textarea name="message" id="sia-email-message" class="form-control" rows="5"><?php echo htmlspecialchars($mailBody, ENT_QUOTES); ?></textarea>
+
+                  <?php if (!empty($documents)) { ?>
+                    <div style="margin-top:8px;">
+                      <label class="control-label" style="display:block;"><i class="fa fa-paperclip"></i> Pièces jointes</label>
+                      <div style="max-height:140px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:6px;">
+                        <?php foreach ($documents as $doc) { ?>
+                          <label style="display:block; font-weight:normal; margin:2px 0;">
+                            <input type="checkbox" name="attachments[]" value="<?php echo (int) $doc->id; ?>">
+                            <?php echo htmlspecialchars(($doc->program ? $doc->program . ' · ' : '') . $doc->title, ENT_QUOTES); ?>
+                          </label>
+                        <?php } ?>
+                      </div>
+                    </div>
+                  <?php } ?>
+
                   <button type="submit" class="btn btn-primary" style="margin-top:8px;"><i class="fa fa-paper-plane"></i> Envoyer l'e-mail</button>
                   <span class="text-muted" style="margin-left:6px;">à <?php echo htmlspecialchars((string) $lead->email, ENT_QUOTES); ?></span>
                 <?php echo form_close(); ?>

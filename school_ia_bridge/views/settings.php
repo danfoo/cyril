@@ -35,6 +35,19 @@
 
         <div class="panel_s">
           <div class="panel-body">
+            <h4 class="no-margin"><i class="fa fa-graduation-cap"></i> Programmes</h4>
+            <hr class="hr-panel-heading" />
+            <p class="text-muted">Un programme par ligne. Ils servent à classer les documents.</p>
+            <?php echo form_open(admin_url('school_ia_bridge/save_settings')); ?>
+              <textarea name="programs" class="form-control" rows="5"
+                        placeholder="Ex.&#10;Licence Marketing&#10;Master Finance&#10;BTS Informatique"><?php echo htmlspecialchars((string) get_option('sia_programs'), ENT_QUOTES); ?></textarea>
+              <button type="submit" class="btn btn-primary" style="margin-top:8px;">Enregistrer les programmes</button>
+            <?php echo form_close(); ?>
+          </div>
+        </div>
+
+        <div class="panel_s">
+          <div class="panel-body">
             <h4 class="no-margin"><i class="fa fa-mobile"></i> SMS — LAfricaMobile</h4>
             <hr class="hr-panel-heading" />
             <?php echo form_open(admin_url('school_ia_bridge/save_settings')); ?>

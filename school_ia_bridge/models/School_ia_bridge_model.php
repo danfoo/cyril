@@ -82,6 +82,21 @@ class School_ia_bridge_model extends App_Model
                 $this->db->query('UPDATE `' . db_prefix() . 'school_ia_tasks` SET `due_at` = `due_date` WHERE `due_at` IS NULL AND `due_date` IS NOT NULL');
             }
         }
+        if (!$this->db->table_exists(db_prefix() . 'school_ia_documents')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_documents` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `program` varchar(191) DEFAULT NULL,
+                `title` varchar(255) NOT NULL,
+                `orig_name` varchar(255) DEFAULT NULL,
+                `stored_name` varchar(255) NOT NULL,
+                `mime` varchar(128) DEFAULT NULL,
+                `filesize` int(11) DEFAULT 0,
+                `staff_id` int(11) DEFAULT NULL,
+                `uploaded_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `program` (`program`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_templates')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_templates` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -227,6 +242,65 @@ class School_ia_bridge_model extends App_Model
             'staff_id'   => $staffId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    // ---------- Programmes & documents ----------
+
+    private function documentsTable(): string
+    {
+        return db_prefix() . 'school_ia_documents';
+    }
+
+    /** Liste des programmes paramétrés (une par ligne dans les réglages). */
+    public function programs(): array
+    {
+        $raw = (string) get_option('sia_programs');
+        $list = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $raw)));
+        return array_values(array_unique($list));
+    }
+
+    public function documents(?string $program = null): array
+    {
+        if ($program !== null && $program !== '') {
+            $this->db->where('program', $program);
+        }
+        return $this->db->order_by('uploaded_at', 'desc')->get($this->documentsTable())->result();
+    }
+
+    /** Documents groupés par programme (pour l'affichage). */
+    public function documents_grouped(): array
+    {
+        $grouped = [];
+        foreach ($this->documents() as $doc) {
+            $key = $doc->program ?: 'Sans programme';
+            $grouped[$key][] = $doc;
+        }
+        return $grouped;
+    }
+
+    public function get_document(int $id)
+    {
+        return $this->db->where('id', $id)->get($this->documentsTable())->row();
+    }
+
+    public function add_document(array $d): int
+    {
+        $this->db->insert($this->documentsTable(), [
+            'program'     => $d['program'] ?: null,
+            'title'       => substr((string) $d['title'], 0, 255),
+            'orig_name'   => substr((string) ($d['orig_name'] ?? ''), 0, 255),
+            'stored_name' => (string) $d['stored_name'],
+            'mime'        => substr((string) ($d['mime'] ?? ''), 0, 128),
+            'filesize'    => (int) ($d['filesize'] ?? 0),
+            'staff_id'    => $d['staff_id'] ?? null,
+            'uploaded_at' => date('Y-m-d H:i:s'),
+        ]);
+        return (int) $this->db->insert_id();
+    }
+
+    public function delete_document(int $id): void
+    {
+        $this->db->where('id', $id)->delete($this->documentsTable());
     }
 
     // ---------- Modèles e-mail / SMS ----------

@@ -55,13 +55,22 @@ class School_ia_bridge extends AdminController
     /** Enregistre les identifiants SMS (form Perfex → CSRF). */
     public function save_settings()
     {
-        update_option('sia_sms_accountid', trim((string) $this->input->post('sms_accountid')));
-        update_option('sia_sms_sender', trim((string) $this->input->post('sms_sender')));
+        // On ne met à jour que les champs réellement présents (formulaires
+        // distincts : SMS d'un côté, Programmes de l'autre).
+        if ($this->input->post('sms_accountid') !== null) {
+            update_option('sia_sms_accountid', trim((string) $this->input->post('sms_accountid')));
+        }
+        if ($this->input->post('sms_sender') !== null) {
+            update_option('sia_sms_sender', trim((string) $this->input->post('sms_sender')));
+        }
         $pwd = (string) $this->input->post('sms_password');
         if ($pwd !== '') { // ne pas écraser si laissé vide
             update_option('sia_sms_password', $pwd);
         }
-        set_alert('success', 'Réglages SMS enregistrés.');
+        if ($this->input->post('programs') !== null) {
+            update_option('sia_programs', (string) $this->input->post('programs'));
+        }
+        set_alert('success', 'Réglages enregistrés.');
         redirect(admin_url('school_ia_bridge/settings'));
     }
 
@@ -85,8 +94,22 @@ class School_ia_bridge extends AdminController
         $this->email->message(nl2br($message));
         $this->email->set_mailtype('html');
 
+        // Pièces jointes issues du gestionnaire de documents.
+        $attachNames = [];
+        foreach ((array) $this->input->post('attachments') as $docId) {
+            $doc = $this->school_ia_bridge_model->get_document((int) $docId);
+            if ($doc) {
+                $path = $this->docsDir() . $doc->stored_name;
+                if (is_file($path)) {
+                    $this->email->attach($path);
+                    $attachNames[] = $doc->title;
+                }
+            }
+        }
+
         if ($this->email->send(false)) {
-            $this->school_ia_bridge_model->add_activity($id, 'email', 'E-mail envoyé : ' . $subject, get_staff_user_id());
+            $note = 'E-mail envoyé : ' . $subject . ($attachNames ? ' (PJ : ' . implode(', ', $attachNames) . ')' : '');
+            $this->school_ia_bridge_model->add_activity($id, 'email', $note, get_staff_user_id());
             set_alert('success', 'E-mail envoyé.');
         } else {
             set_alert('danger', 'Échec de l\'envoi. Vérifiez la configuration SMTP de Perfex (Réglages → E-mail).');
@@ -192,8 +215,98 @@ class School_ia_bridge extends AdminController
         $data['staff']      = $this->db->where('active', 1)->get(db_prefix() . 'staff')->result();
         $data['emailTpls']  = $this->school_ia_bridge_model->templates('email');
         $data['smsTpls']    = $this->school_ia_bridge_model->templates('sms');
+        $data['documents']  = $this->school_ia_bridge_model->documents();
         $data['model']      = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/lead', $data);
+    }
+
+    /** Dossier de stockage des documents. */
+    private function docsDir(): string
+    {
+        return FCPATH . 'uploads/school_ia_documents/';
+    }
+
+    /** Gestionnaire de documents, groupés par programme. */
+    public function documents()
+    {
+        $data['title']    = 'School IA — Documents';
+        $data['grouped']  = $this->school_ia_bridge_model->documents_grouped();
+        $data['programs'] = $this->school_ia_bridge_model->programs();
+        $this->load->view('school_ia_bridge/documents', $data);
+    }
+
+    /** Upload d'un document (form multipart Perfex → CSRF). */
+    public function doc_upload()
+    {
+        $program = trim((string) $this->input->post('program'));
+        $title   = trim((string) $this->input->post('title'));
+
+        if (empty($_FILES['file']['name']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            set_alert('warning', 'Aucun fichier valide sélectionné.');
+            redirect(admin_url('school_ia_bridge/documents'));
+        }
+        $file = $_FILES['file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'zip', 'txt', 'csv'];
+        if (!in_array($ext, $allowed, true)) {
+            set_alert('danger', 'Type de fichier non autorisé (' . $ext . ').');
+            redirect(admin_url('school_ia_bridge/documents'));
+        }
+        if ($file['size'] > 20 * 1024 * 1024) {
+            set_alert('danger', 'Fichier trop volumineux (max 20 Mo).');
+            redirect(admin_url('school_ia_bridge/documents'));
+        }
+
+        $dir = $this->docsDir();
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+        $stored = uniqid('doc_', true) . '.' . $ext;
+        if (!move_uploaded_file($file['tmp_name'], $dir . $stored)) {
+            set_alert('danger', 'Échec de l\'enregistrement du fichier.');
+            redirect(admin_url('school_ia_bridge/documents'));
+        }
+
+        $this->school_ia_bridge_model->add_document([
+            'program'     => $program,
+            'title'       => $title !== '' ? $title : $file['name'],
+            'orig_name'   => $file['name'],
+            'stored_name' => $stored,
+            'mime'        => $file['type'],
+            'filesize'    => (int) $file['size'],
+            'staff_id'    => get_staff_user_id(),
+        ]);
+        set_alert('success', 'Document ajouté.');
+        redirect(admin_url('school_ia_bridge/documents'));
+    }
+
+    /** Téléchargement d'un document. */
+    public function doc_download($id = 0)
+    {
+        $doc = $this->school_ia_bridge_model->get_document((int) $id);
+        if (!$doc) {
+            show_404();
+        }
+        $path = $this->docsDir() . $doc->stored_name;
+        if (!is_file($path)) {
+            show_404();
+        }
+        $this->load->helper('download');
+        force_download($doc->orig_name ?: $doc->title, file_get_contents($path));
+    }
+
+    public function doc_delete($id = 0)
+    {
+        $doc = $this->school_ia_bridge_model->get_document((int) $id);
+        if ($doc) {
+            $path = $this->docsDir() . $doc->stored_name;
+            if (is_file($path)) {
+                @unlink($path);
+            }
+            $this->school_ia_bridge_model->delete_document((int) $doc->id);
+            set_alert('success', 'Document supprimé.');
+        }
+        redirect(admin_url('school_ia_bridge/documents'));
     }
 
     /** Bibliothèque de modèles e-mail / SMS. */
