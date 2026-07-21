@@ -52,11 +52,10 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         // (erreur 419). Le secret voyage dans l'en-tête ET en paramètre (repli
         // si l'hébergeur filtre les en-têtes personnalisés).
         $secret = (string) Options::get('perfex_bridge_secret');
-        // add_query_arg encode déjà les valeurs (pas de double encodage ici).
-        $url = add_query_arg(
-            array_merge($payload, ['secret' => $secret]),
-            $base . '/school_ia_bridge/api/receive'
-        );
+        // http_build_query encode correctement clés ET valeurs (retours à la
+        // ligne, accents…), ce que add_query_arg ne fait pas → URL valide.
+        $query = http_build_query(array_merge($payload, ['secret' => $secret]));
+        $url = $base . '/school_ia_bridge/api/receive?' . $query;
 
         $response = wp_remote_get($url, [
             'timeout' => 30,
