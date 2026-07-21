@@ -6,12 +6,11 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * Point d'entrée public appelé par le plugin WordPress School IA.
  * URL : {perfex}/school_ia_bridge/api/receive
  *
- * Authentification : en-tête « X-SIA-Secret » (ou champ POST « secret »),
- * comparé au secret partagé stocké dans les options du module.
+ * Authentification : en-tête « X-SIA-Secret », ou paramètre « secret »
+ * (GET ou POST), comparé au secret partagé stocké dans les options.
  *
- * NB : si Perfex a la protection CSRF activée, ajoutez cette URI à
- * $config['csrf_exclude_uris'] dans application/config/app.php :
- *   'school_ia_bridge/api/receive'
+ * Accepte GET comme POST : la protection CSRF de Perfex ne s'applique qu'au
+ * POST, donc le plugin envoie en GET pour ne jamais être bloqué (erreur 419).
  */
 class Api extends App_Controller
 {
@@ -22,7 +21,8 @@ class Api extends App_Controller
         $secret   = (string) get_option('school_ia_bridge_secret');
         $provided = $this->input->get_request_header('X-SIA-Secret', true);
         if ($provided === null || $provided === '') {
-            $provided = (string) $this->input->post('secret');
+            // Repli : paramètre « secret » en GET ou POST.
+            $provided = (string) ($this->input->get('secret') ?: $this->input->post('secret'));
         }
 
         if ($secret === '' || !hash_equals($secret, (string) $provided)) {
@@ -30,11 +30,14 @@ class Api extends App_Controller
             return;
         }
 
-        // Corps JSON prioritaire ; repli sur les champs POST classiques.
+        // Données : JSON brut prioritaire, puis fusion des paramètres GET + POST.
         $raw  = file_get_contents('php://input');
         $body = json_decode((string) $raw, true);
         if (!is_array($body)) {
-            $body = $this->input->post();
+            $get  = (array) $this->input->get(null);
+            $post = (array) $this->input->post(null);
+            $body = array_merge($get, $post);
+            unset($body['secret']); // ne pas stocker le secret dans le lead
         }
         if (!is_array($body) || $body === []) {
             $this->respond(['ok' => false, 'error' => 'invalid_payload'], 400);

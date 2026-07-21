@@ -48,14 +48,22 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
             ),
         ];
 
-        $response = wp_remote_post($base . '/school_ia_bridge/api/receive', [
+        // Envoi en GET : la protection CSRF de Perfex ne bloque que le POST
+        // (erreur 419). Le secret voyage dans l'en-tête ET en paramètre (repli
+        // si l'hébergeur filtre les en-têtes personnalisés).
+        $secret = (string) Options::get('perfex_bridge_secret');
+        // add_query_arg encode déjà les valeurs (pas de double encodage ici).
+        $url = add_query_arg(
+            array_merge($payload, ['secret' => $secret]),
+            $base . '/school_ia_bridge/api/receive'
+        );
+
+        $response = wp_remote_get($url, [
             'timeout' => 30,
             'headers' => [
-                'X-SIA-Secret' => (string) Options::get('perfex_bridge_secret'),
-                'Content-Type' => 'application/json',
+                'X-SIA-Secret' => $secret,
                 'Accept'       => 'application/json',
             ],
-            'body' => wp_json_encode($payload),
         ]);
 
         if (is_wp_error($response)) {
