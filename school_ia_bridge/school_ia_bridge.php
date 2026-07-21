@@ -1,0 +1,38 @@
+<?php
+
+defined('BASEPATH') or exit('No direct script access allowed');
+
+/*
+Module Name: School IA Bridge
+Description: Reçoit les leads envoyés par le plugin WordPress « School IA » et les affiche dans Perfex. Le traitement (conversion en lead Perfex, relances…) se fait ensuite.
+Version: 1.0.0
+Requires at least: 2.3.*
+Author: Maestro Dan
+Author URI: https://maestrodan.art
+*/
+
+define('SCHOOL_IA_BRIDGE_MODULE', 'school_ia_bridge');
+
+/**
+ * À l'activation : crée la table de stockage et un secret partagé par défaut.
+ */
+register_activation_hook(SCHOOL_IA_BRIDGE_MODULE, 'school_ia_bridge_activate');
+function school_ia_bridge_activate()
+{
+    require_once __DIR__ . '/install.php';
+}
+
+/**
+ * Entrée de menu dans la barre latérale de l'admin Perfex.
+ */
+hooks()->add_action('admin_init', 'school_ia_bridge_admin_menu');
+function school_ia_bridge_admin_menu()
+{
+    $CI = &get_instance();
+    $CI->app_menu->add_sidebar_menu_item('school_ia_bridge', [
+        'name'     => 'School IA — Leads',
+        'href'     => admin_url('school_ia_bridge'),
+        'icon'     => 'fa fa-graduation-cap',
+        'position' => 30,
+    ]);
+}

@@ -6,6 +6,7 @@ use BemLeadAi\Ai\Summarizer;
 use BemLeadAi\Chat\ConversationRepository;
 use BemLeadAi\Core\Options;
 use BemLeadAi\Crm\HubSpotConnector;
+use BemLeadAi\Crm\PerfexBridgeConnector;
 use BemLeadAi\Crm\PerfexConnector;
 use BemLeadAi\Financing\FinancingSimulator;
 use BemLeadAi\Handoff\HandoffManager;
@@ -43,9 +44,16 @@ final class ActionRunner
 
     private function crmSync(object $lead): void
     {
-        $perfex = new PerfexConnector();
-        if ($perfex->isConfigured()) {
-            $perfex->upsertLead($lead);
+        // Pont School IA (module Perfex maison, gratuit) — prioritaire s'il est
+        // configuré ; sinon on tente l'API REST Perfex.
+        $bridge = new PerfexBridgeConnector();
+        if ($bridge->isConfigured()) {
+            $bridge->upsertLead($lead);
+        } else {
+            $perfex = new PerfexConnector();
+            if ($perfex->isConfigured()) {
+                $perfex->upsertLead($lead);
+            }
         }
         $hubspot = new HubSpotConnector();
         if ($hubspot->isConfigured()) {

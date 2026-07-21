@@ -159,12 +159,13 @@ final class SettingsPage
         // --- CRM ---
         $this->section(__('CRM', 'bem-lead-ai'), [
             $this->text('perfex_url', 'URL Perfex', $o),
-            $this->secret('perfex_api_key', 'Token API Perfex', $o),
-            $this->number('perfex_lead_source', 'ID source du lead (Perfex)', $o),
-            $this->number('perfex_lead_status', 'ID statut du lead (Perfex)', $o),
+            $this->secret('perfex_bridge_secret', 'Secret du Pont School IA (module Perfex)', $o),
+            $this->secret('perfex_api_key', 'Token API Perfex (si module REST payant)', $o),
+            $this->number('perfex_lead_source', 'ID source du lead (API REST)', $o),
+            $this->number('perfex_lead_status', 'ID statut du lead (API REST)', $o),
             $this->secret('hubspot_api_key', 'Token API HubSpot (optionnel)', $o),
             $this->secret('crm_webhook_secret', 'Secret webhook retour CRM', $o),
-        ], __('Perfex est le CRM prioritaire ; HubSpot est optionnel et s\'active sans reconfigurer les triggers. L\'API Perfex exige des ID numériques : renseignez l\'ID de la source et du statut à attribuer aux leads (visibles dans Perfex → Setup → Leads → Sources / Statuses).', 'bem-lead-ai'));
+        ], __('Méthode recommandée (gratuite) : installez le module « School IA Bridge » dans Perfex et collez ici son URL + son secret partagé (visibles sur la page « School IA — Leads » de Perfex). Les leads y arrivent directement. Le token API REST (et les ID source/statut) ne servent que si vous utilisez le module REST API payant de Perfex.', 'bem-lead-ai'));
 
         // --- Widget : contenu ---
         $this->section(__('Widget de chat — contenu', 'bem-lead-ai'), [

@@ -16,6 +16,7 @@ final class Options
     public const SECRET_KEYS = [
         'anthropic_api_key',
         'perfex_api_key',
+        'perfex_bridge_secret',
         'hubspot_api_key',
         'crm_webhook_secret',
         'license_key',
@@ -99,6 +100,7 @@ final class Options
             'whatsapp_prefill' => "Bonjour, je viens du site de BEM Conakry. Je m'intéresse à {formation} et j'aimerais en savoir plus.",
             // CRM
             'perfex_url' => '',
+            'perfex_bridge_secret' => '',
             'perfex_api_key' => '',
             'perfex_lead_source' => '',
             'perfex_lead_status' => '',
