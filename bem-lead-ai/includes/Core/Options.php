@@ -100,6 +100,8 @@ final class Options
             // CRM
             'perfex_url' => '',
             'perfex_api_key' => '',
+            'perfex_lead_source' => '',
+            'perfex_lead_status' => '',
             'hubspot_api_key' => '',
             'crm_webhook_secret' => '',
             // Bandit

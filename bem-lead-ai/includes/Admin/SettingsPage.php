@@ -160,9 +160,11 @@ final class SettingsPage
         $this->section(__('CRM', 'bem-lead-ai'), [
             $this->text('perfex_url', 'URL Perfex', $o),
             $this->secret('perfex_api_key', 'Token API Perfex', $o),
+            $this->number('perfex_lead_source', 'ID source du lead (Perfex)', $o),
+            $this->number('perfex_lead_status', 'ID statut du lead (Perfex)', $o),
             $this->secret('hubspot_api_key', 'Token API HubSpot (optionnel)', $o),
             $this->secret('crm_webhook_secret', 'Secret webhook retour CRM', $o),
-        ], __('Perfex est le CRM prioritaire ; HubSpot est optionnel et s\'active sans reconfigurer les triggers.', 'bem-lead-ai'));
+        ], __('Perfex est le CRM prioritaire ; HubSpot est optionnel et s\'active sans reconfigurer les triggers. L\'API Perfex exige des ID numériques : renseignez l\'ID de la source et du statut à attribuer aux leads (visibles dans Perfex → Setup → Leads → Sources / Statuses).', 'bem-lead-ai'));
 
         // --- Widget : contenu ---
         $this->section(__('Widget de chat — contenu', 'bem-lead-ai'), [

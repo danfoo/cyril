@@ -27,16 +27,27 @@ final class PerfexConnector implements CrmConnectorInterface
             'name' => trim(($lead->prenom ?: 'Lead') . ' #' . $lead->id),
             'email' => (string) ($lead->email ?? ''),
             'phonenumber' => (string) ($lead->phone ?? ''),
-            'source' => defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA',
             'description' => sprintf(
-                "Score: %s/100 (%s)\nFormation d'intérêt: %s\nCanaux: %s\nDernière activité: %s",
+                "Score: %s/100 (%s)\nFormation d'intérêt: %s\nCanaux: %s\nDernière activité: %s\nProvenance: %s",
                 $lead->score_final,
                 str_replace('_', ' ', $band),
                 $lead->formation_interet ?: '—',
                 $lead->channels,
-                $lead->last_seen
+                $lead->last_seen,
+                defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA'
             ),
         ];
+
+        // L'API Perfex attend des ID numériques pour source/statut ; on ne les
+        // envoie que s'ils sont renseignés (sinon Perfex applique ses défauts).
+        $source = (int) Options::get('perfex_lead_source');
+        $status = (int) Options::get('perfex_lead_status');
+        if ($source > 0) {
+            $payload['source'] = $source;
+        }
+        if ($status > 0) {
+            $payload['status'] = $status;
+        }
 
         $isUpdate = !empty($lead->crm_id_perfex);
         $url = $base . '/api/leads' . ($isUpdate ? '/' . rawurlencode((string) $lead->crm_id_perfex) : '');
