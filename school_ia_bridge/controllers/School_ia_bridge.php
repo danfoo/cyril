@@ -40,13 +40,125 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/leads', $data);
     }
 
-    /** Réglages : URL du point d'entrée + secret partagé (pour le plugin). */
+    /** Réglages : point d'entrée + secret + identifiants SMS LAfricaMobile. */
     public function settings()
     {
-        $data['title']    = 'School IA — Réglages';
-        $data['secret']   = get_option('school_ia_bridge_secret');
-        $data['endpoint'] = site_url('school_ia_bridge/api/receive');
+        $data['title']       = 'School IA — Réglages';
+        $data['secret']      = get_option('school_ia_bridge_secret');
+        $data['endpoint']    = site_url('school_ia_bridge/api/receive');
+        $data['sms_account'] = get_option('sia_sms_accountid');
+        $data['sms_sender']  = get_option('sia_sms_sender');
+        $data['sms_has_pwd'] = get_option('sia_sms_password') !== '';
         $this->load->view('school_ia_bridge/settings', $data);
+    }
+
+    /** Enregistre les identifiants SMS (form Perfex → CSRF). */
+    public function save_settings()
+    {
+        update_option('sia_sms_accountid', trim((string) $this->input->post('sms_accountid')));
+        update_option('sia_sms_sender', trim((string) $this->input->post('sms_sender')));
+        $pwd = (string) $this->input->post('sms_password');
+        if ($pwd !== '') { // ne pas écraser si laissé vide
+            update_option('sia_sms_password', $pwd);
+        }
+        set_alert('success', 'Réglages SMS enregistrés.');
+        redirect(admin_url('school_ia_bridge/settings'));
+    }
+
+    /** Envoie un e-mail au lead (moteur d'e-mail de Perfex). */
+    public function send_email($id = 0)
+    {
+        $id = (int) $id;
+        $lead = $this->school_ia_bridge_model->get_lead($id);
+        $subject = trim((string) $this->input->post('subject'));
+        $message = trim((string) $this->input->post('message'));
+
+        if (!$lead || !$lead->email) {
+            set_alert('warning', 'Ce lead n\'a pas d\'adresse e-mail.');
+            redirect(admin_url('school_ia_bridge/lead/' . $id));
+        }
+
+        $this->load->library('email');
+        $this->email->from(get_option('smtp_email') ?: get_option('companyname'), get_option('companyname'));
+        $this->email->to($lead->email);
+        $this->email->subject($subject);
+        $this->email->message(nl2br($message));
+        $this->email->set_mailtype('html');
+
+        if ($this->email->send(false)) {
+            $this->school_ia_bridge_model->add_activity($id, 'email', 'E-mail envoyé : ' . $subject, get_staff_user_id());
+            set_alert('success', 'E-mail envoyé.');
+        } else {
+            set_alert('danger', 'Échec de l\'envoi. Vérifiez la configuration SMTP de Perfex (Réglages → E-mail).');
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . $id));
+    }
+
+    /** Envoie un SMS au lead via LAfricaMobile. */
+    public function send_sms($id = 0)
+    {
+        $id = (int) $id;
+        $lead = $this->school_ia_bridge_model->get_lead($id);
+        $text = trim((string) $this->input->post('text'));
+
+        if (!$lead || !$lead->phone) {
+            set_alert('warning', 'Ce lead n\'a pas de numéro de téléphone.');
+            redirect(admin_url('school_ia_bridge/lead/' . $id));
+        }
+
+        [$ok, $info] = $this->lam_send_sms((string) $lead->phone, $text, $id);
+        if ($ok) {
+            $this->school_ia_bridge_model->add_activity($id, 'sms', 'SMS envoyé : ' . mb_substr($text, 0, 120), get_staff_user_id());
+            set_alert('success', 'SMS envoyé.');
+        } else {
+            set_alert('danger', 'Échec de l\'envoi du SMS : ' . $info);
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . $id));
+    }
+
+    /** Appel bas niveau à l'API SMS LAfricaMobile. Renvoie [ok, info]. */
+    private function lam_send_sms(string $phone, string $text, int $leadId): array
+    {
+        $accountid = (string) get_option('sia_sms_accountid');
+        $password  = (string) get_option('sia_sms_password');
+        $sender    = (string) (get_option('sia_sms_sender') ?: 'SchoolIA');
+
+        if ($accountid === '' || $password === '') {
+            return [false, 'SMS non configuré (Réglages → SMS).'];
+        }
+        $num = preg_replace('/\D+/', '', $phone);
+        if ($num === '') {
+            return [false, 'Numéro invalide.'];
+        }
+
+        $body = json_encode([
+            'accountid' => $accountid,
+            'password'  => $password,
+            'sender'    => $sender,
+            'ret_id'    => 'sia_' . $leadId . '_' . time(),
+            'priority'  => '2',
+            'text'      => $text,
+            'to'        => [['sia_' . $leadId => $num]],
+        ], JSON_UNESCAPED_UNICODE);
+
+        $ch = curl_init('https://lamsms.lafricamobile.com/api');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+            CURLOPT_TIMEOUT        => 30,
+        ]);
+        $resp = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false) {
+            return [false, 'Connexion échouée : ' . $cerr];
+        }
+        $ok = $code >= 200 && $code < 300;
+        return [$ok, 'HTTP ' . $code . ' — ' . mb_substr((string) $resp, 0, 180)];
     }
 
     /** Régénère le secret partagé (à recopier ensuite dans le plugin). */

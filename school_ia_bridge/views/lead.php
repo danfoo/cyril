@@ -72,6 +72,49 @@
 
       <!-- Colonne activité / notes -->
       <div class="col-md-7">
+
+        <?php
+        $prenom = trim(explode('#', (string) $lead->name)[0]);
+        $prenom = $prenom !== '' ? $prenom : 'bonjour';
+        $formation = $lead->formation ?: 'votre formation';
+        $mailBody = "Bonjour {$prenom},\n\nMerci de votre intérêt pour {$formation}. Je reste à votre disposition pour répondre à vos questions et vous accompagner dans votre projet.\n\nBien cordialement,";
+        $smsBody = "Bonjour {$prenom}, merci pour votre intérêt pour {$formation}. Un conseiller vous recontacte très vite. — " . get_option('companyname');
+        ?>
+
+        <div class="panel_s"><div class="panel-body">
+          <h5 class="bold" style="margin-top:0;">Contacter le lead</h5>
+          <ul class="nav nav-tabs" role="tablist">
+            <li role="presentation" class="active"><a href="#sia-email" data-toggle="tab"><i class="fa fa-envelope"></i> E-mail</a></li>
+            <li role="presentation"><a href="#sia-sms" data-toggle="tab"><i class="fa fa-mobile"></i> SMS</a></li>
+          </ul>
+          <div class="tab-content" style="padding-top:12px;">
+            <div role="tabpanel" class="tab-pane active" id="sia-email">
+              <?php if (!$lead->email) { ?>
+                <p class="text-muted">Pas d'adresse e-mail pour ce lead.</p>
+              <?php } else { ?>
+                <?php echo form_open(admin_url('school_ia_bridge/send_email/' . (int) $lead->id)); ?>
+                  <input type="text" name="subject" class="form-control" style="margin-bottom:6px;"
+                         value="À propos de <?php echo htmlspecialchars($formation, ENT_QUOTES); ?>">
+                  <textarea name="message" class="form-control" rows="5"><?php echo htmlspecialchars($mailBody, ENT_QUOTES); ?></textarea>
+                  <button type="submit" class="btn btn-primary" style="margin-top:8px;"><i class="fa fa-paper-plane"></i> Envoyer l'e-mail</button>
+                  <span class="text-muted" style="margin-left:6px;">à <?php echo htmlspecialchars((string) $lead->email, ENT_QUOTES); ?></span>
+                <?php echo form_close(); ?>
+              <?php } ?>
+            </div>
+            <div role="tabpanel" class="tab-pane" id="sia-sms">
+              <?php if (!$lead->phone) { ?>
+                <p class="text-muted">Pas de numéro de téléphone pour ce lead.</p>
+              <?php } else { ?>
+                <?php echo form_open(admin_url('school_ia_bridge/send_sms/' . (int) $lead->id)); ?>
+                  <textarea name="text" class="form-control" rows="3" maxlength="459"><?php echo htmlspecialchars($smsBody, ENT_QUOTES); ?></textarea>
+                  <button type="submit" class="btn btn-primary" style="margin-top:8px;"><i class="fa fa-paper-plane"></i> Envoyer le SMS</button>
+                  <span class="text-muted" style="margin-left:6px;">au <?php echo htmlspecialchars((string) $lead->phone, ENT_QUOTES); ?></span>
+                <?php echo form_close(); ?>
+              <?php } ?>
+            </div>
+          </div>
+        </div></div>
+
         <div class="panel_s"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;">Tâches & relances</h5>
           <?php echo form_open(admin_url('school_ia_bridge/task_add/' . (int) $lead->id)); ?>
@@ -127,8 +170,11 @@
             <p class="text-muted">Aucune activité pour l'instant.</p>
           <?php } else { ?>
             <ul class="list-unstyled">
-              <?php foreach ($activities as $a) {
-                  $icon = $a->type === 'note' ? 'fa-comment' : ($a->type === 'stage_change' ? 'fa-random' : 'fa-user');
+              <?php
+              $icons = ['note' => 'fa-comment', 'stage_change' => 'fa-random', 'task' => 'fa-check-square-o',
+                        'email' => 'fa-envelope', 'sms' => 'fa-mobile', 'assignment' => 'fa-user'];
+              foreach ($activities as $a) {
+                  $icon = $icons[$a->type] ?? 'fa-circle-o';
                   $who = $a->staff_id ? get_staff_full_name((int) $a->staff_id) : 'Système'; ?>
                 <li style="padding:8px 0; border-bottom:1px solid #eee;">
                   <i class="fa <?php echo $icon; ?> text-muted"></i>

@@ -32,6 +32,31 @@
             </a>
           </div>
         </div>
+
+        <div class="panel_s">
+          <div class="panel-body">
+            <h4 class="no-margin"><i class="fa fa-mobile"></i> SMS — LAfricaMobile</h4>
+            <hr class="hr-panel-heading" />
+            <?php echo form_open(admin_url('school_ia_bridge/save_settings')); ?>
+              <div class="form-group">
+                <label class="control-label">Account ID</label>
+                <input type="text" name="sms_accountid" class="form-control"
+                       value="<?php echo htmlspecialchars((string) $sms_account, ENT_QUOTES); ?>">
+              </div>
+              <div class="form-group">
+                <label class="control-label">Mot de passe API</label>
+                <input type="password" name="sms_password" class="form-control" autocomplete="new-password"
+                       placeholder="<?php echo $sms_has_pwd ? '•••••••• (laisser vide pour ne pas changer)' : ''; ?>">
+              </div>
+              <div class="form-group">
+                <label class="control-label">Expéditeur (sender)</label>
+                <input type="text" name="sms_sender" class="form-control" maxlength="11"
+                       value="<?php echo htmlspecialchars((string) $sms_sender, ENT_QUOTES); ?>" placeholder="Ex. SchoolIA">
+              </div>
+              <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <?php echo form_close(); ?>
+          </div>
+        </div>
       </div>
     </div>
   </div>
