@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Prototype cliquable du CRM SaaS School IA — espaces Admin et Client. Édité par Maestro Dan.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
+<title>School IA CRM — Prototype</title>
+<style>
+  :root {
+    --bg: #eef2f9; --surface: #ffffff; --surface-2: #f7f9fd;
+    --ink: #0d1830; --muted: #63739a; --line: #e4eaf5;
+    --navy: #0a1c3e; --navy-2: #0f2650; --brand: #1b57cc; --brand-d: #0f3fa0;
+    --gold: #d6a63a; --gold-br: #f1c85c;
+    --ok: #17924a; --ok-bg:#e5f5ec; --warn: #b7791f; --warn-bg:#fbf1dd; --bad:#c33b3b; --bad-bg:#fbe9e9;
+    --info:#1b57cc; --info-bg:#e6eeff;
+    --r: 14px; --r-sm: 9px;
+    --shadow: 0 8px 24px rgba(12,25,60,.08); --shadow-lg: 0 20px 50px rgba(12,25,60,.16);
+    --font: system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){ :root{
+    --bg:#070d1a; --surface:#0f1a30; --surface-2:#0c1526; --ink:#e9eefb; --muted:#93a4c6; --line:#1c2a46;
+    --shadow:0 8px 24px rgba(0,0,0,.4); --shadow-lg:0 20px 50px rgba(0,0,0,.55);
+    --ok-bg:#0e2a1b; --warn-bg:#2a2110; --bad-bg:#2c1414; --info-bg:#0f1f3f;
+  }}
+  * { box-sizing: border-box; }
+  html,body { margin:0; height:100%; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; -webkit-font-smoothing: antialiased; }
+  h1,h2,h3,h4 { margin:0; font-weight:750; letter-spacing:-.01em; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; }
+
+  /* ---------- Écran de connexion ---------- */
+  .login { min-height:100vh; display:grid; place-items:center; padding:24px;
+    background:
+      radial-gradient(900px 500px at 80% -10%, rgba(241,200,92,.14), transparent 60%),
+      radial-gradient(700px 500px at 0% 110%, rgba(27,87,204,.35), transparent 60%),
+      var(--navy); }
+  .login-card { width:100%; max-width:460px; background:var(--surface); border-radius:20px; box-shadow:var(--shadow-lg); padding:38px 34px; }
+  .login .brand { display:flex; align-items:baseline; gap:9px; margin-bottom:6px; }
+  .login .brand b { font-size:26px; font-weight:800; letter-spacing:-.02em; }
+  .login .brand .ia { color:var(--gold); }
+  .login p.sub { color:var(--muted); margin:0 0 26px; }
+  .role-btn { width:100%; display:flex; align-items:center; gap:14px; padding:16px 18px; border:1px solid var(--line);
+    background:var(--surface-2); border-radius:var(--r); cursor:pointer; margin-bottom:12px; text-align:left; transition:.15s; }
+  .role-btn:hover { border-color:var(--brand); transform:translateY(-2px); box-shadow:var(--shadow); }
+  .role-btn .ic { width:44px; height:44px; border-radius:11px; display:grid; place-items:center; color:#fff; flex:0 0 auto; }
+  .role-btn .ic.admin { background:linear-gradient(135deg,#0f3fa0,#1b57cc); }
+  .role-btn .ic.client { background:linear-gradient(135deg,#b8871f,#f1c85c); }
+  .role-btn h4 { font-size:16px; }
+  .role-btn span { color:var(--muted); font-size:13px; }
+  .login .foot { margin-top:18px; color:var(--muted); font-size:12.5px; text-align:center; }
+
+  /* ---------- Shell app ---------- */
+  #app { display:none; grid-template-columns: 256px 1fr; min-height:100vh; }
+  #app.on { display:grid; }
+  .side { background:var(--navy); color:#c9d5ec; display:flex; flex-direction:column; position:sticky; top:0; height:100vh; }
+  .side .logo { display:flex; align-items:baseline; gap:8px; padding:20px 22px; border-bottom:1px solid rgba(255,255,255,.08); }
+  .side .logo b { color:#fff; font-size:20px; font-weight:800; letter-spacing:-.02em; }
+  .side .logo .ia { color:var(--gold-br); }
+  .side .space-tag { margin:14px 22px 6px; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#6f83aa; }
+  .nav { display:flex; flex-direction:column; gap:2px; padding:4px 12px; overflow-y:auto; }
+  .nav-item { display:flex; align-items:center; gap:11px; padding:10px 12px; border-radius:10px; color:#c1cee6; cursor:pointer; font-weight:550; font-size:14.5px; }
+  .nav-item svg { width:18px; height:18px; opacity:.85; }
+  .nav-item:hover { background:rgba(255,255,255,.06); color:#fff; }
+  .nav-item.active { background:linear-gradient(90deg, rgba(27,87,204,.5), rgba(27,87,204,.15)); color:#fff; box-shadow:inset 3px 0 0 var(--gold-br); }
+  .side .user { margin-top:auto; padding:14px 16px; border-top:1px solid rgba(255,255,255,.08); display:flex; align-items:center; gap:10px; }
+  .side .user .av { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#1b57cc,#f1c85c); display:grid; place-items:center; color:#fff; font-weight:700; }
+  .side .user small { display:block; color:#8296ba; font-size:12px; }
+  .side .user .switch { margin-left:auto; color:#8296ba; cursor:pointer; padding:6px; border-radius:8px; }
+  .side .user .switch:hover { background:rgba(255,255,255,.08); color:#fff; }
+
+  .main { min-width:0; display:flex; flex-direction:column; }
+  .topbar { position:sticky; top:0; z-index:20; background:color-mix(in srgb,var(--bg) 86%, transparent); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line); padding:14px 26px; display:flex; align-items:center; gap:16px; }
+  .topbar h1 { font-size:20px; }
+  .topbar .search { margin-left:auto; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--line);
+    border-radius:10px; padding:8px 12px; color:var(--muted); min-width:220px; }
+  .topbar .search input { border:0; background:transparent; outline:none; color:var(--ink); width:100%; font-size:14px; }
+  .content { padding:24px 26px 60px; }
+
+  /* ---------- Composants ---------- */
+  .btn { display:inline-flex; align-items:center; gap:8px; border:1px solid transparent; border-radius:10px; padding:10px 16px;
+    font-weight:650; font-size:14px; cursor:pointer; transition:.15s; }
+  .btn svg{ width:16px; height:16px; }
+  .btn.primary { background:linear-gradient(180deg,var(--brand),var(--brand-d)); color:#fff; box-shadow:0 6px 16px rgba(27,87,204,.28); }
+  .btn.primary:hover { transform:translateY(-1px); }
+  .btn.gold { background:linear-gradient(180deg,var(--gold-br),var(--gold)); color:#2a1e00; }
+  .btn.ghost { background:var(--surface); border-color:var(--line); color:var(--ink); }
+  .btn.ghost:hover { border-color:var(--brand); color:var(--brand); }
+  .btn.sm { padding:7px 12px; font-size:13px; }
+
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:22px; }
+  @media (max-width:1000px){ .kpis{ grid-template-columns:repeat(2,1fr);} }
+  .kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px; box-shadow:var(--shadow); position:relative; overflow:hidden; }
+  .kpi::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--k,var(--brand)); }
+  .kpi .label { color:var(--muted); font-size:13px; display:flex; align-items:center; gap:8px; }
+  .kpi .val { font-size:28px; font-weight:800; letter-spacing:-.02em; margin-top:8px; font-variant-numeric:tabular-nums; }
+  .kpi .delta { font-size:12.5px; margin-top:4px; }
+  .up { color:var(--ok); } .down{ color:var(--bad); }
+
+  .grid2 { display:grid; grid-template-columns:1.6fr 1fr; gap:18px; }
+  @media (max-width:980px){ .grid2{ grid-template-columns:1fr; } }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); }
+  .card .hd { padding:16px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; }
+  .card .hd h3 { font-size:15.5px; }
+  .card .hd .btn { margin-left:auto; }
+  .card .bd { padding:16px 18px; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:10px 14px; border-bottom:1px solid var(--line); }
+  td { padding:12px 14px; border-bottom:1px solid var(--line); font-size:14px; }
+  tr:last-child td { border-bottom:0; }
+  tbody tr:hover { background:var(--surface-2); }
+  .table-wrap { overflow-x:auto; }
+
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:650; }
+  .pill::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.9; }
+  .p-ok{ color:var(--ok); background:var(--ok-bg);} .p-warn{ color:var(--warn); background:var(--warn-bg);}
+  .p-bad{ color:var(--bad); background:var(--bad-bg);} .p-info{ color:var(--info); background:var(--info-bg);}
+  .avatar { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,#1b57cc,#89a6e6); color:#fff; display:inline-grid; place-items:center; font-size:12px; font-weight:700; }
+
+  /* Kanban */
+  .kanban { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(240px,1fr); gap:14px; overflow-x:auto; padding-bottom:8px; }
+  .col { background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); padding:12px; }
+  .col .col-hd { display:flex; align-items:center; gap:8px; font-weight:700; font-size:13.5px; margin-bottom:10px; }
+  .col .count { margin-left:auto; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:1px 8px; font-size:12px; color:var(--muted); }
+  .lead-card { background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:12px; margin-bottom:10px; cursor:pointer; box-shadow:0 1px 2px rgba(12,25,60,.05); }
+  .lead-card:hover { border-color:var(--brand); }
+  .lead-card .nm { font-weight:650; font-size:14px; }
+  .lead-card .mt { color:var(--muted); font-size:12.5px; margin-top:3px; }
+  .lead-card .row { display:flex; align-items:center; gap:8px; margin-top:9px; }
+  .score { font-size:11.5px; font-weight:700; padding:2px 7px; border-radius:6px; }
+  .s-hot{ color:var(--bad); background:var(--bad-bg);} .s-warm{ color:var(--warn); background:var(--warn-bg);} .s-cold{ color:var(--muted); background:var(--surface-2); border:1px solid var(--line);}
+
+  /* Cartes génériques (plans, réseaux, modèles, docs) */
+  .cards { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  @media (max-width:980px){ .cards{ grid-template-columns:1fr; } }
+  .tile { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:20px; box-shadow:var(--shadow); }
+  .tile h3 { font-size:16px; }
+  .tile .price { font-size:30px; font-weight:800; margin:8px 0; letter-spacing:-.02em; }
+  .tile .price small { font-size:14px; font-weight:600; color:var(--muted); }
+  .tile ul { list-style:none; padding:0; margin:14px 0; display:flex; flex-direction:column; gap:8px; color:var(--muted); font-size:14px; }
+  .tile ul li::before{ content:"✓"; color:var(--ok); font-weight:800; margin-right:8px; }
+
+  .pay { display:flex; align-items:center; gap:12px; padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+  .pay .logo { width:44px; height:30px; border-radius:6px; display:grid; place-items:center; font-weight:800; font-size:12px; color:#fff; }
+
+  .doc { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:11px; background:var(--surface); }
+  .doc .ic { width:38px; height:38px; border-radius:9px; display:grid; place-items:center; background:var(--info-bg); color:var(--brand); flex:0 0 auto; }
+  .dropzone { border:2px dashed var(--line); border-radius:var(--r); padding:28px; text-align:center; color:var(--muted); background:var(--surface-2); }
+
+  .section-title { font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:26px 0 12px; }
+
+  /* Modale */
+  .modal { position:fixed; inset:0; z-index:100; display:none; }
+  .modal.on { display:block; }
+  .modal .ov { position:absolute; inset:0; background:rgba(10,25,60,.5); backdrop-filter:blur(2px); }
+  .modal .box { position:relative; z-index:1; width:94%; max-width:560px; margin:6vh auto; background:var(--surface); border-radius:18px; box-shadow:var(--shadow-lg); max-height:86vh; display:flex; flex-direction:column; }
+  .modal .mhd { display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid var(--line); }
+  .modal .mhd h3 { font-size:17px; }
+  .modal .x { border:0; background:transparent; font-size:24px; color:var(--muted); cursor:pointer; }
+  .modal .mbd { padding:18px 22px; overflow-y:auto; }
+  .modal .mft { padding:14px 22px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px; }
+  .field { margin-bottom:14px; }
+  .field label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .field input, .field select, .field textarea { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); color:var(--ink); font-size:14px; outline:none; }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--brand); }
+  .field.row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  .view { display:none; } .view.on { display:block; animation:fade .2s ease; }
+  @keyframes fade { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+  .banner { background:var(--info-bg); color:var(--brand-d); border:1px solid color-mix(in srgb,var(--brand) 25%,transparent); border-radius:12px; padding:12px 16px; font-size:13.5px; margin-bottom:18px; display:flex; gap:10px; align-items:center; }
+  :focus-visible { outline:2px solid var(--gold-br); outline-offset:2px; }
+  @media (max-width:760px){ #app.on{ grid-template-columns:1fr; } .side{ position:fixed; z-index:60; width:256px; transform:translateX(-100%); transition:.2s; } .side.open{ transform:none; } .menu-btn{ display:inline-grid!important; } }
+  .menu-btn{ display:none; width:38px; height:38px; border-radius:9px; border:1px solid var(--line); background:var(--surface); place-items:center; cursor:pointer; }
+</style>
+
+<!-- ================= ÉCRAN DE CONNEXION ================= -->
+<div class="login" id="screen-login">
+  <div class="login-card">
+    <div class="brand"><b>School<span class="ia"> IA</span></b></div>
+    <p class="sub">Plateforme CRM &amp; marketing d'admission — <em>prototype</em></p>
+    <button class="role-btn" onclick="enter('admin')">
+      <span class="ic admin">◆</span>
+      <span><h4>Espace Administrateur</h4><span>Maestro Dan — clients, licences, tarifs &amp; paiements</span></span>
+    </button>
+    <button class="role-btn" onclick="enter('client')">
+      <span class="ic client">★</span>
+      <span><h4>Espace Client</h4><span>École — leads, campagnes, e-mails, documents, réseaux sociaux</span></span>
+    </button>
+    <p class="foot">Démo navigable · aucune donnée réelle · School IA par Maestro Dan</p>
+  </div>
+</div>
+
+<!-- ================= APPLICATION ================= -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <aside class="side" id="side">
+    <div class="logo"><b>School<span class="ia"> IA</span></b></div>
+
+    <!-- NAV ADMIN -->
+    <div data-role-nav="admin">
+      <div class="space-tag">Espace Admin</div>
+      <nav class="nav">
+        <div class="nav-item active" data-view="a-dash">◧ Tableau de bord</div>
+        <div class="nav-item" data-view="a-clients">◈ Clients</div>
+        <div class="nav-item" data-view="a-licenses">⬢ Licences</div>
+        <div class="nav-item" data-view="a-plans">▤ Tarifs &amp; abonnements</div>
+        <div class="nav-item" data-view="a-pay">₵ Paiements</div>
+        <div class="nav-item" data-view="a-settings">⚙ Réglages</div>
+      </nav>
+    </div>
+
+    <!-- NAV CLIENT -->
+    <div data-role-nav="client" style="display:none;">
+      <div class="space-tag">Espace Client</div>
+      <nav class="nav">
+        <div class="nav-item active" data-view="c-dash">◧ Tableau de bord</div>
+        <div class="nav-item" data-view="c-leads">◈ Leads &amp; pipeline</div>
+        <div class="nav-item" data-view="c-camp">✉ Campagnes</div>
+        <div class="nav-item" data-view="c-tpl">▤ Modèles e-mail / SMS</div>
+        <div class="nav-item" data-view="c-docs">▣ Documents</div>
+        <div class="nav-item" data-view="c-social">◑ Réseaux sociaux</div>
+        <div class="nav-item" data-view="c-settings">⚙ Réglages</div>
+      </nav>
+    </div>
+
+    <div class="user">
+      <span class="av" id="u-av">M</span>
+      <div><strong id="u-name">Maestro Dan</strong><small id="u-role">Administrateur</small></div>
+      <span class="switch" title="Changer d'espace" onclick="logout()">⇄</span>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <button class="menu-btn" onclick="document.getElementById('side').classList.toggle('open')">☰</button>
+      <h1 id="page-title">Tableau de bord</h1>
+      <div class="search">🔎<input placeholder="Rechercher…"></div>
+    </div>
+    <div class="content" id="content"><!-- vues injectées ci-dessous --></div>
+  </div>
+</div>
+
+<!-- ================= VUES (masquées, activées par JS) ================= -->
+<template id="views">
+
+  <!-- ====== ADMIN : DASHBOARD ====== -->
+  <section class="view" id="view-a-dash" data-title="Tableau de bord">
+    <div class="kpis">
+      <div class="kpi" style="--k:#1b57cc"><div class="label">Clients actifs</div><div class="val">18</div><div class="delta up">▲ +3 ce mois</div></div>
+      <div class="kpi" style="--k:#17924a"><div class="label">Revenu mensuel (MRR)</div><div class="val">4 250 000 <small style="font-size:14px">XOF</small></div><div class="delta up">▲ +12%</div></div>
+      <div class="kpi" style="--k:#d6a63a"><div class="label">Licences actives</div><div class="val">21</div><div class="delta">3 en essai</div></div>
+      <div class="kpi" style="--k:#c33b3b"><div class="label">Paiements en attente</div><div class="val">2</div><div class="delta down">à relancer</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="hd"><h3>Derniers clients</h3><button class="btn primary sm" data-open="modal-client">+ Créer un compte client</button></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>École</th><th>Formule</th><th>Statut</th><th>MRR</th></tr></thead>
+          <tbody>
+            <tr><td><span class="avatar">B</span> &nbsp;BEM Conakry</td><td>Business</td><td><span class="pill p-ok">Actif</span></td><td>350 000 XOF</td></tr>
+            <tr><td><span class="avatar">I</span> &nbsp;ISM Dakar</td><td>Pro</td><td><span class="pill p-ok">Actif</span></td><td>250 000 XOF</td></tr>
+            <tr><td><span class="avatar">S</span> &nbsp;Sup'Management</td><td>Pro</td><td><span class="pill p-warn">Essai</span></td><td>—</td></tr>
+            <tr><td><span class="avatar">A</span> &nbsp;IAM Abidjan</td><td>Starter</td><td><span class="pill p-bad">Impayé</span></td><td>120 000 XOF</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <div class="hd"><h3>Activité récente</h3></div>
+        <div class="bd" style="display:flex; flex-direction:column; gap:14px;">
+          <div>✅ <strong>BEM Conakry</strong> a renouvelé son abonnement (Business, 1 an)</div>
+          <div>🧾 Facture <strong>#2041</strong> payée via <strong>Wave</strong> — 250 000 XOF</div>
+          <div>🆕 Nouveau client créé : <strong>Sup'Management</strong> (essai 14 j)</div>
+          <div>⚠️ <strong>IAM Abidjan</strong> — paiement Orange Money échoué</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== ADMIN : CLIENTS ====== -->
+  <section class="view" id="view-a-clients" data-title="Clients">
+    <div class="card">
+      <div class="hd"><h3>Comptes clients (écoles)</h3><button class="btn primary sm" data-open="modal-client">+ Créer un compte client</button></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>École</th><th>Contact admin</th><th>Formule</th><th>Licence</th><th>Statut</th><th>Leads</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><span class="avatar">B</span> &nbsp;BEM Conakry</td><td>gilles@bemconakry.com</td><td>Business</td><td><code>SIA-8F2K-…</code></td><td><span class="pill p-ok">Actif</span></td><td>176</td><td><button class="btn ghost sm">Gérer</button></td></tr>
+          <tr><td><span class="avatar">I</span> &nbsp;ISM Dakar</td><td>admin@ism.sn</td><td>Pro</td><td><code>SIA-3B9Q-…</code></td><td><span class="pill p-ok">Actif</span></td><td>92</td><td><button class="btn ghost sm">Gérer</button></td></tr>
+          <tr><td><span class="avatar">S</span> &nbsp;Sup'Management</td><td>contact@supm.gn</td><td>Pro</td><td><code>SIA-7T1M-…</code></td><td><span class="pill p-warn">Essai</span></td><td>14</td><td><button class="btn ghost sm">Gérer</button></td></tr>
+          <tr><td><span class="avatar">A</span> &nbsp;IAM Abidjan</td><td>info@iam.ci</td><td>Starter</td><td><code>SIA-5H4P-…</code></td><td><span class="pill p-bad">Impayé</span></td><td>38</td><td><button class="btn ghost sm">Gérer</button></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ====== ADMIN : LICENCES ====== -->
+  <section class="view" id="view-a-licenses" data-title="Licences">
+    <div class="banner">🔑 Chaque licence relie un compte client au plugin School IA installé sur son site WordPress.</div>
+    <div class="card">
+      <div class="hd"><h3>Licences du plugin</h3><button class="btn primary sm" data-open="modal-license">+ Générer une clé</button></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Clé</th><th>Client</th><th>Domaine activé</th><th>Expiration</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr><td><code>SIA-8F2K-QR3T-9WZ1</code></td><td>BEM Conakry</td><td>bemconakry.com</td><td>12/03/2027</td><td><span class="pill p-ok">Active</span></td></tr>
+          <tr><td><code>SIA-3B9Q-LM2X-4KP8</code></td><td>ISM Dakar</td><td>ism.sn</td><td>01/09/2026</td><td><span class="pill p-ok">Active</span></td></tr>
+          <tr><td><code>SIA-7T1M-VV8N-2QD5</code></td><td>Sup'Management</td><td>supm.gn</td><td>04/08/2026</td><td><span class="pill p-warn">Essai</span></td></tr>
+          <tr><td><code>SIA-5H4P-BC6R-1JF0</code></td><td>IAM Abidjan</td><td>iam.ci</td><td>expirée</td><td><span class="pill p-bad">Révoquée</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ====== ADMIN : TARIFS ====== -->
+  <section class="view" id="view-a-plans" data-title="Tarifs & abonnements">
+    <div class="cards">
+      <div class="tile"><h3>Starter</h3><div class="price">120 000 <small>XOF/mois</small></div><ul><li>Chatbot IA + capture de leads</li><li>CRM d'admission</li><li>1 site</li><li>Support e-mail</li></ul><button class="btn ghost">Modifier</button></div>
+      <div class="tile" style="border-color:var(--brand); box-shadow:var(--shadow-lg);"><h3>Pro <span class="pill p-info" style="margin-left:6px;">Populaire</span></h3><div class="price">250 000 <small>XOF/mois</small></div><ul><li>Tout Starter +</li><li>Campagnes e-mail &amp; SMS</li><li>WhatsApp &amp; réseaux sociaux</li><li>3 sites</li></ul><button class="btn ghost">Modifier</button></div>
+      <div class="tile"><h3>Business</h3><div class="price">350 000 <small>XOF/mois</small></div><ul><li>Tout Pro +</li><li>Automatisations avancées</li><li>Multi-utilisateurs</li><li>Support prioritaire</li></ul><button class="btn ghost">Modifier</button></div>
+    </div>
+    <div style="margin-top:16px;"><button class="btn primary">+ Nouvelle formule</button></div>
+  </section>
+
+  <!-- ====== ADMIN : PAIEMENTS ====== -->
+  <section class="view" id="view-a-pay" data-title="Paiements">
+    <div class="section-title">Moyens de paiement acceptés</div>
+    <div class="cards" style="grid-template-columns:repeat(4,1fr);">
+      <div class="pay"><span class="logo" style="background:#0070ba">Pay<br>Pal</span> <div><strong>PayPal</strong><br><span class="pill p-ok">Connecté</span></div></div>
+      <div class="pay"><span class="logo" style="background:#1dc8ff">Wave</span> <div><strong>Wave</strong><br><span class="pill p-ok">Connecté</span></div></div>
+      <div class="pay"><span class="logo" style="background:#635bff">Stripe</span> <div><strong>Stripe</strong><br><span class="pill p-ok">Connecté</span></div></div>
+      <div class="pay"><span class="logo" style="background:#ff7900">OM</span> <div><strong>Orange Money</strong><br><span class="pill p-warn">À configurer</span></div></div>
+    </div>
+    <div class="card" style="margin-top:22px;">
+      <div class="hd"><h3>Factures récentes</h3><button class="btn ghost sm">Exporter</button></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Facture</th><th>Client</th><th>Montant</th><th>Moyen</th><th>Date</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr><td>#2041</td><td>ISM Dakar</td><td>250 000 XOF</td><td>Wave</td><td>18/07/2026</td><td><span class="pill p-ok">Payée</span></td></tr>
+          <tr><td>#2040</td><td>BEM Conakry</td><td>350 000 XOF</td><td>Stripe</td><td>12/07/2026</td><td><span class="pill p-ok">Payée</span></td></tr>
+          <tr><td>#2039</td><td>IAM Abidjan</td><td>120 000 XOF</td><td>Orange Money</td><td>10/07/2026</td><td><span class="pill p-bad">Échouée</span></td></tr>
+          <tr><td>#2038</td><td>Sup'Management</td><td>—</td><td>—</td><td>04/07/2026</td><td><span class="pill p-warn">Essai</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ====== ADMIN : RÉGLAGES ====== -->
+  <section class="view" id="view-a-settings" data-title="Réglages">
+    <div class="card"><div class="hd"><h3>Paramètres de la plateforme</h3></div><div class="bd">
+      <div class="field"><label>Nom de la plateforme</label><input value="School IA CRM"></div>
+      <div class="field row2"><div><label>Devise par défaut</label><select><option>XOF (Franc CFA)</option><option>EUR</option><option>USD</option></select></div><div><label>Langue</label><select><option>Français</option><option>English</option></select></div></div>
+      <div class="field"><label>Adresse d'envoi des e-mails</label><input value="no-reply@maestrodan.art"></div>
+      <button class="btn primary">Enregistrer</button>
+    </div></div>
+  </section>
+
+  <!-- ====== CLIENT : DASHBOARD ====== -->
+  <section class="view" id="view-c-dash" data-title="Tableau de bord">
+    <div class="kpis">
+      <div class="kpi" style="--k:#1b57cc"><div class="label">Leads ce mois</div><div class="val">176</div><div class="delta up">▲ +24</div></div>
+      <div class="kpi" style="--k:#c33b3b"><div class="label">Leads chauds</div><div class="val">12</div><div class="delta">à contacter</div></div>
+      <div class="kpi" style="--k:#17924a"><div class="label">Taux de conversion</div><div class="val">8,4%</div><div class="delta up">▲ +1,2 pt</div></div>
+      <div class="kpi" style="--k:#d6a63a"><div class="label">Campagnes actives</div><div class="val">3</div><div class="delta">1 programmée</div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="hd"><h3>Entonnoir d'admission</h3></div><div class="bd" style="display:flex; flex-direction:column; gap:10px;">
+        <div>Nouveaux <strong style="float:right">176</strong><div style="height:9px;background:var(--info-bg);border-radius:6px;margin-top:4px;"><div style="width:100%;height:9px;background:#1b57cc;border-radius:6px;"></div></div></div>
+        <div>Contactés <strong style="float:right">98</strong><div style="height:9px;background:var(--info-bg);border-radius:6px;margin-top:4px;"><div style="width:56%;height:9px;background:#3b74d6;border-radius:6px;"></div></div></div>
+        <div>Qualifiés <strong style="float:right">41</strong><div style="height:9px;background:var(--info-bg);border-radius:6px;margin-top:4px;"><div style="width:23%;height:9px;background:#d6a63a;border-radius:6px;"></div></div></div>
+        <div>Candidatures <strong style="float:right">22</strong><div style="height:9px;background:var(--info-bg);border-radius:6px;margin-top:4px;"><div style="width:13%;height:9px;background:#b8871f;border-radius:6px;"></div></div></div>
+        <div>Inscrits <strong style="float:right">15</strong><div style="height:9px;background:var(--info-bg);border-radius:6px;margin-top:4px;"><div style="width:8%;height:9px;background:#17924a;border-radius:6px;"></div></div></div>
+      </div></div>
+      <div class="card"><div class="hd"><h3>Leads à traiter</h3><button class="btn primary sm" data-view-jump="c-leads">Voir tout</button></div><div class="bd" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="lead-card"><div class="nm">Aïssatou D.</div><div class="mt">Prépa Ingénieur · web + whatsapp</div><div class="row"><span class="score s-hot">86</span><span class="pill p-bad">Chaud</span></div></div>
+        <div class="lead-card"><div class="nm">Mamadou S.</div><div class="mt">MBA · web</div><div class="row"><span class="score s-warm">54</span><span class="pill p-warn">Tiède</span></div></div>
+        <div class="lead-card"><div class="nm">Fatou B.</div><div class="mt">Bachelor TG · formulaire</div><div class="row"><span class="score s-hot">79</span><span class="pill p-bad">Chaud</span></div></div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ====== CLIENT : LEADS ====== -->
+  <section class="view" id="view-c-leads" data-title="Leads & pipeline">
+    <div style="display:flex; gap:10px; margin-bottom:16px; align-items:center;">
+      <button class="btn primary">+ Ajouter un lead</button>
+      <button class="btn ghost sm">Importer</button>
+      <button class="btn ghost sm">Exporter CSV</button>
+      <span style="margin-left:auto; color:var(--muted); font-size:13px;">341 leads · 12 chauds</span>
+    </div>
+    <div class="kanban">
+      <div class="col"><div class="col-hd">🔵 Nouveau <span class="count">176</span></div>
+        <div class="lead-card"><div class="nm">Aïssatou D.</div><div class="mt">Prépa Ingénieur</div><div class="row"><span class="score s-hot">86</span><span class="avatar" style="width:24px;height:24px;font-size:10px;">AD</span></div></div>
+        <div class="lead-card"><div class="nm">Ousmane K.</div><div class="mt">Bachelor Marketing</div><div class="row"><span class="score s-cold">28</span></div></div>
+      </div>
+      <div class="col"><div class="col-hd">🟡 Contacté <span class="count">98</span></div>
+        <div class="lead-card"><div class="nm">Mamadou S.</div><div class="mt">MBA</div><div class="row"><span class="score s-warm">54</span></div></div>
+      </div>
+      <div class="col"><div class="col-hd">🟢 Qualifié <span class="count">41</span></div>
+        <div class="lead-card"><div class="nm">Fatou B.</div><div class="mt">Bachelor TG</div><div class="row"><span class="score s-hot">79</span></div></div>
+      </div>
+      <div class="col"><div class="col-hd">🟣 Candidature <span class="count">22</span></div>
+        <div class="lead-card"><div class="nm">Ibrahima T.</div><div class="mt">Prépa Ingénieur</div><div class="row"><span class="score s-hot">91</span></div></div>
+      </div>
+      <div class="col"><div class="col-hd">✅ Inscrit <span class="count">15</span></div>
+        <div class="lead-card"><div class="nm">Mariama C.</div><div class="mt">MBA</div><div class="row"><span class="pill p-ok">Inscrite</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== CLIENT : CAMPAGNES ====== -->
+  <section class="view" id="view-c-camp" data-title="Campagnes">
+    <div class="banner">📣 Planifiez des campagnes e-mail, SMS et WhatsApp vers des segments de vos leads.</div>
+    <div class="card">
+      <div class="hd"><h3>Vos campagnes</h3><button class="btn primary sm" data-open="modal-camp">+ Nouvelle campagne</button></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Campagne</th><th>Canal</th><th>Audience</th><th>Envoyés</th><th>Ouvertures</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr><td>Relance Prépa Ingénieur</td><td>✉ E-mail</td><td>Leads tièdes · Prépa</td><td>320</td><td>41%</td><td><span class="pill p-ok">Envoyée</span></td></tr>
+          <tr><td>Journée portes ouvertes</td><td>✉ + 📱 SMS</td><td>Tous les leads</td><td>1 240</td><td>38%</td><td><span class="pill p-ok">Envoyée</span></td></tr>
+          <tr><td>Derniers jours d'inscription</td><td>📱 SMS</td><td>Candidatures</td><td>—</td><td>—</td><td><span class="pill p-warn">Programmée</span></td></tr>
+          <tr><td>Bienvenue nouveaux inscrits</td><td>✉ E-mail</td><td>Inscrits</td><td>—</td><td>—</td><td><span class="pill p-info">Brouillon</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </section>
+
+  <!-- ====== CLIENT : MODÈLES ====== -->
+  <section class="view" id="view-c-tpl" data-title="Modèles e-mail / SMS">
+    <div class="section-title">Modèles e-mail</div>
+    <div class="cards">
+      <div class="tile"><h3>✉ Relance douce</h3><p style="color:var(--muted);font-size:14px;">« Bonjour {prenom}, vous vous intéressiez à {formation}… »</p><button class="btn ghost sm">Modifier</button></div>
+      <div class="tile"><h3>✉ Portes ouvertes</h3><p style="color:var(--muted);font-size:14px;">Invitation à l'événement avec date &amp; lieu.</p><button class="btn ghost sm">Modifier</button></div>
+      <div class="tile"><h3>✉ Confirmation inscription</h3><p style="color:var(--muted);font-size:14px;">Message de bienvenue + prochaines étapes.</p><button class="btn ghost sm">Modifier</button></div>
+    </div>
+    <div class="section-title">Modèles SMS</div>
+    <div class="cards">
+      <div class="tile"><h3>📱 Rappel échéance</h3><p style="color:var(--muted);font-size:14px;">« Plus que 3 jours pour candidater à {formation}. »</p><button class="btn ghost sm">Modifier</button></div>
+      <div class="tile"><h3>📱 Confirmation RDV</h3><p style="color:var(--muted);font-size:14px;">« Votre rendez-vous est confirmé le {date}. »</p><button class="btn ghost sm">Modifier</button></div>
+      <div class="tile" style="display:grid;place-items:center;color:var(--muted);border-style:dashed;"><button class="btn primary sm">+ Nouveau modèle</button></div>
+    </div>
+  </section>
+
+  <!-- ====== CLIENT : DOCUMENTS ====== -->
+  <section class="view" id="view-c-docs" data-title="Documents">
+    <div class="dropzone" style="margin-bottom:18px;">📤 Glissez vos fichiers ici ou <a href="#" style="color:var(--brand);font-weight:650;">parcourez</a> — brochures, plaquettes, contrats…</div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div class="doc"><span class="ic">PDF</span><div><strong>Brochure_Prepa_Ingenieur_2026.pdf</strong><br><small style="color:var(--muted)">2,4 Mo · ajouté le 15/07/2026</small></div><button class="btn ghost sm" style="margin-left:auto;">Partager</button></div>
+      <div class="doc"><span class="ic">PDF</span><div><strong>Dossier_Candidature.pdf</strong><br><small style="color:var(--muted)">860 Ko · ajouté le 10/07/2026</small></div><button class="btn ghost sm" style="margin-left:auto;">Partager</button></div>
+      <div class="doc"><span class="ic">IMG</span><div><strong>Affiche_Portes_Ouvertes.png</strong><br><small style="color:var(--muted)">1,1 Mo · ajouté le 04/07/2026</small></div><button class="btn ghost sm" style="margin-left:auto;">Partager</button></div>
+    </div>
+  </section>
+
+  <!-- ====== CLIENT : RÉSEAUX SOCIAUX ====== -->
+  <section class="view" id="view-c-social" data-title="Réseaux sociaux">
+    <div class="banner">🔗 Connectez vos comptes pour publier vos campagnes et suivre leurs performances depuis un seul endroit.</div>
+    <div class="cards" style="grid-template-columns:repeat(4,1fr);">
+      <div class="tile" style="text-align:center;"><div style="font-size:26px;">📘</div><h3>Facebook</h3><span class="pill p-ok" style="margin:8px auto;">Connecté</span><br><button class="btn ghost sm">Gérer</button></div>
+      <div class="tile" style="text-align:center;"><div style="font-size:26px;">📸</div><h3>Instagram</h3><span class="pill p-ok" style="margin:8px auto;">Connecté</span><br><button class="btn ghost sm">Gérer</button></div>
+      <div class="tile" style="text-align:center;"><div style="font-size:26px;">💼</div><h3>LinkedIn</h3><span class="pill p-warn" style="margin:8px auto;">Non connecté</span><br><button class="btn primary sm">Connecter</button></div>
+      <div class="tile" style="text-align:center;"><div style="font-size:26px;">✖</div><h3>X (Twitter)</h3><span class="pill p-warn" style="margin:8px auto;">Non connecté</span><br><button class="btn primary sm">Connecter</button></div>
+    </div>
+    <div class="card" style="margin-top:20px;"><div class="hd"><h3>Composer une publication</h3><button class="btn primary sm" data-open="modal-post">+ Nouvelle publication</button></div>
+      <div class="table-wrap"><table><thead><tr><th>Publication</th><th>Réseaux</th><th>Programmée</th><th>Statut</th></tr></thead><tbody>
+        <tr><td>Journée portes ouvertes 📅</td><td>📘 📸</td><td>22/07 09:00</td><td><span class="pill p-warn">Programmée</span></td></tr>
+        <tr><td>Félicitations aux admis 🎓</td><td>📘 📸 💼</td><td>—</td><td><span class="pill p-ok">Publiée</span></td></tr>
+      </tbody></table></div>
+    </div>
+  </section>
+
+  <!-- ====== CLIENT : RÉGLAGES ====== -->
+  <section class="view" id="view-c-settings" data-title="Réglages">
+    <div class="card"><div class="hd"><h3>Profil de l'établissement</h3></div><div class="bd">
+      <div class="field"><label>Nom de l'école</label><input value="BEM Conakry"></div>
+      <div class="field row2"><div><label>E-mail admissions</label><input value="admissions@bemconakry.com"></div><div><label>Téléphone / WhatsApp</label><input value="+224 620 00 00 00"></div></div>
+      <div class="field"><label>Couleur de marque</label><input type="color" value="#0b3d91" style="width:80px;height:40px;padding:4px;"></div>
+      <button class="btn primary">Enregistrer</button>
+    </div></div>
+  </section>
+
+</template>
+
+<!-- ================= MODALES ================= -->
+<div class="modal" id="modal-client"><div class="ov" data-close></div><div class="box">
+  <div class="mhd"><h3>Créer un compte client</h3><button class="x" data-close>&times;</button></div>
+  <div class="mbd">
+    <div class="field"><label>Nom de l'école</label><input placeholder="ex. BEM Conakry"></div>
+    <div class="field row2"><div><label>E-mail de l'administrateur</label><input placeholder="admin@ecole.com"></div><div><label>Téléphone</label><input placeholder="+224…"></div></div>
+    <div class="field row2"><div><label>Formule</label><select><option>Starter — 120 000 XOF</option><option selected>Pro — 250 000 XOF</option><option>Business — 350 000 XOF</option></select></div><div><label>Facturation</label><select><option>Mensuelle</option><option>Annuelle</option></select></div></div>
+    <div class="field"><label>Domaine du site (pour la licence du plugin)</label><input placeholder="ecole.com"></div>
+    <div class="field"><label>Période d'essai</label><select><option>14 jours</option><option>30 jours</option><option>Aucune</option></select></div>
+  </div>
+  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Créer le compte &amp; générer la licence</button></div>
+</div></div>
+
+<div class="modal" id="modal-license"><div class="ov" data-close></div><div class="box">
+  <div class="mhd"><h3>Générer une clé de licence</h3><button class="x" data-close>&times;</button></div>
+  <div class="mbd">
+    <div class="field"><label>Client</label><select><option>BEM Conakry</option><option>ISM Dakar</option><option>Sup'Management</option></select></div>
+    <div class="field row2"><div><label>Durée</label><select><option>1 an</option><option>2 ans</option><option>À vie</option></select></div><div><label>Sites autorisés</label><input type="number" value="1"></div></div>
+    <div class="field"><label>Clé générée</label><input value="SIA-9K3M-PT7Q-2XB4" readonly></div>
+  </div>
+  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Enregistrer la licence</button></div>
+</div></div>
+
+<div class="modal" id="modal-camp"><div class="ov" data-close></div><div class="box">
+  <div class="mhd"><h3>Nouvelle campagne</h3><button class="x" data-close>&times;</button></div>
+  <div class="mbd">
+    <div class="field"><label>Nom de la campagne</label><input placeholder="ex. Relance Prépa Ingénieur"></div>
+    <div class="field row2"><div><label>Canal</label><select><option>E-mail</option><option>SMS</option><option>E-mail + SMS</option><option>WhatsApp</option></select></div><div><label>Modèle</label><select><option>Relance douce</option><option>Portes ouvertes</option><option>Rappel échéance</option></select></div></div>
+    <div class="field"><label>Audience (segment de leads)</label><select><option>Tous les leads</option><option>Leads chauds</option><option>Leads tièdes · Prépa Ingénieur</option><option>Candidatures</option></select></div>
+    <div class="field row2"><div><label>Envoi</label><select><option>Immédiat</option><option>Programmé</option></select></div><div><label>Date</label><input type="date"></div></div>
+  </div>
+  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Planifier la campagne</button></div>
+</div></div>
+
+<div class="modal" id="modal-post"><div class="ov" data-close></div><div class="box">
+  <div class="mhd"><h3>Nouvelle publication</h3><button class="x" data-close>&times;</button></div>
+  <div class="mbd">
+    <div class="field"><label>Message</label><textarea rows="4" placeholder="Rédigez votre publication…"></textarea></div>
+    <div class="field"><label>Réseaux</label><div style="display:flex;gap:14px;flex-wrap:wrap;">
+      <label style="font-weight:500;"><input type="checkbox" checked> 📘 Facebook</label>
+      <label style="font-weight:500;"><input type="checkbox" checked> 📸 Instagram</label>
+      <label style="font-weight:500;"><input type="checkbox"> 💼 LinkedIn</label>
+    </div></div>
+    <div class="field row2"><div><label>Publication</label><select><option>Immédiate</option><option>Programmée</option></select></div><div><label>Date &amp; heure</label><input type="datetime-local"></div></div>
+  </div>
+  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Programmer</button></div>
+</div></div>
+
+<script>
+  // Injecte les vues depuis le template dans le conteneur.
+  document.getElementById('content').appendChild(document.getElementById('views').content.cloneNode(true));
+
+  var titles = {};
+  document.querySelectorAll('.view').forEach(function(v){ titles[v.id.replace('view-','')] = v.dataset.title; });
+
+  function enter(role){
+    document.getElementById('screen-login').style.display='none';
+    document.getElementById('app').classList.add('on');
+    document.querySelectorAll('[data-role-nav]').forEach(function(n){ n.style.display = n.dataset.roleNav===role ? '' : 'none'; });
+    var admin = role==='admin';
+    document.getElementById('u-name').textContent = admin ? 'Maestro Dan' : 'BEM Conakry';
+    document.getElementById('u-role').textContent = admin ? 'Administrateur' : 'Responsable admissions';
+    document.getElementById('u-av').textContent = admin ? 'M' : 'B';
+    go(admin ? 'a-dash' : 'c-dash');
+  }
+  function go(view){
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
+    var el = document.getElementById('view-'+view);
+    if(el){ el.classList.add('on'); }
+    document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.toggle('active', n.dataset.view===view); });
+    document.getElementById('page-title').textContent = titles[view] || '';
+    document.getElementById('side').classList.remove('open');
+    window.scrollTo(0,0);
+  }
+  function logout(){
+    document.getElementById('app').classList.remove('on');
+    document.getElementById('screen-login').style.display='grid';
+  }
+
+  document.addEventListener('click', function(e){
+    var nav = e.target.closest('.nav-item'); if(nav && nav.dataset.view){ go(nav.dataset.view); }
+    var jump = e.target.closest('[data-view-jump]'); if(jump){ go(jump.dataset.viewJump); }
+    var open = e.target.closest('[data-open]'); if(open){ var m=document.getElementById(open.dataset.open); if(m) m.classList.add('on'); }
+    if(e.target.closest('[data-close]')){ document.querySelectorAll('.modal.on').forEach(function(m){ m.classList.remove('on'); }); }
+  });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ document.querySelectorAll('.modal.on').forEach(function(m){ m.classList.remove('on'); }); } });
+</script>
+
+</body>
+</html>
