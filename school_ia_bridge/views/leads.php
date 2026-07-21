@@ -13,19 +13,6 @@
                 <i class="fa fa-columns"></i> Voir le pipeline
               </a>
             </div>
-            <hr class="hr-panel-heading" />
-            <div class="row">
-              <div class="col-md-8">
-                <label class="control-label">URL du point d'entrée</label>
-                <input type="text" class="form-control" readonly onclick="this.select()"
-                       value="<?php echo htmlspecialchars($endpoint, ENT_QUOTES); ?>">
-              </div>
-              <div class="col-md-4">
-                <label class="control-label">Secret partagé</label>
-                <input type="text" class="form-control" readonly onclick="this.select()"
-                       value="<?php echo htmlspecialchars($secret, ENT_QUOTES); ?>">
-              </div>
-            </div>
           </div>
         </div>
 

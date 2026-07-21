@@ -46,6 +46,14 @@ class School_ia_bridge_model extends App_Model
      */
     public function ensure_schema(): void
     {
+        // Une seule exécution par requête : évite un double ALTER (et l'erreur
+        // « Duplicate column ») dû au cache des noms de colonnes de CodeIgniter.
+        static $done = false;
+        if ($done) {
+            return;
+        }
+        $done = true;
+
         if (!$this->db->field_exists('stage', $this->table())) {
             $this->db->query('ALTER TABLE `' . $this->table() . "` ADD `stage` VARCHAR(32) NOT NULL DEFAULT 'nouveau'");
         }

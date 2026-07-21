@@ -26,6 +26,23 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/leads', $data);
     }
 
+    /** Réglages : URL du point d'entrée + secret partagé (pour le plugin). */
+    public function settings()
+    {
+        $data['title']    = 'School IA — Réglages';
+        $data['secret']   = get_option('school_ia_bridge_secret');
+        $data['endpoint'] = site_url('school_ia_bridge/api/receive');
+        $this->load->view('school_ia_bridge/settings', $data);
+    }
+
+    /** Régénère le secret partagé (à recopier ensuite dans le plugin). */
+    public function regenerate_secret()
+    {
+        update_option('school_ia_bridge_secret', bin2hex(random_bytes(16)));
+        set_alert('warning', 'Nouveau secret généré. Recopiez-le dans le plugin School IA (Réglages → CRM), sinon les leads n\'arriveront plus.');
+        redirect(admin_url('school_ia_bridge/settings'));
+    }
+
     /** Pipeline Kanban d'admission. */
     public function pipeline()
     {
