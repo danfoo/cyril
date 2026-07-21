@@ -5,7 +5,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: School IA Bridge
 Description: Reçoit les leads envoyés par le plugin WordPress « School IA » et les affiche dans Perfex. Le traitement (conversion en lead Perfex, relances…) se fait ensuite.
-Version: 1.1.0
+Version: 1.0.0
 Requires at least: 2.3.*
 Author: Maestro Dan
 Author URI: https://maestrodan.art
