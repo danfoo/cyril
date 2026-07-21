@@ -11,17 +11,31 @@ Successeur applicatif du plugin WordPress *School IA* : le plugin devient le **c
 ## Deux espaces
 
 **Espace Admin (Maestro Dan)**
-- Créer et gérer les comptes clients (écoles)
+- Créer et gérer les comptes clients (écoles) — un **utilisateur administrateur** est créé avec chaque compte
+- Gérer les **utilisateurs** de chaque entité (per-seat)
 - Générer et gérer les licences du plugin School IA
-- Définir les tarifs et formules d'abonnement
+- Définir les tarifs et formules d'abonnement (**quota d'utilisateurs inclus**)
 - Suivre les paiements et la facturation (PayPal, Wave, Stripe, Orange Money)
 
 **Espace Client (école)**
 - Suivre les leads (pipeline d'admission)
 - Planifier des campagnes marketing (e-mail, SMS, WhatsApp)
 - Préconfigurer des modèles d'e-mails et de SMS, puis les envoyer
+- Gérer son **équipe / utilisateurs** (inviter des agents d'admission)
 - Uploader et partager des documents (brochures, dossiers…)
 - Connecter les réseaux sociaux pour publier et suivre les campagnes
+
+### Facturation à l'utilisateur (per-seat)
+
+Chaque formule inclut un **quota d'utilisateurs**. Au-delà, chaque utilisateur
+supplémentaire est **facturé automatiquement** (ex. +15 000 XOF/mois). Reflété
+dans l'espace admin (facturation) et dans l'espace client (bandeau quota + coût).
+
+### Design
+
+Interface **claire, inspiration HubSpot, palette bleue**, conçue **mobile-first**
+(barre latérale escamotable, mises en page qui s'empilent, tableaux/kanban à
+défilement horizontal). Un seul thème (clair), volontairement.
 
 ## Prototype
 
