@@ -60,4 +60,83 @@ class School_ia_bridge_model extends App_Model
         $this->db->insert($this->table(), $data);
         return (int) $this->db->insert_id();
     }
+
+    /**
+     * Ajoute la colonne perfex_lead_id si besoin (sans migration : simple
+     * ALTER conditionnel, exécuté à la volée).
+     */
+    public function ensure_schema(): void
+    {
+        if (!$this->db->field_exists('perfex_lead_id', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `perfex_lead_id` INT NULL DEFAULT NULL');
+        }
+    }
+
+    /** Source Perfex « School IA » (créée si absente). */
+    private function source_id(): int
+    {
+        $row = $this->db->where('name', 'School IA')->get(db_prefix() . 'leads_sources')->row();
+        if ($row) {
+            return (int) $row->id;
+        }
+        $this->db->insert(db_prefix() . 'leads_sources', ['name' => 'School IA']);
+        return (int) $this->db->insert_id();
+    }
+
+    /** Statut de lead par défaut (le premier dans l'ordre d'affichage). */
+    private function default_status_id(): int
+    {
+        $row = $this->db->order_by('statusorder', 'asc')->limit(1)->get(db_prefix() . 'leads_status')->row();
+        return $row ? (int) $row->id : 1;
+    }
+
+    /** Leads reçus pas encore convertis en leads Perfex. */
+    public function unconverted(int $limit = 500): array
+    {
+        $this->ensure_schema();
+        return $this->db
+            ->group_start()->where('perfex_lead_id', null)->or_where('perfex_lead_id', 0)->group_end()
+            ->order_by('received_at', 'desc')
+            ->limit($limit)
+            ->get($this->table())
+            ->result();
+    }
+
+    /**
+     * Convertit un lead reçu en lead natif Perfex (via leads_model), et mémorise
+     * l'id Perfex pour éviter les doublons. Renvoie l'id Perfex, ou 0 en échec.
+     */
+    public function convert_to_perfex(object $row): int
+    {
+        $this->ensure_schema();
+        if (!empty($row->perfex_lead_id)) {
+            return (int) $row->perfex_lead_id;
+        }
+
+        $CI = &get_instance();
+        $CI->load->model('leads_model');
+
+        $data = [
+            'name'        => $row->name ?: ('Lead ' . $row->external_id),
+            'email'       => (string) $row->email,
+            'phonenumber' => (string) $row->phone,
+            'source'      => $this->source_id(),
+            'status'      => $this->default_status_id(),
+            'description' => (string) $row->description,
+            'assigned'    => 0,
+            'dateadded'   => date('Y-m-d H:i:s'),
+        ];
+
+        try {
+            $perfexId = (int) $CI->leads_model->add($data);
+        } catch (\Throwable $e) {
+            log_message('error', '[school_ia_bridge] Conversion lead échouée: ' . $e->getMessage());
+            return 0;
+        }
+
+        if ($perfexId > 0) {
+            $this->db->where('id', $row->id)->update($this->table(), ['perfex_lead_id' => $perfexId]);
+        }
+        return $perfexId;
+    }
 }

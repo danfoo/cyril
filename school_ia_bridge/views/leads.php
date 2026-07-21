@@ -29,6 +29,16 @@
 
         <div class="panel_s">
           <div class="panel-body">
+            <div class="row" style="margin-bottom:15px;">
+              <div class="col-md-12">
+                <a href="<?php echo admin_url('school_ia_bridge/convert'); ?>" class="btn btn-primary">
+                  <i class="fa fa-exchange"></i> Convertir en leads Perfex
+                </a>
+                <span class="text-muted" style="margin-left:8px;">
+                  Crée un lead natif dans <strong>Perfex → Leads</strong> pour chaque lead reçu non encore converti (source « School IA »).
+                </span>
+              </div>
+            </div>
             <table class="table dt-table">
               <thead>
                 <tr>
@@ -40,12 +50,13 @@
                   <th>Formation</th>
                   <th>Score</th>
                   <th>Site</th>
+                  <th>Perfex</th>
                 </tr>
               </thead>
               <tbody>
               <?php if (empty($leads)) { ?>
                 <tr>
-                  <td colspan="8" class="text-center text-muted" style="padding:30px;">
+                  <td colspan="9" class="text-center text-muted" style="padding:30px;">
                     Aucun lead reçu pour l'instant.
                   </td>
                 </tr>
@@ -65,6 +76,15 @@
                     </span>
                   </td>
                   <td><?php echo htmlspecialchars((string) $lead->source_site, ENT_QUOTES); ?></td>
+                  <td>
+                    <?php if (!empty($lead->perfex_lead_id)) { ?>
+                      <a href="<?php echo admin_url('leads/index/' . (int) $lead->perfex_lead_id); ?>" class="label label-success" style="text-decoration:none;">
+                        Lead #<?php echo (int) $lead->perfex_lead_id; ?>
+                      </a>
+                    <?php } else { ?>
+                      <span class="text-muted">—</span>
+                    <?php } ?>
+                  </td>
                 </tr>
               <?php }
               } ?>
