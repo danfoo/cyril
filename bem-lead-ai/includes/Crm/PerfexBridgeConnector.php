@@ -14,6 +14,10 @@ defined('ABSPATH') || exit;
  */
 final class PerfexBridgeConnector implements CrmConnectorInterface
 {
+    /** Résultat du dernier envoi (diagnostic). */
+    public int $lastCode = 0;
+    public string $lastError = '';
+
     public function isConfigured(): bool
     {
         return Options::get('perfex_url') !== '' && Options::hasSecret('perfex_bridge_secret');
@@ -55,13 +59,18 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         ]);
 
         if (is_wp_error($response)) {
-            error_log('[bem-lead-ai] Pont Perfex injoignable: ' . $response->get_error_message());
+            $this->lastCode = 0;
+            $this->lastError = $response->get_error_message();
+            error_log('[bem-lead-ai] Pont Perfex injoignable: ' . $this->lastError);
             return;
         }
 
-        $code = (int) wp_remote_retrieve_response_code($response);
-        if ($code < 200 || $code >= 300) {
-            error_log('[bem-lead-ai] Pont Perfex a répondu ' . $code . ': ' . wp_remote_retrieve_body($response));
+        $this->lastCode = (int) wp_remote_retrieve_response_code($response);
+        if ($this->lastCode < 200 || $this->lastCode >= 300) {
+            $this->lastError = wp_strip_all_tags((string) wp_remote_retrieve_body($response));
+            error_log('[bem-lead-ai] Pont Perfex a répondu ' . $this->lastCode . ': ' . $this->lastError);
+        } else {
+            $this->lastError = '';
         }
     }
 }

@@ -286,10 +286,20 @@ final class SettingsPage
         }
 
         echo '<hr><h2>' . esc_html__('Synchronisation Perfex', 'bem-lead-ai') . '</h2>';
-        if (isset($_GET['perfex_synced'])) {
-            echo '<div class="notice notice-success inline"><p>'
-                . sprintf(esc_html__('%d lead(s) envoyé(s) vers Perfex.', 'bem-lead-ai'), (int) $_GET['perfex_synced'])
-                . '</p></div>';
+        $result = get_transient('bem_perfex_sync_result');
+        if (is_array($result)) {
+            delete_transient('bem_perfex_sync_result');
+            $ok = (int) ($result['ok'] ?? 0);
+            $fail = (int) ($result['fail'] ?? 0);
+            $klass = $fail > 0 ? 'notice-warning' : 'notice-success';
+            echo '<div class="notice ' . $klass . ' inline"><p>'
+                . sprintf(esc_html__('%1$d réussi(s), %2$d échec(s).', 'bem-lead-ai'), $ok, $fail);
+            if ($fail > 0 && !empty($result['info'])) {
+                echo '<br><strong>' . esc_html__('Dernière réponse de Perfex :', 'bem-lead-ai') . '</strong> <code>'
+                    . esc_html((string) $result['info']) . '</code>';
+                echo '<br>' . esc_html__('401 = secret incorrect · 403 = protection CSRF de Perfex à désactiver pour cette URL.', 'bem-lead-ai');
+            }
+            echo '</p></div>';
         }
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('bem_perfex_sync');
@@ -311,15 +321,28 @@ final class SettingsPage
         $rest = new PerfexConnector();
         $connector = $bridge->isConfigured() ? $bridge : ($rest->isConfigured() ? $rest : null);
 
-        $sent = 0;
+        $ok = 0;
+        $fail = 0;
+        $info = '';
         if ($connector) {
             foreach ((new LeadRepository())->allReal() as $lead) {
                 $connector->upsertLead($lead);
-                $sent++;
+                if ($connector instanceof PerfexBridgeConnector) {
+                    if ($connector->lastCode >= 200 && $connector->lastCode < 300) {
+                        $ok++;
+                    } else {
+                        $fail++;
+                        $info = 'HTTP ' . $connector->lastCode
+                            . ($connector->lastError !== '' ? ' — ' . mb_substr($connector->lastError, 0, 160) : '');
+                    }
+                } else {
+                    $ok++; // connecteur REST : pas de diagnostic détaillé
+                }
             }
         }
 
-        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings&perfex_synced=' . $sent));
+        set_transient('bem_perfex_sync_result', ['ok' => $ok, 'fail' => $fail, 'info' => $info], 120);
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
         exit;
     }
 
