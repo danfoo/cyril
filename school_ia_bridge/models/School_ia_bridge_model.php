@@ -82,6 +82,18 @@ class School_ia_bridge_model extends App_Model
                 $this->db->query('UPDATE `' . db_prefix() . 'school_ia_tasks` SET `due_at` = `due_date` WHERE `due_at` IS NULL AND `due_date` IS NOT NULL');
             }
         }
+        if (!$this->db->table_exists(db_prefix() . 'school_ia_templates')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_templates` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `type` varchar(10) NOT NULL DEFAULT 'email',
+                `name` varchar(191) NOT NULL,
+                `subject` varchar(255) DEFAULT NULL,
+                `body` text DEFAULT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `type` (`type`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
         if (!$this->db->table_exists($this->activityTable())) {
             $this->db->query('CREATE TABLE `' . $this->activityTable() . "` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -215,6 +227,47 @@ class School_ia_bridge_model extends App_Model
             'staff_id'   => $staffId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    // ---------- Modèles e-mail / SMS ----------
+
+    private function templatesTable(): string
+    {
+        return db_prefix() . 'school_ia_templates';
+    }
+
+    public function templates(?string $type = null): array
+    {
+        if ($type) {
+            $this->db->where('type', $type);
+        }
+        return $this->db->order_by('name', 'asc')->get($this->templatesTable())->result();
+    }
+
+    public function get_template(int $id)
+    {
+        return $this->db->where('id', $id)->get($this->templatesTable())->row();
+    }
+
+    public function save_template(array $d): void
+    {
+        $row = [
+            'type'    => in_array($d['type'] ?? 'email', ['email', 'sms'], true) ? $d['type'] : 'email',
+            'name'    => substr(trim((string) ($d['name'] ?? '')), 0, 191),
+            'subject' => isset($d['subject']) ? substr((string) $d['subject'], 0, 255) : null,
+            'body'    => (string) ($d['body'] ?? ''),
+        ];
+        if (!empty($d['id'])) {
+            $this->db->where('id', (int) $d['id'])->update($this->templatesTable(), $row);
+        } else {
+            $row['created_at'] = date('Y-m-d H:i:s');
+            $this->db->insert($this->templatesTable(), $row);
+        }
+    }
+
+    public function delete_template(int $id): void
+    {
+        $this->db->where('id', $id)->delete($this->templatesTable());
     }
 
     // ---------- Tâches & rappels ----------

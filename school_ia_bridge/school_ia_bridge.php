@@ -59,9 +59,15 @@ function school_ia_bridge_admin_menu()
         'position' => 4,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+        'slug'     => 'school_ia_bridge_templates',
+        'name'     => 'Modèles',
+        'href'     => admin_url('school_ia_bridge/templates'),
+        'position' => 5,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_settings',
         'name'     => 'Réglages',
         'href'     => admin_url('school_ia_bridge/settings'),
-        'position' => 5,
+        'position' => 6,
     ]);
 }

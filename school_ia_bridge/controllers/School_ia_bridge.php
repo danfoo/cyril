@@ -190,8 +190,39 @@ class School_ia_bridge extends AdminController
         $data['activities'] = $this->school_ia_bridge_model->activities((int) $lead->id);
         $data['tasks']      = $this->school_ia_bridge_model->tasks_for_lead((int) $lead->id);
         $data['staff']      = $this->db->where('active', 1)->get(db_prefix() . 'staff')->result();
+        $data['emailTpls']  = $this->school_ia_bridge_model->templates('email');
+        $data['smsTpls']    = $this->school_ia_bridge_model->templates('sms');
         $data['model']      = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/lead', $data);
+    }
+
+    /** Bibliothèque de modèles e-mail / SMS. */
+    public function templates()
+    {
+        $data['title']     = 'School IA — Modèles';
+        $data['templates'] = $this->school_ia_bridge_model->templates();
+        $data['edit']      = $this->input->get('edit') ? $this->school_ia_bridge_model->get_template((int) $this->input->get('edit')) : null;
+        $this->load->view('school_ia_bridge/templates', $data);
+    }
+
+    public function template_save()
+    {
+        $this->school_ia_bridge_model->save_template([
+            'id'      => (int) $this->input->post('id'),
+            'type'    => $this->input->post('type'),
+            'name'    => $this->input->post('name'),
+            'subject' => $this->input->post('subject'),
+            'body'    => $this->input->post('body'),
+        ]);
+        set_alert('success', 'Modèle enregistré.');
+        redirect(admin_url('school_ia_bridge/templates'));
+    }
+
+    public function template_delete($id = 0)
+    {
+        $this->school_ia_bridge_model->delete_template((int) $id);
+        set_alert('success', 'Modèle supprimé.');
+        redirect(admin_url('school_ia_bridge/templates'));
     }
 
     /** Page Tâches : toutes les relances à faire, échéances en tête. */
