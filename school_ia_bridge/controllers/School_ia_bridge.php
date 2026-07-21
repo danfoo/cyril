@@ -18,9 +18,10 @@ class School_ia_bridge extends AdminController
     /** Tableau de bord : indicateurs + entonnoir. */
     public function dashboard()
     {
-        $data['title'] = 'School IA — Tableau de bord';
-        $data['stats'] = $this->school_ia_bridge_model->stats();
-        $data['model'] = $this->school_ia_bridge_model;
+        $data['title']    = 'School IA — Tableau de bord';
+        $data['stats']    = $this->school_ia_bridge_model->stats();
+        $data['dueTasks'] = $this->school_ia_bridge_model->pending_tasks(8);
+        $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/dashboard', $data);
     }
 
@@ -75,9 +76,53 @@ class School_ia_bridge extends AdminController
         $data['title']      = $lead->name ?: ('Lead #' . $lead->id);
         $data['lead']       = $lead;
         $data['activities'] = $this->school_ia_bridge_model->activities((int) $lead->id);
+        $data['tasks']      = $this->school_ia_bridge_model->tasks_for_lead((int) $lead->id);
         $data['staff']      = $this->db->where('active', 1)->get(db_prefix() . 'staff')->result();
         $data['model']      = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/lead', $data);
+    }
+
+    /** Page Tâches : toutes les relances à faire, échéances en tête. */
+    public function tasks()
+    {
+        $data['title'] = 'School IA — Tâches';
+        $data['tasks'] = $this->school_ia_bridge_model->pending_tasks();
+        $this->load->view('school_ia_bridge/tasks', $data);
+    }
+
+    /** Ajoute une tâche à un lead (form Perfex → CSRF). */
+    public function task_add($leadId = 0)
+    {
+        $leadId = (int) $leadId;
+        $title = trim((string) $this->input->post('title'));
+        $due = trim((string) $this->input->post('due_date'));
+        if ($this->school_ia_bridge_model->get_lead($leadId) && $title !== '') {
+            $this->school_ia_bridge_model->add_task($leadId, $title, $due ?: null, get_staff_user_id());
+            set_alert('success', 'Tâche ajoutée.');
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . $leadId));
+    }
+
+    /** Coche/décoche une tâche (lien GET). */
+    public function task_toggle($taskId = 0)
+    {
+        $task = $this->school_ia_bridge_model->get_task((int) $taskId);
+        if ($task) {
+            $this->school_ia_bridge_model->toggle_task((int) $taskId);
+        }
+        redirect($this->input->get('back') === 'tasks'
+            ? admin_url('school_ia_bridge/tasks')
+            : admin_url('school_ia_bridge/lead/' . ($task ? (int) $task->lead_id : 0)));
+    }
+
+    /** Supprime une tâche (lien GET). */
+    public function task_delete($taskId = 0)
+    {
+        $task = $this->school_ia_bridge_model->get_task((int) $taskId);
+        if ($task) {
+            $this->school_ia_bridge_model->delete_task((int) $taskId);
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . ($task ? (int) $task->lead_id : 0)));
     }
 
     /** Change l'étape du pipeline (lien GET → pas de blocage CSRF). */

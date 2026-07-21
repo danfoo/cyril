@@ -73,6 +73,47 @@
       <!-- Colonne activité / notes -->
       <div class="col-md-7">
         <div class="panel_s"><div class="panel-body">
+          <h5 class="bold" style="margin-top:0;">Tâches & relances</h5>
+          <?php echo form_open(admin_url('school_ia_bridge/task_add/' . (int) $lead->id)); ?>
+            <div class="row">
+              <div class="col-sm-7" style="margin-bottom:6px;">
+                <input type="text" name="title" class="form-control" placeholder="Ex. Rappeler le prospect" required>
+              </div>
+              <div class="col-sm-3" style="margin-bottom:6px;">
+                <input type="date" name="due_date" class="form-control" title="Échéance">
+              </div>
+              <div class="col-sm-2" style="margin-bottom:6px;">
+                <button type="submit" class="btn btn-primary btn-block">+</button>
+              </div>
+            </div>
+          <?php echo form_close(); ?>
+
+          <?php if (!empty($tasks)) { ?>
+            <ul class="list-unstyled" style="margin-top:6px;">
+              <?php foreach ($tasks as $t) {
+                  $overdue = (!$t->done && $t->due_date && $t->due_date < date('Y-m-d')); ?>
+                <li style="padding:6px 0; border-bottom:1px solid #f0f0f0;">
+                  <a href="<?php echo admin_url('school_ia_bridge/task_toggle/' . (int) $t->id); ?>"
+                     title="<?php echo $t->done ? 'Marquer à faire' : 'Marquer fait'; ?>">
+                    <i class="fa <?php echo $t->done ? 'fa-check-square-o text-success' : 'fa-square-o'; ?>"></i>
+                  </a>
+                  <span style="<?php echo $t->done ? 'text-decoration:line-through;color:#999;' : ''; ?>">
+                    <?php echo htmlspecialchars((string) $t->title, ENT_QUOTES); ?>
+                  </span>
+                  <?php if ($t->due_date) { ?>
+                    <span class="label <?php echo $overdue ? 'label-danger' : 'label-default'; ?>" style="margin-left:6px;">
+                      <?php echo htmlspecialchars((string) $t->due_date, ENT_QUOTES); ?>
+                    </span>
+                  <?php } ?>
+                  <a href="<?php echo admin_url('school_ia_bridge/task_delete/' . (int) $t->id); ?>"
+                     class="pull-right text-muted" onclick="return confirm('Supprimer cette tâche ?');"><i class="fa fa-trash"></i></a>
+                </li>
+              <?php } ?>
+            </ul>
+          <?php } ?>
+        </div></div>
+
+        <div class="panel_s"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;">Ajouter une note</h5>
           <?php echo form_open(admin_url('school_ia_bridge/note/' . (int) $lead->id)); ?>
             <textarea name="content" class="form-control" rows="3" placeholder="Écrire une note…"></textarea>

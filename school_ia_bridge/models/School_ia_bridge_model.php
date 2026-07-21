@@ -60,6 +60,20 @@ class School_ia_bridge_model extends App_Model
         if (!$this->db->field_exists('owner_id', $this->table())) {
             $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `owner_id` INT NULL DEFAULT NULL');
         }
+        if (!$this->db->table_exists(db_prefix() . 'school_ia_tasks')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_tasks` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `lead_id` int(11) NOT NULL,
+                `title` varchar(255) NOT NULL,
+                `due_date` date DEFAULT NULL,
+                `done` tinyint(1) NOT NULL DEFAULT 0,
+                `staff_id` int(11) DEFAULT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `lead_id` (`lead_id`),
+                KEY `done` (`done`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
         if (!$this->db->table_exists($this->activityTable())) {
             $this->db->query('CREATE TABLE `' . $this->activityTable() . "` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -193,6 +207,81 @@ class School_ia_bridge_model extends App_Model
             'staff_id'   => $staffId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    // ---------- Tâches & rappels ----------
+
+    private function tasksTable(): string
+    {
+        return db_prefix() . 'school_ia_tasks';
+    }
+
+    public function add_task(int $leadId, string $title, ?string $dueDate, ?int $staffId = null): void
+    {
+        $this->db->insert($this->tasksTable(), [
+            'lead_id'    => $leadId,
+            'title'      => substr($title, 0, 255),
+            'due_date'   => $dueDate ?: null,
+            'done'       => 0,
+            'staff_id'   => $staffId,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        $this->add_activity($leadId, 'task', 'Tâche : ' . $title . ($dueDate ? ' (échéance ' . $dueDate . ')' : ''), $staffId);
+    }
+
+    public function get_task(int $id)
+    {
+        return $this->db->where('id', $id)->get($this->tasksTable())->row();
+    }
+
+    public function toggle_task(int $id): void
+    {
+        $task = $this->get_task($id);
+        if ($task) {
+            $this->db->where('id', $id)->update($this->tasksTable(), ['done' => $task->done ? 0 : 1]);
+        }
+    }
+
+    public function delete_task(int $id): void
+    {
+        $this->db->where('id', $id)->delete($this->tasksTable());
+    }
+
+    /** Tâches d'un lead (à faire d'abord, par échéance). */
+    public function tasks_for_lead(int $leadId): array
+    {
+        return $this->db
+            ->where('lead_id', $leadId)
+            ->order_by('done', 'asc')
+            ->order_by('due_date', 'asc')
+            ->get($this->tasksTable())
+            ->result();
+    }
+
+    /** Toutes les tâches à faire, avec le nom du lead (page Tâches / widget). */
+    public function pending_tasks(int $limit = 200): array
+    {
+        return $this->db
+            ->select('t.*, l.name AS lead_name')
+            ->from($this->tasksTable() . ' t')
+            ->join($this->table() . ' l', 'l.id = t.lead_id', 'left')
+            ->where('t.done', 0)
+            ->order_by('t.due_date IS NULL', 'asc', false)
+            ->order_by('t.due_date', 'asc')
+            ->limit($limit)
+            ->get()
+            ->result();
+    }
+
+    /** Nombre de tâches en retard ou dues aujourd'hui. */
+    public function due_count(): int
+    {
+        return (int) $this->db
+            ->from($this->tasksTable())
+            ->where('done', 0)
+            ->where('due_date <=', date('Y-m-d'))
+            ->where('due_date IS NOT NULL', null, false)
+            ->count_all_results();
     }
 
     /**

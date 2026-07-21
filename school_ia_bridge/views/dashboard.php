@@ -31,6 +31,44 @@
       <?php } ?>
     </div>
 
+    <!-- Tâches à venir -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel_s"><div class="panel-body">
+          <div class="clearfix">
+            <h5 class="bold pull-left" style="margin-top:0;">Relances à faire</h5>
+            <a href="<?php echo admin_url('school_ia_bridge/tasks'); ?>" class="pull-right">Voir tout →</a>
+          </div>
+          <?php if (empty($dueTasks)) { ?>
+            <p class="text-muted" style="margin:8px 0 0;">Aucune relance en attente.</p>
+          <?php } else { ?>
+            <table class="table no-margin">
+              <tbody>
+                <?php foreach ($dueTasks as $t) {
+                    $overdue = ($t->due_date && $t->due_date < date('Y-m-d')); ?>
+                  <tr>
+                    <td><i class="fa fa-square-o text-muted"></i> <?php echo htmlspecialchars((string) $t->title, ENT_QUOTES); ?></td>
+                    <td>
+                      <a href="<?php echo admin_url('school_ia_bridge/lead/' . (int) $t->lead_id); ?>">
+                        <?php echo htmlspecialchars((string) ($t->lead_name ?: ('Lead #' . $t->lead_id)), ENT_QUOTES); ?>
+                      </a>
+                    </td>
+                    <td class="text-right">
+                      <?php if ($t->due_date) { ?>
+                        <span class="label <?php echo $overdue ? 'label-danger' : 'label-default'; ?>">
+                          <?php echo htmlspecialchars((string) $t->due_date, ENT_QUOTES); ?>
+                        </span>
+                      <?php } ?>
+                    </td>
+                  </tr>
+                <?php } ?>
+              </tbody>
+            </table>
+          <?php } ?>
+        </div></div>
+      </div>
+    </div>
+
     <!-- Entonnoir par étape -->
     <div class="row">
       <div class="col-md-12">
