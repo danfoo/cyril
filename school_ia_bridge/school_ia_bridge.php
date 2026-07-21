@@ -30,9 +30,20 @@ function school_ia_bridge_admin_menu()
 {
     $CI = &get_instance();
     $CI->app_menu->add_sidebar_menu_item('school_ia_bridge', [
-        'name'     => 'School IA — Leads',
-        'href'     => admin_url('school_ia_bridge'),
+        'name'     => 'School IA CRM',
         'icon'     => 'fa fa-graduation-cap',
         'position' => 30,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+        'slug'     => 'school_ia_bridge_pipeline',
+        'name'     => 'Pipeline',
+        'href'     => admin_url('school_ia_bridge/pipeline'),
+        'position' => 1,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+        'slug'     => 'school_ia_bridge_inbox',
+        'name'     => 'Boîte de réception',
+        'href'     => admin_url('school_ia_bridge'),
+        'position' => 2,
     ]);
 }

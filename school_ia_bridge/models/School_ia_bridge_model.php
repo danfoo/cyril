@@ -9,6 +9,63 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_leads';
     }
 
+    private function activityTable(): string
+    {
+        return db_prefix() . 'school_ia_activities';
+    }
+
+    /** Étapes du pipeline d'admission (slug => [label, couleur]). */
+    public function stages(): array
+    {
+        return [
+            'nouveau'     => ['Nouveau', '#2e6ff2'],
+            'contacte'    => ['Contacté', '#4f86f5'],
+            'qualifie'    => ['Qualifié', '#63a4ff'],
+            'relance'     => ['Relance', '#d6a63a'],
+            'candidature' => ['Candidature', '#8a63d2'],
+            'inscrit'     => ['Inscrit', '#0a8f5b'],
+            'perdu'       => ['Perdu', '#d64545'],
+        ];
+    }
+
+    public function stageLabel(string $slug): string
+    {
+        $s = $this->stages();
+        return $s[$slug][0] ?? ucfirst($slug);
+    }
+
+    public function stageColor(string $slug): string
+    {
+        $s = $this->stages();
+        return $s[$slug][1] ?? '#888';
+    }
+
+    /**
+     * Ajoute les colonnes/tables CRM si besoin (sans migration : ALTER/CREATE
+     * conditionnels exécutés à la volée).
+     */
+    public function ensure_schema(): void
+    {
+        if (!$this->db->field_exists('stage', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . "` ADD `stage` VARCHAR(32) NOT NULL DEFAULT 'nouveau'");
+        }
+        if (!$this->db->field_exists('owner_id', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `owner_id` INT NULL DEFAULT NULL');
+        }
+        if (!$this->db->table_exists($this->activityTable())) {
+            $this->db->query('CREATE TABLE `' . $this->activityTable() . "` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `lead_id` int(11) NOT NULL,
+                `type` varchar(32) NOT NULL DEFAULT 'note',
+                `content` text DEFAULT NULL,
+                `staff_id` int(11) DEFAULT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `lead_id` (`lead_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+    }
+
     /** Liste les leads reçus (les plus récents d'abord). */
     public function get_leads(int $limit = 300): array
     {
@@ -22,6 +79,59 @@ class School_ia_bridge_model extends App_Model
     public function get_lead(int $id)
     {
         return $this->db->where('id', $id)->get($this->table())->row();
+    }
+
+    /** Leads groupés par étape du pipeline (pour le Kanban). */
+    public function by_stage(): array
+    {
+        $this->ensure_schema();
+        $grouped = [];
+        foreach (array_keys($this->stages()) as $slug) {
+            $grouped[$slug] = [];
+        }
+        $rows = $this->db->order_by('score', 'desc')->get($this->table())->result();
+        foreach ($rows as $row) {
+            $stage = $row->stage ?? 'nouveau';
+            if (!isset($grouped[$stage])) {
+                $grouped[$stage] = [];
+            }
+            $grouped[$stage][] = $row;
+        }
+        return $grouped;
+    }
+
+    public function set_stage(int $id, string $stage): void
+    {
+        if (!array_key_exists($stage, $this->stages())) {
+            return;
+        }
+        $this->db->where('id', $id)->update($this->table(), ['stage' => $stage]);
+    }
+
+    public function set_owner(int $id, int $staffId): void
+    {
+        $this->db->where('id', $id)->update($this->table(), ['owner_id' => $staffId ?: null]);
+    }
+
+    /** Historique / activités d'un lead (récent en premier). */
+    public function activities(int $leadId): array
+    {
+        return $this->db
+            ->where('lead_id', $leadId)
+            ->order_by('created_at', 'desc')
+            ->get($this->activityTable())
+            ->result();
+    }
+
+    public function add_activity(int $leadId, string $type, string $content, ?int $staffId = null): void
+    {
+        $this->db->insert($this->activityTable(), [
+            'lead_id'    => $leadId,
+            'type'       => $type,
+            'content'    => $content,
+            'staff_id'   => $staffId,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     /**
@@ -59,84 +169,5 @@ class School_ia_bridge_model extends App_Model
 
         $this->db->insert($this->table(), $data);
         return (int) $this->db->insert_id();
-    }
-
-    /**
-     * Ajoute la colonne perfex_lead_id si besoin (sans migration : simple
-     * ALTER conditionnel, exécuté à la volée).
-     */
-    public function ensure_schema(): void
-    {
-        if (!$this->db->field_exists('perfex_lead_id', $this->table())) {
-            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `perfex_lead_id` INT NULL DEFAULT NULL');
-        }
-    }
-
-    /** Source Perfex « School IA » (créée si absente). */
-    private function source_id(): int
-    {
-        $row = $this->db->where('name', 'School IA')->get(db_prefix() . 'leads_sources')->row();
-        if ($row) {
-            return (int) $row->id;
-        }
-        $this->db->insert(db_prefix() . 'leads_sources', ['name' => 'School IA']);
-        return (int) $this->db->insert_id();
-    }
-
-    /** Statut de lead par défaut (le premier dans l'ordre d'affichage). */
-    private function default_status_id(): int
-    {
-        $row = $this->db->order_by('statusorder', 'asc')->limit(1)->get(db_prefix() . 'leads_status')->row();
-        return $row ? (int) $row->id : 1;
-    }
-
-    /** Leads reçus pas encore convertis en leads Perfex. */
-    public function unconverted(int $limit = 500): array
-    {
-        $this->ensure_schema();
-        return $this->db
-            ->group_start()->where('perfex_lead_id', null)->or_where('perfex_lead_id', 0)->group_end()
-            ->order_by('received_at', 'desc')
-            ->limit($limit)
-            ->get($this->table())
-            ->result();
-    }
-
-    /**
-     * Convertit un lead reçu en lead natif Perfex (via leads_model), et mémorise
-     * l'id Perfex pour éviter les doublons. Renvoie l'id Perfex, ou 0 en échec.
-     */
-    public function convert_to_perfex(object $row): int
-    {
-        $this->ensure_schema();
-        if (!empty($row->perfex_lead_id)) {
-            return (int) $row->perfex_lead_id;
-        }
-
-        $CI = &get_instance();
-        $CI->load->model('leads_model');
-
-        $data = [
-            'name'        => $row->name ?: ('Lead ' . $row->external_id),
-            'email'       => (string) $row->email,
-            'phonenumber' => (string) $row->phone,
-            'source'      => $this->source_id(),
-            'status'      => $this->default_status_id(),
-            'description' => (string) $row->description,
-            'assigned'    => 0,
-            'dateadded'   => date('Y-m-d H:i:s'),
-        ];
-
-        try {
-            $perfexId = (int) $CI->leads_model->add($data);
-        } catch (\Throwable $e) {
-            log_message('error', '[school_ia_bridge] Conversion lead échouée: ' . $e->getMessage());
-            return 0;
-        }
-
-        if ($perfexId > 0) {
-            $this->db->where('id', $row->id)->update($this->table(), ['perfex_lead_id' => $perfexId]);
-        }
-        return $perfexId;
     }
 }
