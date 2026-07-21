@@ -77,6 +77,22 @@ final class LeadRepository
         $wpdb->update($this->table, $fields, ['id' => $id]);
     }
 
+    /**
+     * Leads « réels » (identifiés ou scorés), pour l'envoi en masse vers le CRM.
+     * Les sessions anonymes sans aucune donnée sont exclues.
+     */
+    public function allReal(int $limit = 500): array
+    {
+        global $wpdb;
+        $sql = "SELECT * FROM {$this->table}
+                WHERE email IS NOT NULL AND email <> ''
+                   OR phone IS NOT NULL AND phone <> ''
+                   OR score_final > 0
+                ORDER BY score_final DESC, last_seen DESC
+                LIMIT %d";
+        return $wpdb->get_results($wpdb->prepare($sql, $limit)) ?: [];
+    }
+
     /** Signaux IA du lead (urgence, sensibilité prix, etc.), fusionnés au fil des classifications. */
     public function mergeSignals(int $id, array $newSignals): array
     {

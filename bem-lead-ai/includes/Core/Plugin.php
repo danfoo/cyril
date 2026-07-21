@@ -6,6 +6,7 @@ use BemLeadAi\Admin\AdminMenu;
 use BemLeadAi\Ai\SignalClassifier;
 use BemLeadAi\Api\RestController;
 use BemLeadAi\Knowledge\KnowledgeBaseBuilder;
+use BemLeadAi\Leads\LeadRepository;
 use BemLeadAi\Learning\VariantBandit;
 use BemLeadAi\Scoring\DisengagementDetector;
 use BemLeadAi\Scoring\ScoringEngine;
@@ -226,6 +227,14 @@ final class Plugin
         $scoring->recalculate($leadId);
 
         (new TriggerEngine())->evaluate($leadId, ['type' => $type, 'payload' => $payload, 'canal' => $canal]);
+
+        // Envoi automatique vers le CRM (Perfex) dès qu'un lead devient « réel »,
+        // sans dépendre d'une règle. En file d'attente (hors du flux de chat) ;
+        // le job crmSync ne fait rien si aucun CRM n'est configuré.
+        $lead = (new LeadRepository())->findById($leadId);
+        if ($lead && (!empty($lead->email) || !empty($lead->phone) || (float) $lead->score_final > 0)) {
+            Queue::dispatch('bem_lead_ai_job_action', ['crm_sync', $leadId, []]);
+        }
     }
 
     public function jobClassify(int $leadId): void

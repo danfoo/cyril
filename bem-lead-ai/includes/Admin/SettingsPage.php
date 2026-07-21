@@ -4,7 +4,10 @@ namespace BemLeadAi\Admin;
 
 use BemLeadAi\Ai\ClaudeClient;
 use BemLeadAi\Core\Options;
+use BemLeadAi\Crm\PerfexBridgeConnector;
+use BemLeadAi\Crm\PerfexConnector;
 use BemLeadAi\Knowledge\KnowledgeBaseBuilder;
+use BemLeadAi\Leads\LeadRepository;
 
 defined('ABSPATH') || exit;
 
@@ -208,6 +211,7 @@ final class SettingsPage
 
         // Hors formulaire principal (évite tout formulaire imbriqué).
         $this->renderEmailTestButton($o);
+        $this->renderPerfexSyncButton($o);
         $this->renderRebuildButton();
 
         echo '<hr><h2>' . esc_html__('Webhook à configurer côté CRM', 'bem-lead-ai') . '</h2>';
@@ -270,6 +274,53 @@ final class SettingsPage
         submit_button(__('Envoyer un e-mail de test', 'bem-lead-ai'), 'secondary', 'submit', false);
         echo ' <span class="description">' . esc_html(sprintf(__('Envoie un e-mail brandé à %s et affiche l\'erreur exacte en cas d\'échec. Enregistrez d\'abord vos réglages si vous venez de changer l\'adresse.', 'bem-lead-ai'), $to)) . '</span>';
         echo '</form>';
+    }
+
+    /** Bouton d'envoi en masse des leads existants vers Perfex. */
+    private function renderPerfexSyncButton(array $o): void
+    {
+        $configured = ($o['perfex_url'] ?? '') !== ''
+            && (Options::hasSecret('perfex_bridge_secret') || Options::hasSecret('perfex_api_key'));
+        if (!$configured) {
+            return;
+        }
+
+        echo '<hr><h2>' . esc_html__('Synchronisation Perfex', 'bem-lead-ai') . '</h2>';
+        if (isset($_GET['perfex_synced'])) {
+            echo '<div class="notice notice-success inline"><p>'
+                . sprintf(esc_html__('%d lead(s) envoyé(s) vers Perfex.', 'bem-lead-ai'), (int) $_GET['perfex_synced'])
+                . '</p></div>';
+        }
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        wp_nonce_field('bem_perfex_sync');
+        echo '<input type="hidden" name="action" value="bem_perfex_sync">';
+        submit_button(__('Envoyer les leads existants vers Perfex', 'bem-lead-ai'), 'secondary', 'submit', false);
+        echo ' <span class="description">' . esc_html__('Pousse tout de suite les leads déjà présents (identifiés ou scorés) dans Perfex. Les nouveaux leads y sont ensuite envoyés automatiquement.', 'bem-lead-ai') . '</span>';
+        echo '</form>';
+    }
+
+    /** Envoi en masse des leads existants vers Perfex (pont maison, sinon API REST). */
+    public static function handlePerfexSync(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Forbidden');
+        }
+        check_admin_referer('bem_perfex_sync');
+
+        $bridge = new PerfexBridgeConnector();
+        $rest = new PerfexConnector();
+        $connector = $bridge->isConfigured() ? $bridge : ($rest->isConfigured() ? $rest : null);
+
+        $sent = 0;
+        if ($connector) {
+            foreach ((new LeadRepository())->allReal() as $lead) {
+                $connector->upsertLead($lead);
+                $sent++;
+            }
+        }
+
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings&perfex_synced=' . $sent));
+        exit;
     }
 
     /** Bouton de reconstruction manuelle — rendu HORS du formulaire de réglages. */
