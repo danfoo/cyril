@@ -35,21 +35,27 @@ function school_ia_bridge_admin_menu()
         'position' => 30,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+        'slug'     => 'school_ia_bridge_dashboard',
+        'name'     => 'Tableau de bord',
+        'href'     => admin_url('school_ia_bridge/dashboard'),
+        'position' => 1,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_pipeline',
         'name'     => 'Pipeline',
         'href'     => admin_url('school_ia_bridge/pipeline'),
-        'position' => 1,
+        'position' => 2,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_inbox',
         'name'     => 'Boîte de réception',
         'href'     => admin_url('school_ia_bridge'),
-        'position' => 2,
+        'position' => 3,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_settings',
         'name'     => 'Réglages',
         'href'     => admin_url('school_ia_bridge/settings'),
-        'position' => 3,
+        'position' => 4,
     ]);
 }

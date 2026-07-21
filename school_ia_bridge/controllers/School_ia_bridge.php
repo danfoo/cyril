@@ -15,14 +15,27 @@ class School_ia_bridge extends AdminController
         $this->school_ia_bridge_model->ensure_schema();
     }
 
-    /** Boîte de réception : tous les leads reçus. */
+    /** Tableau de bord : indicateurs + entonnoir. */
+    public function dashboard()
+    {
+        $data['title'] = 'School IA — Tableau de bord';
+        $data['stats'] = $this->school_ia_bridge_model->stats();
+        $data['model'] = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/dashboard', $data);
+    }
+
+    /** Boîte de réception : leads reçus, avec recherche + filtres. */
     public function index()
     {
-        $data['title']    = 'School IA — Leads';
-        $data['leads']    = $this->school_ia_bridge_model->get_leads();
-        $data['secret']   = get_option('school_ia_bridge_secret');
-        $data['endpoint'] = site_url('school_ia_bridge/api/receive');
-        $data['model']    = $this->school_ia_bridge_model;
+        $filters = [
+            'q'         => $this->input->get('q'),
+            'stage'     => $this->input->get('stage'),
+            'min_score' => $this->input->get('min_score'),
+        ];
+        $data['title']   = 'School IA — Leads';
+        $data['leads']   = $this->school_ia_bridge_model->search($filters);
+        $data['filters'] = $filters;
+        $data['model']   = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/leads', $data);
     }
 

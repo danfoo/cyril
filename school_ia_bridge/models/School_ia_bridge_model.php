@@ -84,6 +84,59 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
+    /** Recherche + filtres (boîte de réception). */
+    public function search(array $f, int $limit = 300): array
+    {
+        $this->ensure_schema();
+        $q = trim((string) ($f['q'] ?? ''));
+        if ($q !== '') {
+            $this->db->group_start()
+                ->like('name', $q)->or_like('email', $q)
+                ->or_like('formation', $q)->or_like('phone', $q)
+                ->group_end();
+        }
+        if (!empty($f['stage'])) {
+            $this->db->where('stage', $f['stage']);
+        }
+        if (isset($f['min_score']) && $f['min_score'] !== '') {
+            $this->db->where('score >=', (float) $f['min_score']);
+        }
+        return $this->db
+            ->order_by('received_at', 'desc')
+            ->limit($limit)
+            ->get($this->table())
+            ->result();
+    }
+
+    /** Indicateurs pour le tableau de bord. */
+    public function stats(int $hotThreshold = 60): array
+    {
+        $this->ensure_schema();
+        $t = $this->table();
+
+        $total = (int) $this->db->count_all($t);
+        $hot = (int) $this->db->from($t)->where('score >=', $hotThreshold)->count_all_results();
+
+        $byStage = [];
+        foreach (array_keys($this->stages()) as $slug) {
+            $byStage[$slug] = 0;
+        }
+        foreach ($this->db->select('stage, COUNT(*) AS n')->group_by('stage')->get($t)->result() as $r) {
+            $byStage[$r->stage] = (int) $r->n;
+        }
+
+        $inscrits = $byStage['inscrit'] ?? 0;
+        $conversion = $total > 0 ? round($inscrits * 100 / $total, 1) : 0.0;
+
+        return [
+            'total'      => $total,
+            'hot'        => $hot,
+            'inscrits'   => $inscrits,
+            'conversion' => $conversion,
+            'byStage'    => $byStage,
+        ];
+    }
+
     public function get_lead(int $id)
     {
         return $this->db->where('id', $id)->get($this->table())->row();

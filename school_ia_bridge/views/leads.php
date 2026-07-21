@@ -13,6 +13,30 @@
                 <i class="fa fa-columns"></i> Voir le pipeline
               </a>
             </div>
+            <hr class="hr-panel-heading" />
+            <form method="get" action="<?php echo admin_url('school_ia_bridge'); ?>" class="row">
+              <div class="col-md-5">
+                <input type="text" name="q" class="form-control" placeholder="Rechercher (nom, e-mail, formation, téléphone)…"
+                       value="<?php echo htmlspecialchars((string) ($filters['q'] ?? ''), ENT_QUOTES); ?>">
+              </div>
+              <div class="col-md-3">
+                <select name="stage" class="form-control">
+                  <option value="">Toutes les étapes</option>
+                  <?php foreach ($model->stages() as $s => $conf) { ?>
+                    <option value="<?php echo $s; ?>" <?php echo (($filters['stage'] ?? '') === $s) ? 'selected' : ''; ?>>
+                      <?php echo htmlspecialchars($conf[0], ENT_QUOTES); ?>
+                    </option>
+                  <?php } ?>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <input type="number" name="min_score" class="form-control" placeholder="Score min"
+                       value="<?php echo htmlspecialchars((string) ($filters['min_score'] ?? ''), ENT_QUOTES); ?>">
+              </div>
+              <div class="col-md-2">
+                <button type="submit" class="btn btn-default btn-block"><i class="fa fa-search"></i> Filtrer</button>
+              </div>
+            </form>
           </div>
         </div>
 
