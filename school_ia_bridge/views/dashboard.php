@@ -45,7 +45,7 @@
             <table class="table no-margin">
               <tbody>
                 <?php foreach ($dueTasks as $t) {
-                    $overdue = ($t->due_date && $t->due_date < date('Y-m-d')); ?>
+                    $overdue = ($t->due_at && strtotime($t->due_at) < time()); ?>
                   <tr>
                     <td><i class="fa fa-square-o text-muted"></i> <?php echo htmlspecialchars((string) $t->title, ENT_QUOTES); ?></td>
                     <td>
@@ -54,9 +54,9 @@
                       </a>
                     </td>
                     <td class="text-right">
-                      <?php if ($t->due_date) { ?>
+                      <?php if ($t->due_at) { ?>
                         <span class="label <?php echo $overdue ? 'label-danger' : 'label-default'; ?>">
-                          <?php echo htmlspecialchars((string) $t->due_date, ENT_QUOTES); ?>
+                          <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($t->due_at)), ENT_QUOTES); ?>
                         </span>
                       <?php } ?>
                     </td>

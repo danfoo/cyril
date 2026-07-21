@@ -17,7 +17,7 @@
               </thead>
               <tbody>
                 <?php foreach ($tasks as $t) {
-                    $overdue = ($t->due_date && $t->due_date < date('Y-m-d')); ?>
+                    $overdue = ($t->due_at && strtotime($t->due_at) < time()); ?>
                   <tr class="<?php echo $overdue ? 'danger' : ''; ?>">
                     <td>
                       <a href="<?php echo admin_url('school_ia_bridge/task_toggle/' . (int) $t->id . '?back=tasks'); ?>" title="Marquer fait">
@@ -31,9 +31,9 @@
                       </a>
                     </td>
                     <td>
-                      <?php if ($t->due_date) { ?>
+                      <?php if ($t->due_at) { ?>
                         <span class="label <?php echo $overdue ? 'label-danger' : 'label-default'; ?>">
-                          <?php echo htmlspecialchars((string) $t->due_date, ENT_QUOTES); ?>
+                          <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($t->due_at)), ENT_QUOTES); ?>
                         </span>
                       <?php } else { ?>
                         <span class="text-muted">—</span>

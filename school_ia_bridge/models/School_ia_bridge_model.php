@@ -65,7 +65,7 @@ class School_ia_bridge_model extends App_Model
                 `id` int(11) NOT NULL AUTO_INCREMENT,
                 `lead_id` int(11) NOT NULL,
                 `title` varchar(255) NOT NULL,
-                `due_date` date DEFAULT NULL,
+                `due_at` datetime DEFAULT NULL,
                 `done` tinyint(1) NOT NULL DEFAULT 0,
                 `staff_id` int(11) DEFAULT NULL,
                 `created_at` datetime DEFAULT NULL,
@@ -73,6 +73,14 @@ class School_ia_bridge_model extends App_Model
                 KEY `lead_id` (`lead_id`),
                 KEY `done` (`done`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+        // Tables « tâches » créées avant l'ajout de l'heure : migrer due_date → due_at.
+        if ($this->db->table_exists(db_prefix() . 'school_ia_tasks')
+            && !$this->db->field_exists('due_at', db_prefix() . 'school_ia_tasks')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . 'school_ia_tasks` ADD `due_at` DATETIME NULL DEFAULT NULL');
+            if ($this->db->field_exists('due_date', db_prefix() . 'school_ia_tasks')) {
+                $this->db->query('UPDATE `' . db_prefix() . 'school_ia_tasks` SET `due_at` = `due_date` WHERE `due_at` IS NULL AND `due_date` IS NOT NULL');
+            }
         }
         if (!$this->db->table_exists($this->activityTable())) {
             $this->db->query('CREATE TABLE `' . $this->activityTable() . "` (
@@ -216,17 +224,18 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_tasks';
     }
 
-    public function add_task(int $leadId, string $title, ?string $dueDate, ?int $staffId = null): void
+    public function add_task(int $leadId, string $title, ?string $dueAt, ?int $staffId = null): void
     {
         $this->db->insert($this->tasksTable(), [
             'lead_id'    => $leadId,
             'title'      => substr($title, 0, 255),
-            'due_date'   => $dueDate ?: null,
+            'due_at'     => $dueAt ?: null,
             'done'       => 0,
             'staff_id'   => $staffId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
-        $this->add_activity($leadId, 'task', 'Tâche : ' . $title . ($dueDate ? ' (échéance ' . $dueDate . ')' : ''), $staffId);
+        $label = $dueAt ? ' (échéance ' . date('d/m/Y H:i', strtotime($dueAt)) . ')' : '';
+        $this->add_activity($leadId, 'task', 'Tâche : ' . $title . $label, $staffId);
     }
 
     public function get_task(int $id)
@@ -253,7 +262,7 @@ class School_ia_bridge_model extends App_Model
         return $this->db
             ->where('lead_id', $leadId)
             ->order_by('done', 'asc')
-            ->order_by('due_date', 'asc')
+            ->order_by('due_at', 'asc')
             ->get($this->tasksTable())
             ->result();
     }
@@ -266,8 +275,8 @@ class School_ia_bridge_model extends App_Model
             ->from($this->tasksTable() . ' t')
             ->join($this->table() . ' l', 'l.id = t.lead_id', 'left')
             ->where('t.done', 0)
-            ->order_by('t.due_date IS NULL', 'asc', false)
-            ->order_by('t.due_date', 'asc')
+            ->order_by('t.due_at IS NULL', 'asc', false)
+            ->order_by('t.due_at', 'asc')
             ->limit($limit)
             ->get()
             ->result();
@@ -279,8 +288,8 @@ class School_ia_bridge_model extends App_Model
         return (int) $this->db
             ->from($this->tasksTable())
             ->where('done', 0)
-            ->where('due_date <=', date('Y-m-d'))
-            ->where('due_date IS NOT NULL', null, false)
+            ->where('due_at <=', date('Y-m-d H:i:s'))
+            ->where('due_at IS NOT NULL', null, false)
             ->count_all_results();
     }
 

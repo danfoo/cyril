@@ -76,11 +76,11 @@
           <h5 class="bold" style="margin-top:0;">Tâches & relances</h5>
           <?php echo form_open(admin_url('school_ia_bridge/task_add/' . (int) $lead->id)); ?>
             <div class="row">
-              <div class="col-sm-7" style="margin-bottom:6px;">
+              <div class="col-sm-6" style="margin-bottom:6px;">
                 <input type="text" name="title" class="form-control" placeholder="Ex. Rappeler le prospect" required>
               </div>
-              <div class="col-sm-3" style="margin-bottom:6px;">
-                <input type="date" name="due_date" class="form-control" title="Échéance">
+              <div class="col-sm-4" style="margin-bottom:6px;">
+                <input type="datetime-local" name="due_at" class="form-control" title="Échéance (date et heure)">
               </div>
               <div class="col-sm-2" style="margin-bottom:6px;">
                 <button type="submit" class="btn btn-primary btn-block">+</button>
@@ -91,7 +91,7 @@
           <?php if (!empty($tasks)) { ?>
             <ul class="list-unstyled" style="margin-top:6px;">
               <?php foreach ($tasks as $t) {
-                  $overdue = (!$t->done && $t->due_date && $t->due_date < date('Y-m-d')); ?>
+                  $overdue = (!$t->done && $t->due_at && strtotime($t->due_at) < time()); ?>
                 <li style="padding:6px 0; border-bottom:1px solid #f0f0f0;">
                   <a href="<?php echo admin_url('school_ia_bridge/task_toggle/' . (int) $t->id); ?>"
                      title="<?php echo $t->done ? 'Marquer à faire' : 'Marquer fait'; ?>">
@@ -100,9 +100,9 @@
                   <span style="<?php echo $t->done ? 'text-decoration:line-through;color:#999;' : ''; ?>">
                     <?php echo htmlspecialchars((string) $t->title, ENT_QUOTES); ?>
                   </span>
-                  <?php if ($t->due_date) { ?>
+                  <?php if ($t->due_at) { ?>
                     <span class="label <?php echo $overdue ? 'label-danger' : 'label-default'; ?>" style="margin-left:6px;">
-                      <?php echo htmlspecialchars((string) $t->due_date, ENT_QUOTES); ?>
+                      <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($t->due_at)), ENT_QUOTES); ?>
                     </span>
                   <?php } ?>
                   <a href="<?php echo admin_url('school_ia_bridge/task_delete/' . (int) $t->id); ?>"

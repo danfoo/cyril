@@ -95,9 +95,11 @@ class School_ia_bridge extends AdminController
     {
         $leadId = (int) $leadId;
         $title = trim((string) $this->input->post('title'));
-        $due = trim((string) $this->input->post('due_date'));
+        $due = trim((string) $this->input->post('due_at'));
+        // <input type="datetime-local"> renvoie "Y-m-d\TH:i" → format MySQL.
+        $dueAt = $due !== '' ? date('Y-m-d H:i:s', strtotime($due)) : null;
         if ($this->school_ia_bridge_model->get_lead($leadId) && $title !== '') {
-            $this->school_ia_bridge_model->add_task($leadId, $title, $due ?: null, get_staff_user_id());
+            $this->school_ia_bridge_model->add_task($leadId, $title, $dueAt, get_staff_user_id());
             set_alert('success', 'Tâche ajoutée.');
         }
         redirect(admin_url('school_ia_bridge/lead/' . $leadId));
