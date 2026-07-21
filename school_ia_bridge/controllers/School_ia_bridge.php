@@ -87,34 +87,97 @@ class School_ia_bridge extends AdminController
             redirect(admin_url('school_ia_bridge/lead/' . $id));
         }
 
+        $attach = (array) $this->input->post('attachments');
+        [$ok, $names] = $this->deliver_email($lead, $subject, $message, $attach);
+        if ($ok) {
+            $note = 'E-mail envoyé : ' . $subject . ($names ? ' (PJ : ' . implode(', ', $names) . ')' : '');
+            $this->school_ia_bridge_model->add_activity($id, 'email', $note, get_staff_user_id());
+            set_alert('success', 'E-mail envoyé.');
+        } else {
+            set_alert('danger', 'Échec de l\'envoi. Vérifiez la configuration SMTP de Perfex (Setup → Settings → Email).');
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . $id));
+    }
+
+    /**
+     * Envoie un e-mail à un lead. Renvoie [ok, [titres des PJ]].
+     * Réutilisé par l'envoi unitaire et l'envoi groupé.
+     */
+    private function deliver_email(object $lead, string $subject, string $message, array $attachIds): array
+    {
         $this->load->library('email');
+        $this->email->clear(true); // réinitialise (important en boucle)
         $this->email->from(get_option('smtp_email') ?: get_option('companyname'), get_option('companyname'));
         $this->email->to($lead->email);
         $this->email->subject($subject);
         $this->email->message(nl2br($message));
         $this->email->set_mailtype('html');
 
-        // Pièces jointes issues du gestionnaire de documents.
-        $attachNames = [];
-        foreach ((array) $this->input->post('attachments') as $docId) {
+        $names = [];
+        foreach ($attachIds as $docId) {
             $doc = $this->school_ia_bridge_model->get_document((int) $docId);
             if ($doc) {
                 $path = $this->docsDir() . $doc->stored_name;
                 if (is_file($path)) {
                     $this->email->attach($path);
-                    $attachNames[] = $doc->title;
+                    $names[] = $doc->title;
                 }
             }
         }
+        return [$this->email->send(false), $names];
+    }
 
-        if ($this->email->send(false)) {
-            $note = 'E-mail envoyé : ' . $subject . ($attachNames ? ' (PJ : ' . implode(', ', $attachNames) . ')' : '');
-            $this->school_ia_bridge_model->add_activity($id, 'email', $note, get_staff_user_id());
-            set_alert('success', 'E-mail envoyé.');
-        } else {
-            set_alert('danger', 'Échec de l\'envoi. Vérifiez la configuration SMTP de Perfex (Réglages → E-mail).');
+    /** Personnalise un texte pour un lead ({prenom}, {formation}). */
+    private function personalize(string $text, object $lead): string
+    {
+        $prenom = trim(explode('#', (string) $lead->name)[0]);
+        return strtr($text, [
+            '{prenom}'    => $prenom !== '' ? $prenom : 'bonjour',
+            '{formation}' => $lead->formation ?: 'votre formation',
+        ]);
+    }
+
+    /** Page d'envoi groupé d'e-mails. */
+    public function bulk()
+    {
+        $data['title']     = 'School IA — Envoi groupé';
+        $data['programs']  = $this->school_ia_bridge_model->programs();
+        $data['emailTpls'] = $this->school_ia_bridge_model->templates('email');
+        $data['documents'] = $this->school_ia_bridge_model->documents();
+        $data['model']     = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/bulk', $data);
+    }
+
+    /** Traite l'envoi groupé (form Perfex → CSRF). */
+    public function bulk_send()
+    {
+        $filters = [
+            'stage'     => $this->input->post('stage'),
+            'program'   => $this->input->post('program'),
+            'min_score' => $this->input->post('min_score'),
+        ];
+        $subjectTpl = trim((string) $this->input->post('subject'));
+        $bodyTpl    = trim((string) $this->input->post('message'));
+        $attach     = (array) $this->input->post('attachments');
+
+        $recipients = $this->school_ia_bridge_model->email_recipients($filters);
+        $ok = 0;
+        $fail = 0;
+        foreach ($recipients as $lead) {
+            $subject = $this->personalize($subjectTpl, $lead);
+            $message = $this->personalize($bodyTpl, $lead);
+            [$sent] = $this->deliver_email($lead, $subject, $message, $attach);
+            if ($sent) {
+                $ok++;
+                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'email', 'E-mail (envoi groupé) : ' . $subject, get_staff_user_id());
+            } else {
+                $fail++;
+            }
         }
-        redirect(admin_url('school_ia_bridge/lead/' . $id));
+
+        set_alert($fail > 0 ? 'warning' : 'success',
+            $ok . ' e-mail(s) envoyé(s)' . ($fail > 0 ? ', ' . $fail . ' échec(s).' : '.'));
+        redirect(admin_url('school_ia_bridge/bulk'));
     }
 
     /** Envoie un SMS au lead via LAfricaMobile. */

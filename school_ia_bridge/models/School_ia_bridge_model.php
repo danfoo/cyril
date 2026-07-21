@@ -157,6 +157,23 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
+    /** Destinataires d'un envoi groupé e-mail (leads avec e-mail + filtres). */
+    public function email_recipients(array $f): array
+    {
+        $this->ensure_schema();
+        $this->db->where('email IS NOT NULL', null, false)->where('email !=', '');
+        if (!empty($f['stage'])) {
+            $this->db->where('stage', $f['stage']);
+        }
+        if (!empty($f['program'])) {
+            $this->db->like('formation', $f['program']);
+        }
+        if (isset($f['min_score']) && $f['min_score'] !== '') {
+            $this->db->where('score >=', (float) $f['min_score']);
+        }
+        return $this->db->order_by('score', 'desc')->get($this->table())->result();
+    }
+
     /** Indicateurs pour le tableau de bord. */
     public function stats(int $hotThreshold = 60): array
     {

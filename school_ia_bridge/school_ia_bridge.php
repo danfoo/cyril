@@ -47,33 +47,39 @@ function school_ia_bridge_admin_menu()
         'position' => 2,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+        'slug'     => 'school_ia_bridge_bulk',
+        'name'     => 'Envoi groupé',
+        'href'     => admin_url('school_ia_bridge/bulk'),
+        'position' => 3,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_tasks',
         'name'     => 'Tâches',
         'href'     => admin_url('school_ia_bridge/tasks'),
-        'position' => 3,
+        'position' => 4,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_inbox',
         'name'     => 'Boîte de réception',
         'href'     => admin_url('school_ia_bridge'),
-        'position' => 4,
+        'position' => 5,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_templates',
         'name'     => 'Modèles',
         'href'     => admin_url('school_ia_bridge/templates'),
-        'position' => 5,
+        'position' => 6,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_documents',
         'name'     => 'Documents',
         'href'     => admin_url('school_ia_bridge/documents'),
-        'position' => 6,
+        'position' => 7,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_settings',
         'name'     => 'Réglages',
         'href'     => admin_url('school_ia_bridge/settings'),
-        'position' => 7,
+        'position' => 8,
     ]);
 }
