@@ -102,6 +102,42 @@ class School_ia_bridge_model extends App_Model
                 KEY `program` (`program`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
+        if (!$this->db->table_exists(db_prefix() . 'school_ia_sequences')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_sequences` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `name` varchar(191) NOT NULL,
+                `active` tinyint(1) NOT NULL DEFAULT 1,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+        if (!$this->db->table_exists(db_prefix() . 'school_ia_sequence_steps')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_sequence_steps` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `sequence_id` int(11) NOT NULL,
+                `step_order` int(11) NOT NULL DEFAULT 1,
+                `channel` varchar(10) NOT NULL DEFAULT 'email',
+                `template_id` int(11) DEFAULT NULL,
+                `delay_days` int(11) NOT NULL DEFAULT 0,
+                `delay_hours` int(11) NOT NULL DEFAULT 0,
+                PRIMARY KEY (`id`),
+                KEY `sequence_id` (`sequence_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+        if (!$this->db->table_exists(db_prefix() . 'school_ia_enrollments')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_enrollments` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `sequence_id` int(11) NOT NULL,
+                `lead_id` int(11) NOT NULL,
+                `status` varchar(12) NOT NULL DEFAULT 'active',
+                `next_step_order` int(11) NOT NULL DEFAULT 1,
+                `next_run_at` datetime DEFAULT NULL,
+                `enrolled_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `status` (`status`),
+                KEY `lead_id` (`lead_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_templates')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_templates` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -369,6 +405,143 @@ class School_ia_bridge_model extends App_Model
     public function delete_document(int $id): void
     {
         $this->db->where('id', $id)->delete($this->documentsTable());
+    }
+
+    // ---------- Séquences de relance ----------
+
+    public function sequences(): array
+    {
+        return $this->db->order_by('name', 'asc')->get(db_prefix() . 'school_ia_sequences')->result();
+    }
+
+    public function active_sequences(): array
+    {
+        return $this->db->where('active', 1)->order_by('name', 'asc')->get(db_prefix() . 'school_ia_sequences')->result();
+    }
+
+    public function get_sequence(int $id)
+    {
+        return $this->db->where('id', $id)->get(db_prefix() . 'school_ia_sequences')->row();
+    }
+
+    public function save_sequence(array $d): int
+    {
+        if (!empty($d['id'])) {
+            $this->db->where('id', (int) $d['id'])->update(db_prefix() . 'school_ia_sequences', [
+                'name'   => substr(trim((string) $d['name']), 0, 191),
+                'active' => !empty($d['active']) ? 1 : 0,
+            ]);
+            return (int) $d['id'];
+        }
+        $this->db->insert(db_prefix() . 'school_ia_sequences', [
+            'name'       => substr(trim((string) $d['name']), 0, 191),
+            'active'     => 1,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        return (int) $this->db->insert_id();
+    }
+
+    public function delete_sequence(int $id): void
+    {
+        $this->db->where('id', $id)->delete(db_prefix() . 'school_ia_sequences');
+        $this->db->where('sequence_id', $id)->delete(db_prefix() . 'school_ia_sequence_steps');
+        $this->db->where('sequence_id', $id)->delete(db_prefix() . 'school_ia_enrollments');
+    }
+
+    public function sequence_steps(int $seqId): array
+    {
+        return $this->db->where('sequence_id', $seqId)->order_by('step_order', 'asc')
+            ->get(db_prefix() . 'school_ia_sequence_steps')->result();
+    }
+
+    public function step_by_order(int $seqId, int $order)
+    {
+        return $this->db->where('sequence_id', $seqId)->where('step_order', $order)
+            ->get(db_prefix() . 'school_ia_sequence_steps')->row();
+    }
+
+    public function add_step(array $d): void
+    {
+        $next = (int) $this->db->where('sequence_id', (int) $d['sequence_id'])
+            ->select_max('step_order')->get(db_prefix() . 'school_ia_sequence_steps')->row()->step_order;
+        $this->db->insert(db_prefix() . 'school_ia_sequence_steps', [
+            'sequence_id' => (int) $d['sequence_id'],
+            'step_order'  => $next + 1,
+            'channel'     => in_array($d['channel'] ?? 'email', ['email', 'sms'], true) ? $d['channel'] : 'email',
+            'template_id' => (int) ($d['template_id'] ?? 0) ?: null,
+            'delay_days'  => max(0, (int) ($d['delay_days'] ?? 0)),
+            'delay_hours' => max(0, (int) ($d['delay_hours'] ?? 0)),
+        ]);
+    }
+
+    public function delete_step(int $id): void
+    {
+        $this->db->where('id', $id)->delete(db_prefix() . 'school_ia_sequence_steps');
+    }
+
+    /** Inscrit un lead à une séquence (si pas déjà actif dessus). */
+    public function enroll(int $seqId, int $leadId): bool
+    {
+        $steps = $this->sequence_steps($seqId);
+        if (!$steps) {
+            return false;
+        }
+        $already = (int) $this->db->where('sequence_id', $seqId)->where('lead_id', $leadId)
+            ->where('status', 'active')->count_all_results(db_prefix() . 'school_ia_enrollments');
+        if ($already) {
+            return false;
+        }
+        $first = $steps[0];
+        $runAt = date('Y-m-d H:i:s', time() + $first->delay_days * 86400 + $first->delay_hours * 3600);
+        $this->db->insert(db_prefix() . 'school_ia_enrollments', [
+            'sequence_id'     => $seqId,
+            'lead_id'         => $leadId,
+            'status'          => 'active',
+            'next_step_order' => (int) $first->step_order,
+            'next_run_at'     => $runAt,
+            'enrolled_at'     => date('Y-m-d H:i:s'),
+        ]);
+        return true;
+    }
+
+    public function enrollments_for_lead(int $leadId): array
+    {
+        return $this->db->select('e.*, s.name AS sequence_name')
+            ->from(db_prefix() . 'school_ia_enrollments e')
+            ->join(db_prefix() . 'school_ia_sequences s', 's.id = e.sequence_id', 'left')
+            ->where('e.lead_id', $leadId)
+            ->order_by('e.enrolled_at', 'desc')
+            ->get()->result();
+    }
+
+    public function stop_enrollment(int $id): void
+    {
+        $this->db->where('id', $id)->update(db_prefix() . 'school_ia_enrollments', ['status' => 'stopped']);
+    }
+
+    /** Inscriptions dont l'étape est due (pour le cron). */
+    public function due_enrollments(): array
+    {
+        return $this->db->where('status', 'active')
+            ->where('next_run_at IS NOT NULL', null, false)
+            ->where('next_run_at <=', date('Y-m-d H:i:s'))
+            ->get(db_prefix() . 'school_ia_enrollments')->result();
+    }
+
+    public function advance_enrollment(int $id, int $nextOrder, string $nextRunAt): void
+    {
+        $this->db->where('id', $id)->update(db_prefix() . 'school_ia_enrollments', [
+            'next_step_order' => $nextOrder,
+            'next_run_at'     => $nextRunAt,
+        ]);
+    }
+
+    public function complete_enrollment(int $id): void
+    {
+        $this->db->where('id', $id)->update(db_prefix() . 'school_ia_enrollments', [
+            'status'      => 'done',
+            'next_run_at' => null,
+        ]);
     }
 
     // ---------- Modèles e-mail / SMS ----------

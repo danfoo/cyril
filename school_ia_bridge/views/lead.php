@@ -51,6 +51,40 @@
         </div></div>
 
         <div class="panel_s"><div class="panel-body">
+          <h5 class="bold" style="margin-top:0;">Séquences de relance</h5>
+          <?php if (!empty($sequences)) { ?>
+            <?php echo form_open(admin_url('school_ia_bridge/enroll/' . (int) $lead->id)); ?>
+              <div class="input-group">
+                <select name="sequence_id" class="form-control">
+                  <?php foreach ($sequences as $sq) { ?>
+                    <option value="<?php echo (int) $sq->id; ?>"><?php echo htmlspecialchars((string) $sq->name, ENT_QUOTES); ?></option>
+                  <?php } ?>
+                </select>
+                <span class="input-group-btn"><button type="submit" class="btn btn-primary">Inscrire</button></span>
+              </div>
+            <?php echo form_close(); ?>
+          <?php } else { ?>
+            <p class="text-muted">Aucune séquence active. Créez-en dans l'onglet <a href="<?php echo admin_url('school_ia_bridge/sequences'); ?>">Séquences</a>.</p>
+          <?php } ?>
+
+          <?php if (!empty($enrollments)) { ?>
+            <ul class="list-unstyled" style="margin-top:8px;">
+              <?php foreach ($enrollments as $en) {
+                  $badge = $en->status === 'active' ? 'label-success' : ($en->status === 'done' ? 'label-default' : 'label-warning'); ?>
+                <li style="padding:4px 0;">
+                  <span class="label <?php echo $badge; ?>"><?php echo $en->status; ?></span>
+                  <?php echo htmlspecialchars((string) $en->sequence_name, ENT_QUOTES); ?>
+                  <?php if ($en->status === 'active') { ?>
+                    <a href="<?php echo admin_url('school_ia_bridge/unenroll/' . (int) $en->id); ?>"
+                       class="pull-right text-muted" onclick="return confirm('Arrêter la séquence pour ce lead ?');">arrêter</a>
+                  <?php } ?>
+                </li>
+              <?php } ?>
+            </ul>
+          <?php } ?>
+        </div></div>
+
+        <div class="panel_s"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;">Responsable</h5>
           <?php echo form_open(admin_url('school_ia_bridge/assign/' . (int) $lead->id)); ?>
             <div class="input-group">

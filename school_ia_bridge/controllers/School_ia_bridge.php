@@ -463,6 +463,8 @@ class School_ia_bridge extends AdminController
         $data['emailTpls']  = $this->school_ia_bridge_model->templates('email');
         $data['smsTpls']    = $this->school_ia_bridge_model->templates('sms');
         $data['documents']  = $this->school_ia_bridge_model->documents();
+        $data['sequences']  = $this->school_ia_bridge_model->active_sequences();
+        $data['enrollments'] = $this->school_ia_bridge_model->enrollments_for_lead((int) $lead->id);
         $data['model']      = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/lead', $data);
     }
@@ -554,6 +556,85 @@ class School_ia_bridge extends AdminController
             set_alert('success', 'Document supprimé.');
         }
         redirect(admin_url('school_ia_bridge/documents'));
+    }
+
+    /** Séquences de relance : liste + gestion des étapes d'une séquence. */
+    public function sequences()
+    {
+        $data['title']     = 'School IA — Séquences';
+        $data['sequences'] = $this->school_ia_bridge_model->sequences();
+        $current = $this->input->get('id') ? $this->school_ia_bridge_model->get_sequence((int) $this->input->get('id')) : null;
+        $data['current']   = $current;
+        $data['steps']     = $current ? $this->school_ia_bridge_model->sequence_steps((int) $current->id) : [];
+        $data['emailTpls'] = $this->school_ia_bridge_model->templates('email');
+        $data['smsTpls']   = $this->school_ia_bridge_model->templates('sms');
+        $data['model']     = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/sequences', $data);
+    }
+
+    public function sequence_save()
+    {
+        $id = $this->school_ia_bridge_model->save_sequence([
+            'id'     => (int) $this->input->post('id'),
+            'name'   => $this->input->post('name'),
+            'active' => $this->input->post('active'),
+        ]);
+        set_alert('success', 'Séquence enregistrée.');
+        redirect(admin_url('school_ia_bridge/sequences?id=' . $id));
+    }
+
+    public function sequence_delete($id = 0)
+    {
+        $this->school_ia_bridge_model->delete_sequence((int) $id);
+        set_alert('success', 'Séquence supprimée.');
+        redirect(admin_url('school_ia_bridge/sequences'));
+    }
+
+    public function step_add()
+    {
+        $seqId = (int) $this->input->post('sequence_id');
+        $this->school_ia_bridge_model->add_step([
+            'sequence_id' => $seqId,
+            'channel'     => $this->input->post('channel'),
+            'template_id' => $this->input->post('template_id'),
+            'delay_days'  => $this->input->post('delay_days'),
+            'delay_hours' => $this->input->post('delay_hours'),
+        ]);
+        set_alert('success', 'Étape ajoutée.');
+        redirect(admin_url('school_ia_bridge/sequences?id=' . $seqId));
+    }
+
+    public function step_delete($id = 0)
+    {
+        $step = $this->db->where('id', (int) $id)->get(db_prefix() . 'school_ia_sequence_steps')->row();
+        $this->school_ia_bridge_model->delete_step((int) $id);
+        set_alert('success', 'Étape supprimée.');
+        redirect(admin_url('school_ia_bridge/sequences?id=' . ($step ? (int) $step->sequence_id : 0)));
+    }
+
+    public function enroll($leadId = 0)
+    {
+        $leadId = (int) $leadId;
+        $seqId = (int) $this->input->post('sequence_id');
+        if ($this->school_ia_bridge_model->get_lead($leadId) && $seqId) {
+            if ($this->school_ia_bridge_model->enroll($seqId, $leadId)) {
+                $this->school_ia_bridge_model->add_activity($leadId, 'note', 'Inscrit à une séquence de relance.', get_staff_user_id());
+                set_alert('success', 'Lead inscrit à la séquence.');
+            } else {
+                set_alert('warning', 'Déjà inscrit (ou séquence sans étape).');
+            }
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . $leadId));
+    }
+
+    public function unenroll($enrollmentId = 0)
+    {
+        $en = $this->db->where('id', (int) $enrollmentId)->get(db_prefix() . 'school_ia_enrollments')->row();
+        if ($en) {
+            $this->school_ia_bridge_model->stop_enrollment((int) $enrollmentId);
+            set_alert('success', 'Séquence arrêtée pour ce lead.');
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . ($en ? (int) $en->lead_id : 0)));
     }
 
     /** Bibliothèque de modèles e-mail / SMS. */
