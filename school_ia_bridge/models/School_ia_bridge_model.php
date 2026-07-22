@@ -102,6 +102,24 @@ class School_ia_bridge_model extends App_Model
                 KEY `program` (`program`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
+        if (!$this->db->table_exists(db_prefix() . 'school_ia_messages')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_messages` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `lead_id` int(11) DEFAULT NULL,
+                `channel` varchar(10) NOT NULL DEFAULT 'email',
+                `campaign` varchar(20) NOT NULL DEFAULT 'single',
+                `subject` varchar(255) DEFAULT NULL,
+                `token` varchar(32) DEFAULT NULL,
+                `status` varchar(12) NOT NULL DEFAULT 'sent',
+                `opened_at` datetime DEFAULT NULL,
+                `clicks` int(11) NOT NULL DEFAULT 0,
+                `staff_id` int(11) DEFAULT NULL,
+                `sent_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `token` (`token`),
+                KEY `channel` (`channel`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_sequences')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_sequences` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -369,6 +387,86 @@ class School_ia_bridge_model extends App_Model
             ->order_by('created_at', 'desc')
             ->get($this->activityTable())
             ->result();
+    }
+
+    // ---------- Messages & statistiques de campagne ----------
+
+    private function messagesTable(): string
+    {
+        return db_prefix() . 'school_ia_messages';
+    }
+
+    /** Enregistre un message envoyé et renvoie son jeton de suivi. */
+    public function log_message(array $d): string
+    {
+        $token = bin2hex(random_bytes(8));
+        $this->db->insert($this->messagesTable(), [
+            'lead_id'  => (int) ($d['lead_id'] ?? 0) ?: null,
+            'channel'  => in_array($d['channel'] ?? 'email', ['email', 'sms'], true) ? $d['channel'] : 'email',
+            'campaign' => substr((string) ($d['campaign'] ?? 'single'), 0, 20),
+            'subject'  => isset($d['subject']) ? substr((string) $d['subject'], 0, 255) : null,
+            'token'    => $token,
+            'status'   => substr((string) ($d['status'] ?? 'sent'), 0, 12),
+            'clicks'   => 0,
+            'staff_id' => $d['staff_id'] ?? null,
+            'sent_at'  => date('Y-m-d H:i:s'),
+        ]);
+        return $token;
+    }
+
+    public function mark_open(string $token): void
+    {
+        if ($token === '') {
+            return;
+        }
+        $this->db->where('token', $token)->where('opened_at IS NULL', null, false)
+            ->update($this->messagesTable(), ['opened_at' => date('Y-m-d H:i:s')]);
+    }
+
+    public function add_click(string $token): void
+    {
+        if ($token === '') {
+            return;
+        }
+        $this->db->set('clicks', 'clicks+1', false)->where('token', $token)->update($this->messagesTable());
+        // Un clic implique une ouverture.
+        $this->mark_open($token);
+    }
+
+    /** Agrégats pour la page Statistiques (sur une période optionnelle). */
+    public function message_stats(int $sinceDays = 0): array
+    {
+        $t = $this->messagesTable();
+        $since = $this->since($sinceDays);
+        $w = function () use ($since) { if ($since) { $this->db->where('sent_at >=', $since); } };
+
+        $w(); $this->db->where('channel', 'email'); $emailSent = (int) $this->db->count_all_results($t);
+        $w(); $this->db->where('channel', 'email')->where('opened_at IS NOT NULL', null, false); $emailOpened = (int) $this->db->count_all_results($t);
+        $w(); $this->db->where('channel', 'email')->where('clicks >', 0); $emailClicked = (int) $this->db->count_all_results($t);
+
+        $w(); $this->db->where('channel', 'sms'); $smsTotal = (int) $this->db->count_all_results($t);
+        $w(); $this->db->where('channel', 'sms')->where('status', 'sent'); $smsSent = (int) $this->db->count_all_results($t);
+        $w(); $this->db->where('channel', 'sms')->where('status', 'failed'); $smsFailed = (int) $this->db->count_all_results($t);
+
+        return [
+            'email_sent'    => $emailSent,
+            'email_opened'  => $emailOpened,
+            'email_clicked' => $emailClicked,
+            'open_rate'     => $emailSent > 0 ? round($emailOpened * 100 / $emailSent, 1) : 0.0,
+            'click_rate'    => $emailSent > 0 ? round($emailClicked * 100 / $emailSent, 1) : 0.0,
+            'sms_total'     => $smsTotal,
+            'sms_sent'      => $smsSent,
+            'sms_failed'    => $smsFailed,
+        ];
+    }
+
+    /** Derniers messages (pour le détail de la page Statistiques). */
+    public function recent_messages(int $limit = 50): array
+    {
+        return $this->db->select('m.*, l.name AS lead_name')
+            ->from($this->messagesTable() . ' m')
+            ->join($this->table() . ' l', 'l.id = m.lead_id', 'left')
+            ->order_by('m.sent_at', 'desc')->limit($limit)->get()->result();
     }
 
     /** Journal global : toutes les activités, avec le nom du lead (filtrable). */

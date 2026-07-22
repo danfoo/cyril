@@ -56,6 +56,17 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/leads', $data);
     }
 
+    /** Statistiques des campagnes (ouvertures/clics e-mail, SMS). */
+    public function campaigns()
+    {
+        $period = (int) $this->input->get('period');
+        $data['title']    = 'School IA — Statistiques des campagnes';
+        $data['period']   = $period;
+        $data['stats']    = $this->school_ia_bridge_model->message_stats($period);
+        $data['messages'] = $this->school_ia_bridge_model->recent_messages(50);
+        $this->load->view('school_ia_bridge/campaigns', $data);
+    }
+
     /** Journal d'activité global. */
     public function activity()
     {
@@ -120,7 +131,7 @@ class School_ia_bridge extends AdminController
         }
 
         $attach = (array) $this->input->post('attachments');
-        [$ok, $names] = $this->deliver_email($lead, $subject, $message, $attach);
+        [$ok, $names] = $this->deliver_email($lead, $subject, $message, $attach, 'single');
         if ($ok) {
             $note = 'E-mail envoyé : ' . $subject . ($names ? ' (PJ : ' . implode(', ', $names) . ')' : '');
             $this->school_ia_bridge_model->add_activity($id, 'email', $note, get_staff_user_id());
@@ -135,28 +146,23 @@ class School_ia_bridge extends AdminController
      * Envoie un e-mail à un lead. Renvoie [ok, [titres des PJ]].
      * Réutilisé par l'envoi unitaire et l'envoi groupé.
      */
-    private function deliver_email(object $lead, string $subject, string $message, array $attachIds): array
+    private function deliver_email(object $lead, string $subject, string $message, array $attachIds, string $campaign = 'single'): array
     {
-        $this->load->library('email');
-        $this->email->clear(true); // réinitialise (important en boucle)
-        $this->email->from(get_option('smtp_email') ?: get_option('companyname'), get_option('companyname'));
-        $this->email->to($lead->email);
-        $this->email->subject($subject);
-        $this->email->message(nl2br($message));
-        $this->email->set_mailtype('html');
-
+        $paths = [];
         $names = [];
         foreach ($attachIds as $docId) {
             $doc = $this->school_ia_bridge_model->get_document((int) $docId);
             if ($doc) {
                 $path = $this->docsDir() . $doc->stored_name;
                 if (is_file($path)) {
-                    $this->email->attach($path);
+                    $paths[] = $path;
                     $names[] = $doc->title;
                 }
             }
         }
-        return [$this->email->send(false), $names];
+        // Envoi avec suivi (pixel d'ouverture + liens traqués + journal).
+        $ok = school_ia_send_tracked_email($lead, $subject, $message, $campaign, $paths);
+        return [$ok, $names];
     }
 
     /** Personnalise un texte pour un lead ({prenom}, {formation}). */
@@ -201,7 +207,7 @@ class School_ia_bridge extends AdminController
         foreach ($recipients as $lead) {
             $subject = $this->personalize($subjectTpl, $lead);
             $message = $this->personalize($bodyTpl, $lead);
-            [$sent] = $this->deliver_email($lead, $subject, $message, $attach);
+            [$sent] = $this->deliver_email($lead, $subject, $message, $attach, 'bulk');
             if ($sent) {
                 $ok++;
                 $this->school_ia_bridge_model->add_activity((int) $lead->id, 'email', 'E-mail (envoi groupé) : ' . $subject, get_staff_user_id());
@@ -232,6 +238,7 @@ class School_ia_bridge extends AdminController
         foreach ($recipients as $lead) {
             $text = $this->personalize($bodyTpl, $lead);
             [$sent] = $this->lam_send_sms((string) $lead->phone, $text, (int) $lead->id);
+            school_ia_log_sms((int) $lead->id, (bool) $sent, 'bulk');
             if ($sent) {
                 $ok++;
                 $this->school_ia_bridge_model->add_activity((int) $lead->id, 'sms', 'SMS (envoi groupé) : ' . mb_substr($text, 0, 100), get_staff_user_id());
@@ -259,6 +266,7 @@ class School_ia_bridge extends AdminController
         }
 
         [$ok, $info] = $this->lam_send_sms((string) $lead->phone, $text, $id);
+        school_ia_log_sms($id, (bool) $ok, 'single');
         if ($ok) {
             $this->school_ia_bridge_model->add_activity($id, 'sms', 'SMS envoyé : ' . mb_substr($text, 0, 120), get_staff_user_id());
             set_alert('success', 'SMS envoyé.');

@@ -50,6 +50,28 @@ class Api extends App_Controller
         $this->respond(['ok' => true, 'id' => $id]);
     }
 
+    /** Pixel d'ouverture d'e-mail : marque le message comme ouvert. */
+    public function track_open($token = '')
+    {
+        $this->load->model('school_ia_bridge/school_ia_bridge_model');
+        $this->school_ia_bridge_model->mark_open((string) $token);
+        header('Content-Type: image/gif');
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+        echo base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7');
+    }
+
+    /** Redirection traçant un clic, puis renvoi vers l'URL d'origine. */
+    public function track_click($token = '')
+    {
+        $this->load->model('school_ia_bridge/school_ia_bridge_model');
+        $this->school_ia_bridge_model->add_click((string) $token);
+        $url = (string) $this->input->get('u');
+        if ($url === '' || !preg_match('#^https?://#i', $url)) {
+            $url = site_url();
+        }
+        redirect($url);
+    }
+
     private function respond(array $payload, int $code = 200): void
     {
         $this->output
