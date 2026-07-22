@@ -485,7 +485,7 @@ function school_ia_bridge_head_css()
     if (strpos((string) ($_SERVER['REQUEST_URI'] ?? ''), 'school_ia_bridge') === false) {
         return;
     }
-    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=5">';
+    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=6">';
 }
 
 /**

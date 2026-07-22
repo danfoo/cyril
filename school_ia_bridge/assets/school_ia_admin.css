@@ -238,17 +238,47 @@
   #wrapper .content .sia-lead-head-actions .dropdown .btn { width: 100%; }
 }
 
-/* ---- Notes (fiche lead) ---- */
+/* ---- Icônes colorées de section (en-têtes de panneaux) ---- */
+#wrapper .content .sia-panel-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 8px;
+  margin-right: 8px; font-size: 12.5px; vertical-align: middle;
+}
+#wrapper .content .sia-ic-primary { background: var(--sia-primary-soft); color: var(--sia-primary); }
+#wrapper .content .sia-ic-success { background: var(--sia-success-bg);  color: var(--sia-success); }
+#wrapper .content .sia-ic-warning { background: var(--sia-warning-bg);  color: var(--sia-warning); }
+#wrapper .content .sia-ic-info    { background: var(--sia-info-bg);    color: var(--sia-info);    }
+#wrapper .content .sia-ic-danger  { background: var(--sia-danger-bg);  color: var(--sia-danger);  }
+#wrapper .content .sia-ic-muted   { background: var(--sia-surface-2);  color: var(--sia-muted);   }
+
+/* ---- Notes (fiche lead) : fond teinté, pas de contour ---- */
 #wrapper .content .sia-note-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 #wrapper .content .sia-note-card {
-  background: var(--sia-surface-2);
-  border: 1px solid var(--sia-border);
-  border-left: 3px solid var(--sia-primary);
+  background: var(--sia-primary-soft);
   border-radius: var(--sia-radius-sm);
   padding: 10px 12px;
 }
 #wrapper .content .sia-note-content { color: var(--sia-text); font-size: 13.5px; white-space: pre-wrap; }
 #wrapper .content .sia-note-meta { color: var(--sia-muted); font-size: 11px; font-weight: 600; margin-top: 6px; }
+
+/* ---- Tâches (fiche lead) : cartes douces sans contour ---- */
+#wrapper .content .sia-task-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+#wrapper .content .sia-task-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--sia-surface-2);
+  border-radius: var(--sia-radius-sm);
+  padding: 9px 12px;
+}
+
+/* ---- Historique (fiche lead) : timeline avec puces colorées, pas de contour ---- */
+#wrapper .content .sia-activity-list { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+#wrapper .content .sia-activity-item { display: flex; gap: 10px; padding: 8px 4px; border-radius: var(--sia-radius-sm); }
+#wrapper .content .sia-activity-item:hover { background: var(--sia-surface-2); }
+#wrapper .content .sia-activity-icon {
+  width: 26px; height: 26px; flex: 0 0 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; margin-top: 1px;
+}
 
 /* ---- Inputs de type date/datetime cohérents ---- */
 #wrapper .content input[type="date"].form-control,

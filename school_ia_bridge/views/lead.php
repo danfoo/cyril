@@ -70,7 +70,10 @@
       <!-- Colonne actions secondaires -->
       <div class="col-md-4">
         <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Séquences de relance</h5>
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-primary"><i class="fa fa-refresh"></i></span>
+            Séquences de relance
+          </h5>
           <?php if (!empty($sequences)) { ?>
             <?php echo form_open(admin_url('school_ia_bridge/enroll/' . (int) $lead->id)); ?>
               <div class="input-group">
@@ -104,7 +107,42 @@
         </div></div>
 
         <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Responsable</h5>
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-info"><i class="fa fa-history"></i></span>
+            Historique
+          </h5>
+          <?php if (empty($activities)) { ?>
+            <p class="text-muted">Aucune activité pour l'instant.</p>
+          <?php } else { ?>
+            <div class="sia-activity-list">
+              <?php
+              $icons  = ['note' => 'fa-comment', 'stage_change' => 'fa-random', 'task' => 'fa-check-square-o',
+                         'email' => 'fa-envelope', 'sms' => 'fa-mobile', 'assignment' => 'fa-user'];
+              $colors = ['note' => 'sia-ic-primary', 'stage_change' => 'sia-ic-info', 'task' => 'sia-ic-danger',
+                         'email' => 'sia-ic-success', 'sms' => 'sia-ic-success', 'assignment' => 'sia-ic-warning'];
+              foreach ($activities as $a) {
+                  $icon = $icons[$a->type] ?? 'fa-circle-o';
+                  $col  = $colors[$a->type] ?? 'sia-ic-muted';
+                  $who = $a->staff_id ? get_staff_full_name((int) $a->staff_id) : 'Système'; ?>
+                <div class="sia-activity-item">
+                  <span class="sia-activity-icon <?php echo $col; ?>"><i class="fa <?php echo $icon; ?>"></i></span>
+                  <div>
+                    <?php echo htmlspecialchars((string) $a->content, ENT_QUOTES); ?>
+                    <div class="text-muted" style="font-size:11px;margin-top:2px;">
+                      <?php echo htmlspecialchars($who . ' · ' . $a->created_at, ENT_QUOTES); ?>
+                    </div>
+                  </div>
+                </div>
+              <?php } ?>
+            </div>
+          <?php } ?>
+        </div></div>
+
+        <div class="panel_s"><div class="panel-body">
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-success"><i class="fa fa-user"></i></span>
+            Responsable
+          </h5>
           <?php echo form_open(admin_url('school_ia_bridge/assign/' . (int) $lead->id)); ?>
             <div class="input-group">
               <select name="owner_id" class="form-control selectpicker" data-width="100%">
@@ -135,7 +173,10 @@
         ?>
 
         <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Contacter le lead</h5>
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-warning"><i class="fa fa-paper-plane"></i></span>
+            Contacter le lead
+          </h5>
           <ul class="nav nav-tabs" role="tablist">
             <li role="presentation" class="active"><a href="#sia-email" data-toggle="tab"><i class="fa fa-envelope"></i> E-mail</a></li>
             <li role="presentation"><a href="#sia-sms" data-toggle="tab"><i class="fa fa-mobile"></i> SMS</a></li>
@@ -208,7 +249,10 @@
         </div></div>
 
         <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Tâches & relances</h5>
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-danger"><i class="fa fa-check-square-o"></i></span>
+            Tâches & relances
+          </h5>
           <?php echo form_open(admin_url('school_ia_bridge/task_add/' . (int) $lead->id)); ?>
             <div class="row">
               <div class="col-sm-6" style="margin-bottom:6px;">
@@ -224,32 +268,37 @@
           <?php echo form_close(); ?>
 
           <?php if (!empty($tasks)) { ?>
-            <ul class="list-unstyled" style="margin-top:6px;">
+            <div class="sia-task-list">
               <?php foreach ($tasks as $t) {
                   $overdue = (!$t->done && $t->due_at && strtotime($t->due_at) < time()); ?>
-                <li style="padding:6px 0; border-bottom:1px solid #f0f0f0;">
+                <div class="sia-task-item">
                   <a href="<?php echo admin_url('school_ia_bridge/task_toggle/' . (int) $t->id); ?>"
                      title="<?php echo $t->done ? 'Marquer à faire' : 'Marquer fait'; ?>">
                     <i class="fa <?php echo $t->done ? 'fa-check-square-o text-success' : 'fa-square-o'; ?>"></i>
                   </a>
-                  <span style="<?php echo $t->done ? 'text-decoration:line-through;color:#999;' : ''; ?>">
-                    <?php echo htmlspecialchars((string) $t->title, ENT_QUOTES); ?>
-                  </span>
-                  <?php if ($t->due_at) { ?>
-                    <span class="label <?php echo $overdue ? 'label-danger' : 'label-default'; ?>" style="margin-left:6px;">
-                      <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($t->due_at)), ENT_QUOTES); ?>
+                  <div style="flex:1 1 auto;">
+                    <span style="<?php echo $t->done ? 'text-decoration:line-through;color:#999;' : ''; ?>">
+                      <?php echo htmlspecialchars((string) $t->title, ENT_QUOTES); ?>
                     </span>
-                  <?php } ?>
+                    <?php if ($t->due_at) { ?>
+                      <span class="label <?php echo $overdue ? 'label-danger' : 'label-default'; ?>" style="margin-left:6px;">
+                        <?php echo htmlspecialchars(date('d/m/Y H:i', strtotime($t->due_at)), ENT_QUOTES); ?>
+                      </span>
+                    <?php } ?>
+                  </div>
                   <a href="<?php echo admin_url('school_ia_bridge/task_delete/' . (int) $t->id); ?>"
-                     class="pull-right text-muted" onclick="return confirm('Supprimer cette tâche ?');"><i class="fa fa-trash"></i></a>
-                </li>
+                     class="text-muted" style="margin-left:8px;" onclick="return confirm('Supprimer cette tâche ?');"><i class="fa fa-trash"></i></a>
+                </div>
               <?php } ?>
-            </ul>
+            </div>
           <?php } ?>
         </div></div>
 
         <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Notes</h5>
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-primary"><i class="fa fa-sticky-note"></i></span>
+            Notes
+          </h5>
           <?php echo form_open(admin_url('school_ia_bridge/note/' . (int) $lead->id)); ?>
             <textarea name="content" class="form-control" rows="3" placeholder="Écrire une note…"></textarea>
             <button type="submit" class="btn btn-primary" style="margin-top:8px;">Enregistrer la note</button>
@@ -273,29 +322,6 @@
           <?php } ?>
         </div></div>
 
-        <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Historique</h5>
-          <?php if (empty($activities)) { ?>
-            <p class="text-muted">Aucune activité pour l'instant.</p>
-          <?php } else { ?>
-            <ul class="list-unstyled">
-              <?php
-              $icons = ['note' => 'fa-comment', 'stage_change' => 'fa-random', 'task' => 'fa-check-square-o',
-                        'email' => 'fa-envelope', 'sms' => 'fa-mobile', 'assignment' => 'fa-user'];
-              foreach ($activities as $a) {
-                  $icon = $icons[$a->type] ?? 'fa-circle-o';
-                  $who = $a->staff_id ? get_staff_full_name((int) $a->staff_id) : 'Système'; ?>
-                <li style="padding:8px 0; border-bottom:1px solid #eee;">
-                  <i class="fa <?php echo $icon; ?> text-muted"></i>
-                  <?php echo htmlspecialchars((string) $a->content, ENT_QUOTES); ?>
-                  <div class="text-muted" style="font-size:11px;">
-                    <?php echo htmlspecialchars($who . ' · ' . $a->created_at, ENT_QUOTES); ?>
-                  </div>
-                </li>
-              <?php } ?>
-            </ul>
-          <?php } ?>
-        </div></div>
       </div>
     </div>
 
