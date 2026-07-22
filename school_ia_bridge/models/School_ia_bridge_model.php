@@ -14,6 +14,11 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_activities';
     }
 
+    private function chatTable(): string
+    {
+        return db_prefix() . 'school_ia_chat_messages';
+    }
+
     /** Étapes du pipeline d'admission (slug => [label, couleur]). */
     public function stages(): array
     {
@@ -193,6 +198,19 @@ class School_ia_bridge_model extends App_Model
                 KEY `lead_id` (`lead_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
+        if (!$this->db->table_exists($this->chatTable())) {
+            $this->db->query('CREATE TABLE `' . $this->chatTable() . "` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `lead_id` int(11) NOT NULL,
+                `external_message_id` varchar(32) DEFAULT NULL,
+                `role` varchar(12) NOT NULL DEFAULT 'user',
+                `canal` varchar(12) NOT NULL DEFAULT 'web',
+                `content` longtext DEFAULT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `lead_id` (`lead_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
     }
 
     /** Liste les leads reçus (les plus récents d'abord). */
@@ -329,6 +347,19 @@ class School_ia_bridge_model extends App_Model
     public function get_lead(int $id)
     {
         return $this->db->where('id', $id)->get($this->table())->row();
+    }
+
+    /** Retrouve un lead par son identifiant externe (id WordPress + site source). */
+    public function find_by_external(string $externalId, string $sourceSite)
+    {
+        if ($externalId === '' || $sourceSite === '') {
+            return null;
+        }
+        return $this->db
+            ->where('external_id', $externalId)
+            ->where('source_site', $sourceSite)
+            ->get($this->table())
+            ->row();
     }
 
     /** Un lead avec cet e-mail existe-t-il déjà ? (dédoublonnage à l'import) */
@@ -959,5 +990,41 @@ class School_ia_bridge_model extends App_Model
 
         $this->db->insert($this->table(), $data);
         return (int) $this->db->insert_id();
+    }
+
+    /**
+     * Enregistre un message de la conversation IA (widget WordPress) pour un lead.
+     * Idempotent quand un external_message_id est fourni (le renvoi d'historique
+     * ne crée pas de doublons).
+     */
+    public function add_chat_message(int $leadId, string $role, string $content, string $canal = 'web', ?string $externalMessageId = null): void
+    {
+        if ($externalMessageId !== null && $externalMessageId !== '') {
+            $exists = $this->db
+                ->where('lead_id', $leadId)
+                ->where('external_message_id', $externalMessageId)
+                ->count_all_results($this->chatTable());
+            if ($exists) {
+                return;
+            }
+        }
+        $this->db->insert($this->chatTable(), [
+            'lead_id'             => $leadId,
+            'external_message_id' => $externalMessageId,
+            'role'                => substr($role, 0, 12),
+            'canal'               => substr($canal, 0, 12),
+            'content'             => $content,
+            'created_at'          => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /** Historique de la conversation IA d'un lead, ordre chronologique. */
+    public function chat_messages(int $leadId): array
+    {
+        return $this->db
+            ->where('lead_id', $leadId)
+            ->order_by('id', 'asc')
+            ->get($this->chatTable())
+            ->result();
     }
 }

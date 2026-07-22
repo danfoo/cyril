@@ -32,6 +32,7 @@ final class ActionRunner
 
         match ($type) {
             'crm_sync' => $this->crmSync($lead),
+            'sync_chat_message' => $this->syncChatMessage($lead, $args),
             'notify' => $this->notify($lead, $args),
             'escalate' => (new HandoffManager())->open($lead, (string) ($args['motif'] ?? __('Escalade automatique', 'bem-lead-ai'))),
             'followup' => $this->followup($lead, (string) ($args['variant_group'] ?? 'relance_desengagement')),
@@ -59,6 +60,22 @@ final class ActionRunner
         if ($hubspot->isConfigured()) {
             $hubspot->upsertLead($lead);
         }
+    }
+
+    /** Envoie un message de la conversation IA vers le pont Perfex (hors du flux de chat). */
+    private function syncChatMessage(object $lead, array $args): void
+    {
+        $bridge = new PerfexBridgeConnector();
+        if (!$bridge->isConfigured()) {
+            return;
+        }
+        $bridge->sendChatMessage(
+            (int) $lead->id,
+            (int) ($args['message_id'] ?? 0),
+            (string) ($args['role'] ?? ''),
+            (string) ($args['content'] ?? ''),
+            (string) ($args['canal'] ?? 'web')
+        );
     }
 
     private function notify(object $lead, array $args): void

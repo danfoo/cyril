@@ -24,6 +24,7 @@ final class AdminMenu
         add_action('admin_post_bem_handoff_close', [InboxPage::class, 'handleClose']);
         add_action('admin_post_bem_rebuild_kb', [SettingsPage::class, 'handleRebuildKb']);
         add_action('admin_post_bem_perfex_sync', [SettingsPage::class, 'handlePerfexSync']);
+        add_action('admin_post_bem_perfex_chat_resync', [SettingsPage::class, 'handlePerfexChatResync']);
         add_action('admin_post_bem_test_claude', [SettingsPage::class, 'handleTestClaude']);
         add_action('admin_post_bem_test_email', [SettingsPage::class, 'handleTestEmail']);
         add_action('admin_post_bem_lead_delete', [DashboardPage::class, 'handleLeadDelete']);

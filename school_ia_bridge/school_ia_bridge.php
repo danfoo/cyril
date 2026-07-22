@@ -102,12 +102,14 @@ function sia_help(string $key): string
             '<p>Le centre de contrôle d\'un lead.</p>
              <ul>
                <li><strong>Étape</strong> : faites avancer le lead dans le pipeline.</li>
+               <li><strong>Conversation avec l\'IA</strong> : les échanges du chatbot du site, remontés automatiquement pour donner le contexte avant de recontacter.</li>
                <li><strong>Contacter</strong> : envoyez un e-mail ou un SMS (onglets), avec modèles et pièces jointes.</li>
                <li><strong>Séquences</strong> : inscrivez le lead à une relance automatique.</li>
                <li><strong>Tâches</strong> : planifiez des relances datées (avec heure).</li>
                <li><strong>Responsable</strong> : assignez un conseiller.</li>
                <li><strong>Historique</strong> : tout ce qui a été fait sur le lead.</li>
-             </ul>'],
+             </ul>
+             <p><em>Rien ne s\'affiche ?</em> Vérifiez que la version du plugin WordPress installée envoie bien les messages (mise à jour du pont) et que le secret partagé (Réglages) est identique des deux côtés.</p>'],
         'tasks' => ['Tâches & relances',
             '<p>Vos relances à faire, les plus urgentes en tête.</p>
              <ul>
@@ -485,7 +487,7 @@ function school_ia_bridge_head_css()
     if (strpos((string) ($_SERVER['REQUEST_URI'] ?? ''), 'school_ia_bridge') === false) {
         return;
     }
-    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=8">';
+    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=9">';
 }
 
 /**

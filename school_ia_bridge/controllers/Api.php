@@ -50,6 +50,55 @@ class Api extends App_Controller
         $this->respond(['ok' => true, 'id' => $id]);
     }
 
+    /**
+     * Reçoit un message de la conversation IA (widget WordPress) pour un lead
+     * déjà connu (identifié par external_id + source_site). Même authentification
+     * que receive(). GET pour éviter la protection CSRF (POST) de Perfex.
+     */
+    public function receive_message()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $secret   = (string) get_option('school_ia_bridge_secret');
+        $provided = $this->input->get_request_header('X-SIA-Secret', true);
+        if ($provided === null || $provided === '') {
+            $provided = (string) ($this->input->get('secret') ?: $this->input->post('secret'));
+        }
+        if ($secret === '' || !hash_equals($secret, (string) $provided)) {
+            $this->respond(['ok' => false, 'error' => 'unauthorized'], 401);
+            return;
+        }
+
+        $externalId = (string) ($this->input->get('external_id') ?: $this->input->post('external_id'));
+        $sourceSite = (string) ($this->input->get('source_site') ?: $this->input->post('source_site'));
+        $role       = (string) ($this->input->get('role') ?: $this->input->post('role'));
+        $content    = (string) ($this->input->get('content') ?: $this->input->post('content'));
+        $canal      = (string) ($this->input->get('canal') ?: $this->input->post('canal') ?: 'web');
+        $externalMessageId = (string) ($this->input->get('external_message_id') ?: $this->input->post('external_message_id'));
+
+        if ($externalId === '' || $sourceSite === '' || $content === '' || !in_array($role, ['user', 'assistant'], true)) {
+            $this->respond(['ok' => false, 'error' => 'invalid_payload'], 400);
+            return;
+        }
+
+        $this->load->model('school_ia_bridge/school_ia_bridge_model');
+        $lead = $this->school_ia_bridge_model->find_by_external($externalId, $sourceSite);
+        if (!$lead) {
+            $this->respond(['ok' => false, 'error' => 'lead_not_found'], 404);
+            return;
+        }
+
+        $this->school_ia_bridge_model->add_chat_message(
+            (int) $lead->id,
+            $role,
+            $content,
+            $canal,
+            $externalMessageId !== '' ? $externalMessageId : null
+        );
+
+        $this->respond(['ok' => true]);
+    }
+
     /** Pixel d'ouverture d'e-mail : marque le message comme ouvert. */
     public function track_open($token = '')
     {

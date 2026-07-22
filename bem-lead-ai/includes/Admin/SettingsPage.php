@@ -3,6 +3,7 @@
 namespace BemLeadAi\Admin;
 
 use BemLeadAi\Ai\ClaudeClient;
+use BemLeadAi\Chat\ConversationRepository;
 use BemLeadAi\Core\Options;
 use BemLeadAi\Crm\PerfexBridgeConnector;
 use BemLeadAi\Crm\PerfexConnector;
@@ -212,6 +213,7 @@ final class SettingsPage
         // Hors formulaire principal (évite tout formulaire imbriqué).
         $this->renderEmailTestButton($o);
         $this->renderPerfexSyncButton($o);
+        $this->renderChatResyncButton($o);
         $this->renderRebuildButton();
 
         echo '<hr><h2>' . esc_html__('Webhook à configurer côté CRM', 'bem-lead-ai') . '</h2>';
@@ -342,6 +344,72 @@ final class SettingsPage
         }
 
         set_transient('bem_perfex_sync_result', ['ok' => $ok, 'fail' => $fail, 'info' => $info], 120);
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
+        exit;
+    }
+
+    /**
+     * Bouton de renvoi des conversations déjà tenues (le pont ne les envoyait pas
+     * avant l'ajout de cette synchronisation ; les nouveaux échanges partent
+     * désormais automatiquement en temps réel).
+     */
+    private function renderChatResyncButton(array $o): void
+    {
+        $configured = ($o['perfex_url'] ?? '') !== '' && Options::hasSecret('perfex_bridge_secret');
+        if (!$configured) {
+            return;
+        }
+
+        $result = get_transient('bem_perfex_chat_resync_result');
+        if (is_array($result)) {
+            delete_transient('bem_perfex_chat_resync_result');
+            $ok = (int) ($result['ok'] ?? 0);
+            $fail = (int) ($result['fail'] ?? 0);
+            $klass = $fail > 0 ? 'notice-warning' : 'notice-success';
+            echo '<div class="notice ' . $klass . ' inline"><p>'
+                . sprintf(esc_html__('%1$d message(s) renvoyé(s), %2$d échec(s).', 'bem-lead-ai'), $ok, $fail)
+                . '</p></div>';
+        }
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
+        wp_nonce_field('bem_perfex_chat_resync');
+        echo '<input type="hidden" name="action" value="bem_perfex_chat_resync">';
+        submit_button(__('Renvoyer les conversations vers Perfex', 'bem-lead-ai'), 'secondary', 'submit', false);
+        echo ' <span class="description">' . esc_html__('À utiliser une fois pour récupérer l\'historique des échanges IA déjà tenus. Les nouveaux messages sont ensuite synchronisés automatiquement, en temps réel.', 'bem-lead-ai') . '</span>';
+        echo '</form>';
+    }
+
+    /** Renvoi en masse de l'historique des conversations IA vers Perfex (pont maison uniquement). */
+    public static function handlePerfexChatResync(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Forbidden');
+        }
+        check_admin_referer('bem_perfex_chat_resync');
+
+        $bridge = new PerfexBridgeConnector();
+        $ok = 0;
+        $fail = 0;
+        if ($bridge->isConfigured()) {
+            $conversations = new ConversationRepository();
+            foreach ((new LeadRepository())->allReal() as $lead) {
+                foreach ($conversations->history((int) $lead->id, 1000) as $message) {
+                    $bridge->sendChatMessage(
+                        (int) $lead->id,
+                        (int) $message->id,
+                        (string) $message->role,
+                        (string) $message->contenu,
+                        (string) $message->canal
+                    );
+                    if ($bridge->lastCode >= 200 && $bridge->lastCode < 300) {
+                        $ok++;
+                    } else {
+                        $fail++;
+                    }
+                }
+            }
+        }
+
+        set_transient('bem_perfex_chat_resync_result', ['ok' => $ok, 'fail' => $fail], 120);
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
         exit;
     }

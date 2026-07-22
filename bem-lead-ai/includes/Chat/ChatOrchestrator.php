@@ -28,8 +28,9 @@ final class ChatOrchestrator
     public function handleMessage(object $lead, string $message, string $canal = 'web'): array
     {
         $conversations = new ConversationRepository();
-        $conversations->add((int) $lead->id, 'user', $message, $canal);
+        $userMessageId = $conversations->add((int) $lead->id, 'user', $message, $canal);
         (new EventRepository())->record((int) $lead->id, 'chat_message', ['length' => mb_strlen($message)], $canal);
+        $this->syncMessageToCrm((int) $lead->id, $userMessageId, 'user', $message, $canal);
 
         // Classification multi-signaux en asynchrone (jamais dans le fil).
         Queue::dispatch('bem_lead_ai_job_classify', [(int) $lead->id]);
@@ -41,6 +42,7 @@ final class ChatOrchestrator
 
         $reply = $this->generateReply($lead, $message);
         $messageId = $conversations->add((int) $lead->id, 'assistant', $reply, $canal);
+        $this->syncMessageToCrm((int) $lead->id, $messageId, 'assistant', $reply, $canal);
 
         return [
             'reply' => $reply,
@@ -48,6 +50,17 @@ final class ChatOrchestrator
             'message_id' => $messageId,
             'whatsapp' => $this->maybeWhatsApp($lead),
         ];
+    }
+
+    /** Envoi CRM du message hors du flux de chat (file asynchrone, aucun impact sur la latence perçue). */
+    private function syncMessageToCrm(int $leadId, int $messageId, string $role, string $content, string $canal): void
+    {
+        Queue::dispatch('bem_lead_ai_job_action', ['sync_chat_message', $leadId, [
+            'message_id' => $messageId,
+            'role'       => $role,
+            'content'    => $content,
+            'canal'      => $canal,
+        ]]);
     }
 
     private function generateReply(object $lead, string $message): string

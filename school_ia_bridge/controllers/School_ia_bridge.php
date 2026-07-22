@@ -641,6 +641,7 @@ class School_ia_bridge extends AdminController
         $data['documents']  = $this->school_ia_bridge_model->documents();
         $data['sequences']  = $this->school_ia_bridge_model->active_sequences();
         $data['enrollments'] = $this->school_ia_bridge_model->enrollments_for_lead((int) $lead->id);
+        $data['chatMessages'] = $this->school_ia_bridge_model->chat_messages((int) $lead->id);
         $data['model']      = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/lead', $data);
     }

@@ -80,4 +80,55 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
             $this->lastError = '';
         }
     }
+
+    /**
+     * Envoie un message de la conversation IA vers la fiche lead Perfex.
+     * Le lead doit déjà exister côté Perfex (envoyé par upsertLead au préalable) ;
+     * il est retrouvé par external_id + source_site.
+     *
+     * Le contenu est tronqué : le transport se fait en GET (la protection CSRF
+     * de Perfex ne bloque que le POST), et une réponse IA très longue ferait
+     * dépasser la longueur d'URL acceptée par certains hébergeurs.
+     */
+    public function sendChatMessage(int $leadId, int $messageId, string $role, string $content, string $canal = 'web'): void
+    {
+        $base = rtrim((string) Options::get('perfex_url'), '/');
+        $secret = (string) Options::get('perfex_bridge_secret');
+
+        $content = mb_substr($content, 0, 2500);
+
+        $payload = [
+            'external_id'         => (string) $leadId,
+            'source_site'         => home_url(),
+            'external_message_id' => (string) $messageId,
+            'role'                => $role,
+            'content'             => $content,
+            'canal'               => $canal,
+        ];
+        $query = http_build_query(array_merge($payload, ['secret' => $secret]));
+        $url = $base . '/school_ia_bridge/api/receive_message?' . $query;
+
+        $response = wp_remote_get($url, [
+            'timeout' => 20,
+            'headers' => [
+                'X-SIA-Secret' => $secret,
+                'Accept'       => 'application/json',
+            ],
+        ]);
+
+        if (is_wp_error($response)) {
+            $this->lastCode = 0;
+            $this->lastError = $response->get_error_message();
+            error_log('[bem-lead-ai] Pont Perfex (message) injoignable: ' . $this->lastError);
+            return;
+        }
+
+        $this->lastCode = (int) wp_remote_retrieve_response_code($response);
+        if ($this->lastCode < 200 || $this->lastCode >= 300) {
+            $this->lastError = wp_strip_all_tags((string) wp_remote_retrieve_body($response));
+            error_log('[bem-lead-ai] Pont Perfex (message) a répondu ' . $this->lastCode . ': ' . $this->lastError);
+        } else {
+            $this->lastError = '';
+        }
+    }
 }

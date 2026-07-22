@@ -335,6 +335,27 @@
 }
 #wrapper .content .sia-doc-chip button { border: none; background: transparent; color: inherit; cursor: pointer; line-height: 1; padding: 2px; font-size: 14px; }
 
+/* ---- Conversation IA (fiche lead) ---- */
+#wrapper .content .sia-chat-thread {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 420px; overflow-y: auto; padding: 4px 2px;
+  margin-top: 8px;
+}
+#wrapper .content .sia-chat-row { display: flex; }
+#wrapper .content .sia-chat-row-user { justify-content: flex-start; }
+#wrapper .content .sia-chat-row-assistant { justify-content: flex-end; }
+#wrapper .content .sia-chat-bubble {
+  max-width: 78%;
+  border-radius: var(--sia-radius-sm);
+  padding: 9px 12px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--sia-text);
+}
+#wrapper .content .sia-chat-row-user .sia-chat-bubble { background: var(--sia-surface-2); }
+#wrapper .content .sia-chat-row-assistant .sia-chat-bubble { background: var(--sia-primary-soft); }
+#wrapper .content .sia-chat-meta { color: var(--sia-muted); font-size: 10.5px; font-weight: 600; margin-top: 4px; }
+
 /* ---- Inputs de type date/datetime cohérents ---- */
 #wrapper .content input[type="date"].form-control,
 #wrapper .content input[type="datetime-local"].form-control,
