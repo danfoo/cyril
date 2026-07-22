@@ -294,9 +294,13 @@ final class SettingsPage
             $fail = (int) ($result['fail'] ?? 0);
             $chat = (int) ($result['chat'] ?? 0);
             $comp = (int) ($result['comp'] ?? 0);
+            $compInDb = (int) ($result['comp_in_db'] ?? 0);
+            $compSent = (int) ($result['comp_sent'] ?? 0);
+            $compSkipped = (int) ($result['comp_skipped'] ?? 0);
             $klass = $fail > 0 ? 'notice-warning' : 'notice-success';
             echo '<div class="notice ' . $klass . ' inline"><p>'
-                . sprintf(esc_html__('%1$d lead(s) réussi(s), %2$d échec(s), %3$d message(s) de conversation, %4$d mention(s) de concurrent synchronisé(s).', 'bem-lead-ai'), $ok, $fail, $chat, $comp);
+                . sprintf(esc_html__('%1$d lead(s) réussi(s), %2$d échec(s), %3$d message(s) de conversation, %4$d mention(s) de concurrent synchronisé(s).', 'bem-lead-ai'), $ok, $fail, $chat, $comp)
+                . '<br>' . sprintf(esc_html__('Concurrents : %1$d en base, %2$d envoyée(s), %3$d lead(s) introuvable(s)/ignoré(s).', 'bem-lead-ai'), $compInDb, $compSent, $compSkipped);
             if ($fail > 0 && !empty($result['info'])) {
                 echo '<br><strong>' . esc_html__('Dernière réponse de Perfex :', 'bem-lead-ai') . '</strong> <code>'
                     . esc_html((string) $result['info']) . '</code>';
@@ -335,6 +339,9 @@ final class SettingsPage
         $fail = 0;
         $chat = 0;
         $comp = 0;
+        $mentionsInDb = 0;
+        $compSent = 0;
+        $compSkipped = 0;
         $info = '';
         if ($connector) {
             global $wpdb;
@@ -372,14 +379,17 @@ final class SettingsPage
             // Le lead est poussé d'abord pour exister côté Perfex.
             if ($connector instanceof PerfexBridgeConnector) {
                 $leadRepo = new LeadRepository();
+                $mentionsInDb = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}bem_competitor_mentions");
                 $mentionLeadIds = $wpdb->get_col("SELECT DISTINCT lead_id FROM {$wpdb->prefix}bem_competitor_mentions") ?: [];
                 foreach ($mentionLeadIds as $lid) {
                     $mLead = $leadRepo->findById((int) $lid);
                     if (!$mLead) {
+                        $compSkipped++;
                         continue;
                     }
                     $connector->upsertLead($mLead);
                     if ($connector->lastCode < 200 || $connector->lastCode >= 300) {
+                        $compSkipped++;
                         continue;
                     }
                     $mentions = $wpdb->get_results($wpdb->prepare(
@@ -393,15 +403,23 @@ final class SettingsPage
                             (string) $m->nom_concurrent,
                             (string) $m->extrait_contexte
                         );
+                        $compSent++;
                         if ($connector->lastCode >= 200 && $connector->lastCode < 300) {
                             $comp++;
+                        } else {
+                            $info = 'concurrent HTTP ' . $connector->lastCode
+                                . ($connector->lastError !== '' ? ' — ' . mb_substr($connector->lastError, 0, 120) : '');
                         }
                     }
                 }
             }
         }
 
-        set_transient('bem_perfex_sync_result', ['ok' => $ok, 'fail' => $fail, 'chat' => $chat, 'comp' => $comp, 'info' => $info], 120);
+        set_transient('bem_perfex_sync_result', [
+            'ok' => $ok, 'fail' => $fail, 'chat' => $chat, 'comp' => $comp,
+            'comp_in_db' => $mentionsInDb, 'comp_sent' => $compSent, 'comp_skipped' => $compSkipped,
+            'info' => $info,
+        ], 120);
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
         exit;
     }
