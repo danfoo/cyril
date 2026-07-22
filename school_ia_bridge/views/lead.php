@@ -249,11 +249,28 @@
         </div></div>
 
         <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Ajouter une note</h5>
+          <h5 class="bold" style="margin-top:0;">Notes</h5>
           <?php echo form_open(admin_url('school_ia_bridge/note/' . (int) $lead->id)); ?>
             <textarea name="content" class="form-control" rows="3" placeholder="Écrire une note…"></textarea>
             <button type="submit" class="btn btn-primary" style="margin-top:8px;">Enregistrer la note</button>
           <?php echo form_close(); ?>
+
+          <?php
+          $notes = array_values(array_filter($activities, static function ($a) { return $a->type === 'note'; }));
+          ?>
+          <?php if (!empty($notes)) { ?>
+            <div class="sia-note-list">
+              <?php foreach ($notes as $n) {
+                  $who = $n->staff_id ? get_staff_full_name((int) $n->staff_id) : 'Système'; ?>
+                <div class="sia-note-card">
+                  <div class="sia-note-content"><?php echo nl2br(htmlspecialchars((string) $n->content, ENT_QUOTES)); ?></div>
+                  <div class="sia-note-meta"><?php echo htmlspecialchars($who . ' · ' . $n->created_at, ENT_QUOTES); ?></div>
+                </div>
+              <?php } ?>
+            </div>
+          <?php } else { ?>
+            <p class="text-muted" style="margin-top:10px;">Aucune note pour l'instant.</p>
+          <?php } ?>
         </div></div>
 
         <div class="panel_s"><div class="panel-body">
