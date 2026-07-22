@@ -1098,6 +1098,34 @@ class School_ia_bridge_model extends App_Model
         $this->db->where('id', $id)->delete($this->table());
     }
 
+    /**
+     * Diagnostic : tente une insertion réelle dans la table des concurrents et
+     * renvoie l'erreur SQL exacte si elle échoue (puis nettoie la ligne test).
+     */
+    public function diag_write_test(): array
+    {
+        $ref = '__diag_' . uniqid();
+        $this->db->insert($this->competitorTable(), [
+            'lead_id'      => 0,
+            'external_ref' => $ref,
+            'name'         => '__diag_test__',
+            'context'      => 'test',
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+        $error     = $this->db->error();       // ['code' => , 'message' => ]
+        $insertId  = (int) $this->db->insert_id();
+        $lastQuery = $this->db->last_query();
+        // Nettoyage de la ligne de test.
+        $this->db->where('external_ref', $ref)->delete($this->competitorTable());
+
+        return [
+            'inserted'   => $insertId > 0,
+            'insert_id'  => $insertId,
+            'db_error'   => $error,
+            'last_query' => $lastQuery,
+        ];
+    }
+
     /** Diagnostic : existence + nombre de lignes des tables clés. */
     public function diag_counts(): array
     {

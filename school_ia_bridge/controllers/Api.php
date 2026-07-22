@@ -213,7 +213,11 @@ class Api extends App_Controller
             $this->respond(['ok' => false, 'error' => 'unauthorized', 'hint' => 'Ouvrez cette URL dans l\'onglet où vous êtes connecté à Perfex.'], 401);
             return;
         }
-        $this->respond(['ok' => true, 'tables' => $this->school_ia_bridge_model->diag_counts()]);
+        $this->respond([
+            'ok'         => true,
+            'tables'     => $this->school_ia_bridge_model->diag_counts(),
+            'write_test' => $this->school_ia_bridge_model->diag_write_test(),
+        ]);
     }
 
     /** Pixel d'ouverture d'e-mail : marque le message comme ouvert. */
