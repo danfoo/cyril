@@ -117,6 +117,29 @@
 #wrapper .content .form-control:focus { border-color: var(--sia-primary); box-shadow: 0 0 0 3px var(--sia-primary-soft); }
 #wrapper .content .control-label { color: var(--sia-muted); font-weight: 600; font-size: 12.5px; }
 
+/* ---- Listes déroulantes (select) : apparence personnalisée, cohérente et arrondie ---- */
+#wrapper .content select.form-control {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='5 7 10 12 15 7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 13px;
+  padding-right: 34px;
+  cursor: pointer;
+  border-radius: var(--sia-radius-sm);
+}
+/* Groupe select + bouton (ex. Séquences, Responsable) : coins joints cohérents */
+#wrapper .content .input-group { border-radius: var(--sia-radius-sm); }
+#wrapper .content .input-group .form-control {
+  border-radius: var(--sia-radius-sm) 0 0 var(--sia-radius-sm) !important;
+  border-right: none;
+}
+#wrapper .content .input-group-btn:last-child > .btn {
+  border-radius: 0 var(--sia-radius-sm) var(--sia-radius-sm) 0 !important;
+}
+
 /* ---- Tableaux : aérés & lisibles ---- */
 #wrapper .content .table { background: transparent; }
 #wrapper .content .table > thead > tr > th {
