@@ -3,54 +3,72 @@
 <div id="wrapper">
   <div class="content">
 
-    <div class="clearfix" style="margin-bottom:15px;">
-      <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-default pull-right">
-        <i class="fa fa-columns"></i> Pipeline
-      </a>
-      <h4 class="no-margin"><i class="fa fa-user"></i>
-        <?php echo htmlspecialchars((string) ($lead->name ?: ('Lead #' . $lead->id)), ENT_QUOTES); ?>
-        <?php echo sia_help('lead'); ?>
-      </h4>
-    </div>
+    <?php
+    $cur = $lead->stage ?? 'nouveau';
+    $stageColor = $model->stageColor($cur);
+    $stageLabel = $model->stageLabel($cur);
+    $fullName = trim((string) $lead->name);
+    $displayName = $fullName !== '' ? $fullName : ('Lead #' . $lead->id);
+    $initials = '';
+    foreach (array_slice(preg_split('/\s+/', $fullName), 0, 2) as $p) {
+        $p = preg_replace('/[^\p{L}0-9]/u', '', (string) $p);
+        if ($p !== '') { $initials .= mb_strtoupper(mb_substr($p, 0, 1, 'UTF-8'), 'UTF-8'); }
+    }
+    if ($initials === '') { $initials = 'L'; }
+    ?>
+
+    <div class="panel_s sia-lead-header"><div class="panel-body">
+      <div class="sia-lead-head">
+        <div class="sia-avatar" style="background:<?php echo $stageColor; ?>1a;color:<?php echo $stageColor; ?>;">
+          <?php echo htmlspecialchars($initials, ENT_QUOTES); ?>
+        </div>
+        <div class="sia-lead-head-info">
+          <div class="sia-lead-head-title">
+            <h4 class="no-margin"><?php echo htmlspecialchars($displayName, ENT_QUOTES); ?></h4>
+            <span class="label sia-stage-pill" style="background:<?php echo $stageColor; ?>1a;color:<?php echo $stageColor; ?>;">
+              <?php echo htmlspecialchars($stageLabel, ENT_QUOTES); ?>
+            </span>
+            <?php echo sia_help('lead'); ?>
+          </div>
+          <div class="sia-lead-head-meta">
+            <?php if ($lead->email) { ?><span><i class="fa fa-envelope"></i> <?php echo htmlspecialchars((string) $lead->email, ENT_QUOTES); ?></span><?php } ?>
+            <?php if ($lead->phone) { ?><span><i class="fa fa-phone"></i> <?php echo htmlspecialchars((string) $lead->phone, ENT_QUOTES); ?></span><?php } ?>
+            <?php if ($lead->formation) { ?><span><i class="fa fa-graduation-cap"></i> <?php echo htmlspecialchars((string) $lead->formation, ENT_QUOTES); ?></span><?php } ?>
+            <?php if ($lead->source_site) { ?><span><i class="fa fa-globe"></i> <?php echo htmlspecialchars((string) $lead->source_site, ENT_QUOTES); ?></span><?php } ?>
+            <?php if ($lead->received_at) { ?><span><i class="fa fa-clock-o"></i> reçu le <?php echo htmlspecialchars((string) $lead->received_at, ENT_QUOTES); ?></span><?php } ?>
+            <?php if ($lead->score !== null && $lead->score !== '') { ?>
+              <span><i class="fa fa-star"></i> score <?php echo htmlspecialchars((string) $lead->score, ENT_QUOTES); ?><?php echo $lead->band ? ' · ' . htmlspecialchars(str_replace('_', ' ', (string) $lead->band), ENT_QUOTES) : ''; ?></span>
+            <?php } ?>
+          </div>
+        </div>
+        <div class="sia-lead-head-actions">
+          <div class="dropdown">
+            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+              <i class="fa fa-random"></i> Changer d'étape <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-right">
+              <?php foreach ($model->stages() as $s => $conf) {
+                  if ($s === $cur) { continue; } ?>
+                <li><a href="<?php echo admin_url('school_ia_bridge/move/' . (int) $lead->id . '?stage=' . $s); ?>">
+                  <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:<?php echo $conf[1]; ?>;margin-right:7px;"></span>
+                  <?php echo htmlspecialchars($conf[0], ENT_QUOTES); ?>
+                </a></li>
+              <?php } ?>
+            </ul>
+          </div>
+          <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-default">
+            <i class="fa fa-columns"></i> Pipeline
+          </a>
+        </div>
+      </div>
+      <?php if (!empty($lead->description)) { ?>
+        <p class="text-muted sia-lead-desc"><?php echo htmlspecialchars((string) $lead->description, ENT_QUOTES); ?></p>
+      <?php } ?>
+    </div></div>
 
     <div class="row">
-      <!-- Colonne infos + actions -->
-      <div class="col-md-5">
-        <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Informations</h5>
-          <table class="table table-striped">
-            <tr><td class="bold">E-mail</td><td><?php echo htmlspecialchars((string) ($lead->email ?: '—'), ENT_QUOTES); ?></td></tr>
-            <tr><td class="bold">Téléphone</td><td><?php echo htmlspecialchars((string) ($lead->phone ?: '—'), ENT_QUOTES); ?></td></tr>
-            <tr><td class="bold">Formation</td><td><?php echo htmlspecialchars((string) ($lead->formation ?: '—'), ENT_QUOTES); ?></td></tr>
-            <tr><td class="bold">Score</td><td>
-              <span class="label label-info"><?php echo htmlspecialchars((string) $lead->score, ENT_QUOTES); ?></span>
-              <?php echo $lead->band ? ' ' . htmlspecialchars(str_replace('_', ' ', (string) $lead->band), ENT_QUOTES) : ''; ?>
-            </td></tr>
-            <tr><td class="bold">Site source</td><td><?php echo htmlspecialchars((string) ($lead->source_site ?: '—'), ENT_QUOTES); ?></td></tr>
-            <tr><td class="bold">Reçu le</td><td><?php echo htmlspecialchars((string) $lead->received_at, ENT_QUOTES); ?></td></tr>
-          </table>
-          <?php if (!empty($lead->description)) { ?>
-            <p class="text-muted" style="white-space:pre-wrap;"><?php echo htmlspecialchars((string) $lead->description, ENT_QUOTES); ?></p>
-          <?php } ?>
-        </div></div>
-
-        <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Étape du pipeline</h5>
-          <?php $cur = $lead->stage ?? 'nouveau'; ?>
-          <p>Actuelle :
-            <span class="label" style="background:<?php echo $model->stageColor($cur); ?>;">
-              <?php echo htmlspecialchars($model->stageLabel($cur), ENT_QUOTES); ?>
-            </span>
-          </p>
-          <?php foreach ($model->stages() as $s => $conf) {
-              if ($s === $cur) { continue; } ?>
-            <a href="<?php echo admin_url('school_ia_bridge/move/' . (int) $lead->id . '?stage=' . $s); ?>"
-               class="btn btn-xs btn-default" style="margin:2px;">
-              → <?php echo htmlspecialchars($conf[0], ENT_QUOTES); ?>
-            </a>
-          <?php } ?>
-        </div></div>
-
+      <!-- Colonne actions secondaires -->
+      <div class="col-md-4">
         <div class="panel_s"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;">Séquences de relance</h5>
           <?php if (!empty($sequences)) { ?>
@@ -106,7 +124,7 @@
       </div>
 
       <!-- Colonne activité / notes -->
-      <div class="col-md-7">
+      <div class="col-md-8">
 
         <?php
         $prenom = trim(explode('#', (string) $lead->name)[0]);
