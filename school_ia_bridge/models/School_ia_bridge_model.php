@@ -1105,24 +1105,18 @@ class School_ia_bridge_model extends App_Model
     public function diag_write_test(): array
     {
         $ref = '__diag_' . uniqid();
-        $this->db->insert($this->competitorTable(), [
-            'lead_id'      => 0,
-            'external_ref' => $ref,
-            'name'         => '__diag_test__',
-            'context'      => 'test',
-            'created_at'   => date('Y-m-d H:i:s'),
-        ]);
-        $error     = $this->db->error();       // ['code' => , 'message' => ]
-        $insertId  = (int) $this->db->insert_id();
+        // Exerce EXACTEMENT le vrai chemin (dédoublonnage count + insert).
+        $this->add_competitor_mention(0, '__diag_test__', 'test', $ref);
+        $error     = $this->db->error();
         $lastQuery = $this->db->last_query();
-        // Nettoyage de la ligne de test.
+        $stored    = (int) $this->db->where('external_ref', $ref)->count_all_results($this->competitorTable());
+        // Nettoyage.
         $this->db->where('external_ref', $ref)->delete($this->competitorTable());
 
         return [
-            'inserted'   => $insertId > 0,
-            'insert_id'  => $insertId,
-            'db_error'   => $error,
-            'last_query' => $lastQuery,
+            'stored_via_method' => $stored > 0,
+            'db_error'          => $error,
+            'last_query'        => $lastQuery,
         ];
     }
 
