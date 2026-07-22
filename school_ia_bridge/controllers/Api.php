@@ -166,7 +166,15 @@ class Api extends App_Controller
         $context     = (string) ($this->input->get('context') ?: $this->input->post('context'));
         $externalRef = (string) ($this->input->get('external_ref') ?: $this->input->post('external_ref'));
 
+        // Instrumentation : compte les appels + garde la trace du dernier, pour
+        // que le diagnostic montre ce que ce point d'entrée reçoit réellement.
+        update_option('sia_competitor_calls', (int) get_option('sia_competitor_calls') + 1);
+
         if ($externalId === '' || $sourceSite === '' || $name === '') {
+            update_option('sia_last_competitor_call', json_encode([
+                'time' => date('Y-m-d H:i:s'), 'outcome' => 'invalid_payload',
+                'external_id' => $externalId, 'source_site' => $sourceSite, 'name' => $name,
+            ], JSON_UNESCAPED_UNICODE));
             $this->respond(['ok' => false, 'error' => 'invalid_payload'], 400);
             return;
         }
@@ -174,6 +182,10 @@ class Api extends App_Controller
         $this->load->model('school_ia_bridge/school_ia_bridge_model');
         $lead = $this->school_ia_bridge_model->find_by_external($externalId, $sourceSite);
         if (!$lead) {
+            update_option('sia_last_competitor_call', json_encode([
+                'time' => date('Y-m-d H:i:s'), 'outcome' => 'lead_not_found',
+                'external_id' => $externalId, 'source_site' => $sourceSite, 'name' => mb_substr($name, 0, 60),
+            ], JSON_UNESCAPED_UNICODE));
             $this->respond(['ok' => false, 'error' => 'lead_not_found'], 404);
             return;
         }
@@ -184,6 +196,12 @@ class Api extends App_Controller
             $context,
             $externalRef !== '' ? $externalRef : null
         );
+
+        update_option('sia_last_competitor_call', json_encode([
+            'time' => date('Y-m-d H:i:s'), 'outcome' => 'stored',
+            'external_id' => $externalId, 'lead_id' => (int) $lead->id,
+            'name' => mb_substr($name, 0, 60), 'external_ref' => $externalRef,
+        ], JSON_UNESCAPED_UNICODE));
 
         $this->respond(['ok' => true]);
     }
@@ -214,9 +232,11 @@ class Api extends App_Controller
             return;
         }
         $this->respond([
-            'ok'         => true,
-            'tables'     => $this->school_ia_bridge_model->diag_counts(),
-            'write_test' => $this->school_ia_bridge_model->diag_write_test(),
+            'ok'                    => true,
+            'tables'                => $this->school_ia_bridge_model->diag_counts(),
+            'write_test'            => $this->school_ia_bridge_model->diag_write_test(),
+            'competitor_calls'      => (int) get_option('sia_competitor_calls'),
+            'last_competitor_call'  => json_decode((string) get_option('sia_last_competitor_call'), true),
         ]);
     }
 
