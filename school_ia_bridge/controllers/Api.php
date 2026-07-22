@@ -188,6 +188,26 @@ class Api extends App_Controller
         $this->respond(['ok' => true]);
     }
 
+    /**
+     * Diagnostic : compte des lignes par table (protégé par le secret).
+     * Ouvrir {perfex}/school_ia_bridge/api/diag?secret=VOTRE_SECRET pour voir
+     * si les messages / concurrents sont réellement stockés côté Perfex.
+     */
+    public function diag()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        $secret   = (string) get_option('school_ia_bridge_secret');
+        $provided = $this->input->get_request_header('X-SIA-Secret', true);
+        if ($provided === null || $provided === '') {
+            $provided = (string) ($this->input->get('secret') ?: $this->input->post('secret'));
+        }
+        if ($secret === '' || !hash_equals($secret, (string) $provided)) {
+            $this->respond(['ok' => false, 'error' => 'unauthorized'], 401);
+            return;
+        }
+        $this->respond(['ok' => true, 'tables' => $this->school_ia_bridge_model->diag_counts()]);
+    }
+
     /** Pixel d'ouverture d'e-mail : marque le message comme ouvert. */
     public function track_open($token = '')
     {

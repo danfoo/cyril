@@ -1098,6 +1098,26 @@ class School_ia_bridge_model extends App_Model
         $this->db->where('id', $id)->delete($this->table());
     }
 
+    /** Diagnostic : existence + nombre de lignes des tables clés. */
+    public function diag_counts(): array
+    {
+        $tables = [
+            'leads'         => $this->table(),
+            'activities'    => $this->activityTable(),
+            'chat_messages' => $this->chatTable(),
+            'competitors'   => $this->competitorTable(),
+        ];
+        $out = [];
+        foreach ($tables as $key => $t) {
+            $exists = $this->db->table_exists($t);
+            $out[$key] = [
+                'exists' => $exists,
+                'rows'   => $exists ? (int) $this->db->count_all_results($t) : 0,
+            ];
+        }
+        return $out;
+    }
+
     // ---------- Veille concurrentielle ----------
 
     /** Enregistre une mention de concurrent (idempotent via external_ref). */
