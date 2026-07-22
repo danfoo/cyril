@@ -1,0 +1,194 @@
+/* ============================================================
+   School IA CRM — Design system premium (chargé sur les pages du module)
+   Look & feel : Notion / Linear / Stripe · EdTech indigo
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --sia-primary:        #4f46e5;
+  --sia-primary-600:    #4338ca;
+  --sia-primary-soft:   rgba(79, 70, 229, .10);
+
+  --sia-bg:             #f7f8fc;
+  --sia-surface:        #ffffff;
+  --sia-surface-2:      #f8fafc;
+  --sia-border:         #e6e9f0;
+  --sia-text:           #0f172a;
+  --sia-muted:          #64748b;
+
+  --sia-success:        #16a34a; --sia-success-bg: rgba(22,163,74,.12);
+  --sia-warning:        #b45309; --sia-warning-bg: rgba(217,119,6,.14);
+  --sia-danger:         #dc2626; --sia-danger-bg:  rgba(220,38,38,.12);
+  --sia-info:           #2563eb; --sia-info-bg:    rgba(37,99,235,.12);
+
+  --sia-radius:         14px;
+  --sia-radius-sm:      10px;
+  --sia-shadow:         0 1px 2px rgba(15,23,42,.04), 0 4px 16px rgba(15,23,42,.06);
+  --sia-shadow-hover:   0 4px 12px rgba(15,23,42,.06), 0 12px 32px rgba(15,23,42,.10);
+  --sia-font: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sia-bg:        #0b1220;
+    --sia-surface:   #151d2e;
+    --sia-surface-2: #1b2438;
+    --sia-border:    #29344a;
+    --sia-text:      #e6ebf5;
+    --sia-muted:     #94a3b8;
+    --sia-primary-soft: rgba(99,102,241,.16);
+    --sia-shadow:       0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+    --sia-shadow-hover: 0 8px 30px rgba(0,0,0,.5);
+  }
+}
+
+/* ---- Base ---- */
+#wrapper .content {
+  font-family: var(--sia-font);
+  color: var(--sia-text);
+  background: var(--sia-bg);
+}
+#wrapper .content h1,#wrapper .content h2,#wrapper .content h3,
+#wrapper .content h4,#wrapper .content h5,#wrapper .content h6 { font-family: var(--sia-font); color: var(--sia-text); letter-spacing:-.01em; }
+#wrapper .content h4 { font-weight: 700; }
+#wrapper .content h5 { font-weight: 600; }
+#wrapper .content .text-muted { color: var(--sia-muted) !important; }
+#wrapper .content a { color: var(--sia-primary); }
+#wrapper .content a:hover { color: var(--sia-primary-600); }
+
+/* ---- Cartes / conteneurs ---- */
+#wrapper .content .panel_s {
+  background: var(--sia-surface);
+  border: 1px solid var(--sia-border);
+  border-radius: var(--sia-radius);
+  box-shadow: var(--sia-shadow);
+  transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+}
+#wrapper .content .panel_s:hover { box-shadow: var(--sia-shadow-hover); }
+#wrapper .content .panel-body { padding: 18px 20px; }
+#wrapper .content hr, #wrapper .content .hr-panel-heading { border-color: var(--sia-border); }
+
+/* ---- KPI / indicateurs ---- */
+#wrapper .content .panel-body h2.bold { font-weight: 800; font-size: 30px; letter-spacing:-.02em; }
+#wrapper .content .panel-body h2.no-margin small { color: var(--sia-muted); font-weight:600; }
+
+/* ---- Boutons ---- */
+#wrapper .content .btn {
+  border-radius: var(--sia-radius-sm);
+  font-weight: 600;
+  transition: all .2s ease;
+  border: 1px solid transparent;
+  padding: 7px 14px;
+}
+#wrapper .content .btn-sm, #wrapper .content .btn-xs { border-radius: 8px; }
+#wrapper .content .btn-primary { background: var(--sia-primary); border-color: var(--sia-primary); box-shadow: 0 1px 2px rgba(79,70,229,.35); }
+#wrapper .content .btn-primary:hover, #wrapper .content .btn-primary:focus { background: var(--sia-primary-600); border-color: var(--sia-primary-600); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,70,229,.30); }
+#wrapper .content .btn-default {
+  background: var(--sia-surface); color: var(--sia-text);
+  border: 1px solid var(--sia-border);
+}
+#wrapper .content .btn-default:hover { background: var(--sia-surface-2); border-color: #cdd4e4; transform: translateY(-1px); }
+
+/* ---- Champs ---- */
+#wrapper .content .form-control {
+  background: var(--sia-surface);
+  border: 1px solid var(--sia-border);
+  border-radius: var(--sia-radius-sm);
+  color: var(--sia-text);
+  box-shadow: none;
+  transition: border-color .2s ease, box-shadow .2s ease;
+  height: 40px;
+}
+#wrapper .content textarea.form-control { height: auto; }
+#wrapper .content .form-control:focus { border-color: var(--sia-primary); box-shadow: 0 0 0 3px var(--sia-primary-soft); }
+#wrapper .content .control-label { color: var(--sia-muted); font-weight: 600; font-size: 12.5px; }
+
+/* ---- Tableaux : aérés & lisibles ---- */
+#wrapper .content .table { background: transparent; }
+#wrapper .content .table > thead > tr > th {
+  border-bottom: 1px solid var(--sia-border);
+  color: var(--sia-muted);
+  text-transform: uppercase;
+  font-size: 11px; letter-spacing: .04em; font-weight: 700;
+  padding: 10px 12px;
+}
+#wrapper .content .table > tbody > tr > td {
+  border-top: 1px solid var(--sia-border);
+  padding: 13px 12px;
+  vertical-align: middle;
+  color: var(--sia-text);
+}
+#wrapper .content .table > tbody > tr { transition: background .15s ease; }
+#wrapper .content .table > tbody > tr:hover { background: var(--sia-surface-2); }
+#wrapper .content .table.dt-table > tbody > tr:hover { background: var(--sia-surface-2); }
+
+/* ---- Badges "pill" semi-transparents ---- */
+#wrapper .content .label {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+#wrapper .content .label-success { background: var(--sia-success-bg); color: var(--sia-success); }
+#wrapper .content .label-danger  { background: var(--sia-danger-bg);  color: var(--sia-danger);  }
+#wrapper .content .label-warning { background: var(--sia-warning-bg); color: var(--sia-warning); }
+#wrapper .content .label-info    { background: var(--sia-info-bg);    color: var(--sia-info);    }
+#wrapper .content .label-primary { background: var(--sia-primary-soft); color: var(--sia-primary); }
+#wrapper .content .label-default { background: var(--sia-surface-2); color: var(--sia-muted); border:1px solid var(--sia-border); }
+
+/* ---- Onglets ---- */
+#wrapper .content .nav-tabs { border-bottom: 1px solid var(--sia-border); }
+#wrapper .content .nav-tabs > li > a { border: none; color: var(--sia-muted); font-weight: 600; border-radius: 0; padding: 10px 16px; transition: color .2s ease; }
+#wrapper .content .nav-tabs > li > a:hover { background: transparent; color: var(--sia-text); }
+#wrapper .content .nav-tabs > li.active > a,
+#wrapper .content .nav-tabs > li.active > a:focus,
+#wrapper .content .nav-tabs > li.active > a:hover {
+  background: transparent; color: var(--sia-primary);
+  border: none; border-bottom: 2px solid var(--sia-primary);
+}
+
+/* ---- Menus déroulants ---- */
+#wrapper .content .dropdown-menu {
+  border: 1px solid var(--sia-border);
+  border-radius: var(--sia-radius-sm);
+  box-shadow: var(--sia-shadow-hover);
+  padding: 6px;
+  background: var(--sia-surface);
+}
+#wrapper .content .dropdown-menu > li > a { border-radius: 8px; padding: 8px 12px; color: var(--sia-text); }
+#wrapper .content .dropdown-menu > li > a:hover { background: var(--sia-primary-soft); color: var(--sia-primary); }
+
+/* ---- Pipeline (kanban) ---- */
+#wrapper .content .sia-card {
+  border-radius: 12px !important;
+  border: 1px solid var(--sia-border);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+#wrapper .content .sia-card:hover { transform: translateY(-2px); box-shadow: var(--sia-shadow-hover); }
+#wrapper .content .sia-col.sia-over { background: var(--sia-primary-soft); outline: 2px dashed var(--sia-primary); border-radius: 12px; }
+
+/* ---- Alertes ---- */
+#wrapper .content .alert { border-radius: var(--sia-radius-sm); border: 1px solid var(--sia-border); }
+#wrapper .content .alert-warning { background: var(--sia-warning-bg); color: var(--sia-warning); border-color: transparent; }
+#wrapper .content .alert-success { background: var(--sia-success-bg); color: var(--sia-success); border-color: transparent; }
+
+/* ---- Modale d'aide ---- */
+.modal-content { border-radius: var(--sia-radius); border: 1px solid var(--sia-border); box-shadow: var(--sia-shadow-hover); }
+.modal-content .modal-header { border-bottom: 1px solid var(--sia-border); }
+.modal-content .modal-footer { border-top: 1px solid var(--sia-border); }
+.modal-content .modal-body ul { padding-left: 18px; }
+.modal-content .modal-body li { margin-bottom: 6px; }
+.modal-content .modal-body code { background: var(--sia-primary-soft); color: var(--sia-primary); border-radius: 6px; padding: 1px 6px; }
+
+/* ---- Bouton d'aide ---- */
+#wrapper .content h4 .btn, #wrapper .content h5 .btn { vertical-align: middle; }
+
+/* ---- Inputs de type date/datetime cohérents ---- */
+#wrapper .content input[type="date"].form-control,
+#wrapper .content input[type="datetime-local"].form-control,
+#wrapper .content input[type="number"].form-control { height: 40px; }
+
+/* ---- Barres de progression maison (entonnoir, sources) ---- */
+#wrapper .content .panel-body > div[style*="background:#eef1f5"] { background: var(--sia-surface-2) !important; }

@@ -368,6 +368,19 @@ function school_ia_bridge_sequences_cron()
 }
 
 /**
+ * Feuille de style premium — chargée UNIQUEMENT sur les pages du module
+ * (aucun impact sur le reste de Perfex).
+ */
+hooks()->add_action('app_admin_head', 'school_ia_bridge_head_css');
+function school_ia_bridge_head_css()
+{
+    if (strpos((string) ($_SERVER['REQUEST_URI'] ?? ''), 'school_ia_bridge') === false) {
+        return;
+    }
+    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=1">';
+}
+
+/**
  * Enregistre les permissions du module (Setup → Rôles) et construit le menu
  * en fonction des droits du membre connecté.
  */
