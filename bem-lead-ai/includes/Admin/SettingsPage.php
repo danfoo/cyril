@@ -392,6 +392,10 @@ final class SettingsPage
         if ($bridge->isConfigured()) {
             $conversations = new ConversationRepository();
             foreach ((new LeadRepository())->allReal() as $lead) {
+                // Garantit que le lead existe côté Perfex avant d'y rattacher ses
+                // messages (certains leads anciens n'avaient jamais été poussés).
+                $bridge->upsertLead($lead);
+
                 foreach ($conversations->history((int) $lead->id, 1000) as $message) {
                     $bridge->sendChatMessage(
                         (int) $lead->id,

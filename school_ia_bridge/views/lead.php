@@ -172,12 +172,14 @@
         $smsBody = "Bonjour {$prenom}, merci pour votre intérêt pour {$formation}. Un conseiller vous recontacte très vite. — " . get_option('companyname');
         ?>
 
-        <?php if (!empty($chatMessages)) { ?>
-          <div class="panel_s"><div class="panel-body">
-            <h5 class="bold" style="margin-top:0;">
-              <span class="sia-panel-icon sia-ic-info"><i class="fa fa-comments"></i></span>
-              Conversation avec l'IA
-            </h5>
+        <div class="panel_s"><div class="panel-body">
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-info"><i class="fa fa-comments"></i></span>
+            Conversation avec l'IA
+          </h5>
+          <?php if (empty($chatMessages)) { ?>
+            <p class="text-muted" style="margin-top:10px;">Aucun échange avec le chatbot pour ce lead.</p>
+          <?php } else { ?>
             <div class="sia-chat-thread">
               <?php foreach ($chatMessages as $m) {
                   $isUser = $m->role === 'user'; ?>
@@ -191,8 +193,8 @@
                 </div>
               <?php } ?>
             </div>
-          </div></div>
-        <?php } ?>
+          <?php } ?>
+        </div></div>
 
         <div class="panel_s"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;">
