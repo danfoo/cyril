@@ -35,6 +35,23 @@
 
         <div class="panel_s">
           <div class="panel-body">
+            <h4 class="no-margin"><i class="fa fa-bell"></i> Rappels automatiques</h4>
+            <hr class="hr-panel-heading" />
+            <p class="text-muted">Envoie un e-mail au responsable pour chaque tâche arrivée à échéance. Nécessite que le <strong>cron de Perfex</strong> soit configuré.</p>
+            <?php echo form_open(admin_url('school_ia_bridge/save_settings')); ?>
+              <input type="hidden" name="reminders_form" value="1">
+              <label style="font-weight:normal;">
+                <input type="checkbox" name="reminders_enabled" value="1"
+                       <?php echo get_option('sia_reminders_enabled') !== '0' ? 'checked' : ''; ?>>
+                Activer les rappels automatiques des tâches
+              </label>
+              <div style="margin-top:8px;"><button type="submit" class="btn btn-primary">Enregistrer</button></div>
+            <?php echo form_close(); ?>
+          </div>
+        </div>
+
+        <div class="panel_s">
+          <div class="panel-body">
             <h4 class="no-margin"><i class="fa fa-graduation-cap"></i> Programmes</h4>
             <hr class="hr-panel-heading" />
             <p class="text-muted">Un programme par ligne. Ils servent à classer les documents.</p>

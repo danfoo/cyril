@@ -82,6 +82,11 @@ class School_ia_bridge_model extends App_Model
                 $this->db->query('UPDATE `' . db_prefix() . 'school_ia_tasks` SET `due_at` = `due_date` WHERE `due_at` IS NULL AND `due_date` IS NOT NULL');
             }
         }
+        // Colonne « rappelé » (rappels automatiques).
+        if ($this->db->table_exists(db_prefix() . 'school_ia_tasks')
+            && !$this->db->field_exists('reminded', db_prefix() . 'school_ia_tasks')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . 'school_ia_tasks` ADD `reminded` TINYINT(1) NOT NULL DEFAULT 0');
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_documents')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_documents` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -162,6 +167,23 @@ class School_ia_bridge_model extends App_Model
     {
         $this->ensure_schema();
         $this->db->where('email IS NOT NULL', null, false)->where('email !=', '');
+        if (!empty($f['stage'])) {
+            $this->db->where('stage', $f['stage']);
+        }
+        if (!empty($f['program'])) {
+            $this->db->like('formation', $f['program']);
+        }
+        if (isset($f['min_score']) && $f['min_score'] !== '') {
+            $this->db->where('score >=', (float) $f['min_score']);
+        }
+        return $this->db->order_by('score', 'desc')->get($this->table())->result();
+    }
+
+    /** Destinataires d'un envoi groupé SMS (leads avec téléphone + filtres). */
+    public function sms_recipients(array $f): array
+    {
+        $this->ensure_schema();
+        $this->db->where('phone IS NOT NULL', null, false)->where('phone !=', '');
         if (!empty($f['stage'])) {
             $this->db->where('stage', $f['stage']);
         }
@@ -453,6 +475,26 @@ class School_ia_bridge_model extends App_Model
             ->limit($limit)
             ->get()
             ->result();
+    }
+
+    /** Tâches dues dont le rappel automatique n'a pas encore été envoyé. */
+    public function due_reminders(): array
+    {
+        return $this->db
+            ->select('t.*, l.name AS lead_name, l.owner_id AS lead_owner')
+            ->from($this->tasksTable() . ' t')
+            ->join($this->table() . ' l', 'l.id = t.lead_id', 'left')
+            ->where('t.done', 0)
+            ->where('t.reminded', 0)
+            ->where('t.due_at IS NOT NULL', null, false)
+            ->where('t.due_at <=', date('Y-m-d H:i:s'))
+            ->get()
+            ->result();
+    }
+
+    public function mark_reminded(int $id): void
+    {
+        $this->db->where('id', $id)->update($this->tasksTable(), ['reminded' => 1]);
     }
 
     /** Nombre de tâches en retard ou dues aujourd'hui. */

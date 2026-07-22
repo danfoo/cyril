@@ -70,6 +70,9 @@ class School_ia_bridge extends AdminController
         if ($this->input->post('programs') !== null) {
             update_option('sia_programs', (string) $this->input->post('programs'));
         }
+        if ($this->input->post('reminders_form') !== null) {
+            update_option('sia_reminders_enabled', $this->input->post('reminders_enabled') ? '1' : '0');
+        }
         set_alert('success', 'Réglages enregistrés.');
         redirect(admin_url('school_ia_bridge/settings'));
     }
@@ -143,6 +146,7 @@ class School_ia_bridge extends AdminController
         $data['title']     = 'School IA — Envoi groupé';
         $data['programs']  = $this->school_ia_bridge_model->programs();
         $data['emailTpls'] = $this->school_ia_bridge_model->templates('email');
+        $data['smsTpls']   = $this->school_ia_bridge_model->templates('sms');
         $data['documents'] = $this->school_ia_bridge_model->documents();
         $data['model']     = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/bulk', $data);
@@ -177,6 +181,35 @@ class School_ia_bridge extends AdminController
 
         set_alert($fail > 0 ? 'warning' : 'success',
             $ok . ' e-mail(s) envoyé(s)' . ($fail > 0 ? ', ' . $fail . ' échec(s).' : '.'));
+        redirect(admin_url('school_ia_bridge/bulk'));
+    }
+
+    /** Traite l'envoi groupé de SMS (form Perfex → CSRF). */
+    public function bulk_sms_send()
+    {
+        $filters = [
+            'stage'     => $this->input->post('stage'),
+            'program'   => $this->input->post('program'),
+            'min_score' => $this->input->post('min_score'),
+        ];
+        $bodyTpl = trim((string) $this->input->post('text'));
+
+        $recipients = $this->school_ia_bridge_model->sms_recipients($filters);
+        $ok = 0;
+        $fail = 0;
+        foreach ($recipients as $lead) {
+            $text = $this->personalize($bodyTpl, $lead);
+            [$sent] = $this->lam_send_sms((string) $lead->phone, $text, (int) $lead->id);
+            if ($sent) {
+                $ok++;
+                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'sms', 'SMS (envoi groupé) : ' . mb_substr($text, 0, 100), get_staff_user_id());
+            } else {
+                $fail++;
+            }
+        }
+
+        set_alert($fail > 0 ? 'warning' : 'success',
+            $ok . ' SMS envoyé(s)' . ($fail > 0 ? ', ' . $fail . ' échec(s).' : '.'));
         redirect(admin_url('school_ia_bridge/bulk'));
     }
 

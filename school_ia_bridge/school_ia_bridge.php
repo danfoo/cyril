@@ -23,6 +23,55 @@ function school_ia_bridge_activate()
 }
 
 /**
+ * Rappels automatiques : à chaque passage du cron Perfex, on envoie un e-mail
+ * au responsable pour chaque tâche due dont le rappel n'a pas encore été émis.
+ */
+hooks()->add_action('after_cron_run', 'school_ia_bridge_reminders_cron');
+function school_ia_bridge_reminders_cron()
+{
+    if (get_option('sia_reminders_enabled') === '0') {
+        return; // désactivé (activé par défaut)
+    }
+    $CI = &get_instance();
+    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+    $tasks = $CI->school_ia_bridge_model->due_reminders();
+    if (!$tasks) {
+        return;
+    }
+
+    $CI->load->library('email');
+    foreach ($tasks as $t) {
+        $staffId = (int) ($t->lead_owner ?: $t->staff_id);
+        $CI->school_ia_bridge_model->mark_reminded((int) $t->id);
+        if (!$staffId) {
+            continue;
+        }
+        $staff = $CI->db->where('staffid', $staffId)->get(db_prefix() . 'staff')->row();
+        if (!$staff || empty($staff->email)) {
+            continue;
+        }
+
+        $link = admin_url('school_ia_bridge/lead/' . (int) $t->lead_id);
+        $body = '<p>Bonjour ' . htmlspecialchars($staff->firstname) . ',</p>'
+            . '<p>Rappel d\'une tâche à effectuer :</p>'
+            . '<ul>'
+            . '<li><strong>' . htmlspecialchars($t->title) . '</strong></li>'
+            . '<li>Lead : ' . htmlspecialchars((string) ($t->lead_name ?: ('#' . $t->lead_id))) . '</li>'
+            . '<li>Échéance : ' . htmlspecialchars((string) $t->due_at) . '</li>'
+            . '</ul>'
+            . '<p><a href="' . $link . '">Ouvrir la fiche du lead</a></p>';
+
+        $CI->email->clear(true);
+        $CI->email->from(get_option('smtp_email') ?: get_option('companyname'), get_option('companyname'));
+        $CI->email->to($staff->email);
+        $CI->email->subject('Rappel de tâche — ' . $t->title);
+        $CI->email->message($body);
+        $CI->email->set_mailtype('html');
+        $CI->email->send(false);
+    }
+}
+
+/**
  * Entrée de menu dans la barre latérale de l'admin Perfex.
  */
 hooks()->add_action('admin_init', 'school_ia_bridge_admin_menu');
