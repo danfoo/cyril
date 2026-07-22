@@ -357,22 +357,6 @@ final class SettingsPage
                                 $chat++;
                             }
                         }
-                        // …ainsi que les mentions de concurrents déjà détectées.
-                        $mentions = $wpdb->get_results($wpdb->prepare(
-                            "SELECT id, nom_concurrent, extrait_contexte FROM {$wpdb->prefix}bem_competitor_mentions WHERE lead_id = %d ORDER BY id ASC",
-                            (int) $lead->id
-                        )) ?: [];
-                        foreach ($mentions as $m) {
-                            $connector->sendCompetitorMention(
-                                (int) $lead->id,
-                                (int) $m->id,
-                                (string) $m->nom_concurrent,
-                                (string) $m->extrait_contexte
-                            );
-                            if ($connector->lastCode >= 200 && $connector->lastCode < 300) {
-                                $comp++;
-                            }
-                        }
                     } else {
                         $fail++;
                         $info = 'HTTP ' . $connector->lastCode
@@ -380,6 +364,39 @@ final class SettingsPage
                     }
                 } else {
                     $ok++; // connecteur REST : pas de diagnostic détaillé
+                }
+            }
+
+            // Mentions de concurrents : remontées indépendamment de allReal
+            // (une mention peut concerner un lead anonyme, hors de cette liste).
+            // Le lead est poussé d'abord pour exister côté Perfex.
+            if ($connector instanceof PerfexBridgeConnector) {
+                $leadRepo = new LeadRepository();
+                $mentionLeadIds = $wpdb->get_col("SELECT DISTINCT lead_id FROM {$wpdb->prefix}bem_competitor_mentions") ?: [];
+                foreach ($mentionLeadIds as $lid) {
+                    $mLead = $leadRepo->findById((int) $lid);
+                    if (!$mLead) {
+                        continue;
+                    }
+                    $connector->upsertLead($mLead);
+                    if ($connector->lastCode < 200 || $connector->lastCode >= 300) {
+                        continue;
+                    }
+                    $mentions = $wpdb->get_results($wpdb->prepare(
+                        "SELECT id, nom_concurrent, extrait_contexte FROM {$wpdb->prefix}bem_competitor_mentions WHERE lead_id = %d ORDER BY id ASC",
+                        (int) $lid
+                    )) ?: [];
+                    foreach ($mentions as $m) {
+                        $connector->sendCompetitorMention(
+                            (int) $lid,
+                            (int) $m->id,
+                            (string) $m->nom_concurrent,
+                            (string) $m->extrait_contexte
+                        );
+                        if ($connector->lastCode >= 200 && $connector->lastCode < 300) {
+                            $comp++;
+                        }
+                    }
                 }
             }
         }
