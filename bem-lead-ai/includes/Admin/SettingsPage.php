@@ -385,6 +385,10 @@ final class SettingsPage
             wp_die('Forbidden');
         }
         check_admin_referer('bem_perfex_chat_resync');
+        // Beaucoup de leads × beaucoup de messages = beaucoup de requêtes HTTP
+        // séquentielles ; sans ça, le délai par défaut de PHP coupe la boucle
+        // en plein milieu (les messages restants ne partent jamais).
+        @set_time_limit(0);
 
         $bridge = new PerfexBridgeConnector();
         $ok = 0;
@@ -392,11 +396,16 @@ final class SettingsPage
         if ($bridge->isConfigured()) {
             $conversations = new ConversationRepository();
             foreach ((new LeadRepository())->allReal() as $lead) {
+                $messages = $conversations->history((int) $lead->id, 1000);
+                if (!$messages) {
+                    continue; // rien à synchroniser : on ne crée pas de lead vide côté Perfex
+                }
+
                 // Garantit que le lead existe côté Perfex avant d'y rattacher ses
                 // messages (certains leads anciens n'avaient jamais été poussés).
                 $bridge->upsertLead($lead);
 
-                foreach ($conversations->history((int) $lead->id, 1000) as $message) {
+                foreach ($messages as $message) {
                     $bridge->sendChatMessage(
                         (int) $lead->id,
                         (int) $message->id,

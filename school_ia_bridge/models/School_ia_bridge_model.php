@@ -19,6 +19,19 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_chat_messages';
     }
 
+    /** Normalise une URL de site (schéma + slash final) pour comparer http/https sans faux négatif. */
+    private function normalizeSite(string $url): string
+    {
+        $url = trim((string) preg_replace('#^https?://#i', '', trim($url)));
+        return rtrim($url, '/');
+    }
+
+    /** Comparaison source_site insensible au schéma http(s) et au slash final, en SQL. */
+    private function siteMatchSql(): string
+    {
+        return "REPLACE(REPLACE(TRIM(TRAILING '/' FROM source_site), 'https://', ''), 'http://', '')";
+    }
+
     /** Étapes du pipeline d'admission (slug => [label, couleur]). */
     public function stages(): array
     {
@@ -349,17 +362,20 @@ class School_ia_bridge_model extends App_Model
         return $this->db->where('id', $id)->get($this->table())->row();
     }
 
-    /** Retrouve un lead par son identifiant externe (id WordPress + site source). */
+    /**
+     * Retrouve un lead par son identifiant externe (id WordPress + site source).
+     * La comparaison du site ignore http(s) et le slash final : un site passé de
+     * http à https ne doit pas empêcher de retrouver ses leads déjà connus.
+     */
     public function find_by_external(string $externalId, string $sourceSite)
     {
         if ($externalId === '' || $sourceSite === '') {
             return null;
         }
-        return $this->db
-            ->where('external_id', $externalId)
-            ->where('source_site', $sourceSite)
-            ->get($this->table())
-            ->row();
+        $sql = 'SELECT * FROM `' . $this->table() . '`
+                WHERE external_id = ? AND ' . $this->siteMatchSql() . ' = ?
+                LIMIT 1';
+        return $this->db->query($sql, [$externalId, $this->normalizeSite($sourceSite)])->row();
     }
 
     /** Un lead avec cet e-mail existe-t-il déjà ? (dédoublonnage à l'import) */
@@ -975,13 +991,13 @@ class School_ia_bridge_model extends App_Model
             'received_at' => date('Y-m-d H:i:s'),
         ];
 
-        // Mise à jour si on a déjà reçu ce lead (même external_id + site).
+        // Mise à jour si on a déjà reçu ce lead (même external_id + site, schéma
+        // http(s) ignoré pour ne pas dupliquer un lead après un passage en SSL).
         if (!empty($data['external_id']) && !empty($data['source_site'])) {
-            $existing = $this->db
-                ->where('external_id', $data['external_id'])
-                ->where('source_site', $data['source_site'])
-                ->get($this->table())
-                ->row();
+            $sql = 'SELECT * FROM `' . $this->table() . '`
+                    WHERE external_id = ? AND ' . $this->siteMatchSql() . ' = ?
+                    LIMIT 1';
+            $existing = $this->db->query($sql, [$data['external_id'], $this->normalizeSite($data['source_site'])])->row();
             if ($existing) {
                 $this->db->where('id', $existing->id)->update($this->table(), $data);
                 return (int) $existing->id;
