@@ -297,6 +297,54 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/pipeline', $data);
     }
 
+    /** Export des leads (CSV ou Excel), en respectant les filtres. */
+    public function export()
+    {
+        $filters = [
+            'q'         => $this->input->get('q'),
+            'stage'     => $this->input->get('stage'),
+            'min_score' => $this->input->get('min_score'),
+        ];
+        $leads = $this->school_ia_bridge_model->search($filters, 100000);
+
+        $rows = [['ID', 'Nom', 'E-mail', 'Téléphone', 'Formation', 'Score', 'Étape', 'Source', 'Reçu le']];
+        foreach ($leads as $l) {
+            $rows[] = [
+                (int) $l->id,
+                (string) $l->name,
+                (string) $l->email,
+                (string) $l->phone,
+                (string) $l->formation,
+                (string) $l->score,
+                $this->school_ia_bridge_model->stageLabel($l->stage ?? 'nouveau'),
+                (string) $l->source_site,
+                (string) $l->received_at,
+            ];
+        }
+
+        $this->load->helper('download');
+
+        if (strtolower((string) $this->input->get('format')) === 'xlsx'
+            && class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+            $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+            $ss->getActiveSheet()->fromArray($rows, null, 'A1');
+            $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+            ob_start();
+            $writer->save('php://output');
+            force_download('leads_export_' . date('Ymd') . '.xlsx', ob_get_clean());
+            return;
+        }
+
+        // CSV — séparateur « ; » + BOM (ouverture directe dans Excel FR).
+        $out = "\xEF\xBB\xBF";
+        foreach ($rows as $r) {
+            $out .= implode(';', array_map(static function ($c) {
+                return '"' . str_replace('"', '""', (string) $c) . '"';
+            }, $r)) . "\r\n";
+        }
+        force_download('leads_export_' . date('Ymd') . '.csv', $out);
+    }
+
     /** Formulaire d'import CSV / Excel. */
     public function import()
     {

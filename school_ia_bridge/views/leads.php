@@ -8,10 +8,22 @@
         <div class="panel_s">
           <div class="panel-body">
             <div class="clearfix">
+              <?php $qs = http_build_query(array_filter([
+                  'q' => $filters['q'] ?? '', 'stage' => $filters['stage'] ?? '', 'min_score' => $filters['min_score'] ?? '',
+              ])); ?>
               <h4 class="no-margin pull-left"><i class="fa fa-graduation-cap"></i> School IA — Boîte de réception</h4>
               <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
                 <i class="fa fa-user-plus"></i> Ajouter un lead
               </a>
+              <div class="btn-group pull-right" style="margin-right:6px;">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                  <i class="fa fa-download"></i> Exporter <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                  <li><a href="<?php echo admin_url('school_ia_bridge/export') . ($qs ? '?' . $qs : ''); ?>">CSV</a></li>
+                  <li><a href="<?php echo admin_url('school_ia_bridge/export') . '?format=xlsx' . ($qs ? '&' . $qs : ''); ?>">Excel (.xlsx)</a></li>
+                </ul>
+              </div>
               <a href="<?php echo admin_url('school_ia_bridge/import'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
                 <i class="fa fa-upload"></i> Importer
               </a>
