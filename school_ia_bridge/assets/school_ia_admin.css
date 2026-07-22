@@ -303,6 +303,38 @@
   font-size: 11px; margin-top: 1px;
 }
 
+/* ---- Sélecteur de documents (pièces jointes e-mail) ---- */
+#wrapper .content .sia-doc-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  max-height: 380px; overflow-y: auto; padding: 2px;
+}
+#wrapper .content .sia-doc-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
+  background: var(--sia-surface-2);
+  border-radius: var(--sia-radius-sm);
+  padding: 16px 10px 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+#wrapper .content .sia-doc-card:hover { background: var(--sia-primary-soft); }
+#wrapper .content .sia-doc-card.sia-doc-selected { background: var(--sia-primary-soft); box-shadow: 0 0 0 2px var(--sia-primary) inset; }
+#wrapper .content .sia-doc-card input[type="checkbox"] { position: absolute; top: 8px; right: 8px; margin: 0; }
+#wrapper .content .sia-doc-card-icon { font-size: 24px; color: var(--sia-primary); }
+#wrapper .content .sia-doc-card-title { font-size: 12.5px; color: var(--sia-text); line-height: 1.3; word-break: break-word; }
+#wrapper .content .sia-doc-card-tag { font-size: 10.5px; color: var(--sia-muted); background: var(--sia-surface); border-radius: 999px; padding: 2px 9px; }
+@media (max-width: 991px) {
+  #wrapper .content .sia-doc-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+#wrapper .content .sia-doc-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#wrapper .content .sia-doc-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--sia-primary-soft); color: var(--sia-primary);
+  border-radius: 999px; padding: 4px 6px 4px 10px; font-size: 12px; font-weight: 600;
+}
+#wrapper .content .sia-doc-chip button { border: none; background: transparent; color: inherit; cursor: pointer; line-height: 1; padding: 2px; font-size: 14px; }
+
 /* ---- Inputs de type date/datetime cohérents ---- */
 #wrapper .content input[type="date"].form-control,
 #wrapper .content input[type="datetime-local"].form-control,

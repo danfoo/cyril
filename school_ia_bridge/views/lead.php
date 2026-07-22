@@ -206,14 +206,39 @@
 
                   <?php if (!empty($documents)) { ?>
                     <div style="margin-top:8px;">
-                      <label class="control-label" style="display:block;"><i class="fa fa-paperclip"></i> Pièces jointes</label>
-                      <div style="max-height:140px; overflow-y:auto; border:1px solid #eee; border-radius:4px; padding:6px;">
-                        <?php foreach ($documents as $doc) { ?>
-                          <label style="display:block; font-weight:normal; margin:2px 0;">
-                            <input type="checkbox" name="attachments[]" value="<?php echo (int) $doc->id; ?>">
-                            <?php echo htmlspecialchars(($doc->program ? $doc->program . ' · ' : '') . $doc->title, ENT_QUOTES); ?>
-                          </label>
-                        <?php } ?>
+                      <button type="button" class="btn btn-default" data-toggle="modal" data-target="#sia-doc-modal">
+                        <i class="fa fa-paperclip"></i> Joindre des documents
+                        <span class="label label-primary" id="sia-doc-badge" style="display:none;margin-left:4px;">0</span>
+                      </button>
+                      <div class="sia-doc-chips" id="sia-doc-chips"></div>
+                    </div>
+
+                    <div class="modal fade" id="sia-doc-modal" tabindex="-1" role="dialog">
+                      <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <button type="button" class="close" data-dismiss="modal">&times;</button>
+                            <h4 class="modal-title"><i class="fa fa-paperclip"></i> Choisir des documents</h4>
+                            <input type="text" id="sia-doc-search" class="form-control" placeholder="Rechercher un document…" style="margin-top:12px;">
+                          </div>
+                          <div class="modal-body">
+                            <div class="sia-doc-grid" id="sia-doc-grid">
+                              <?php foreach ($documents as $doc) {
+                                  $docLabel = ($doc->program ? $doc->program . ' · ' : '') . $doc->title; ?>
+                                <label class="sia-doc-card" data-search="<?php echo htmlspecialchars(mb_strtolower($docLabel), ENT_QUOTES); ?>">
+                                  <input type="checkbox" name="attachments[]" value="<?php echo (int) $doc->id; ?>" data-label="<?php echo htmlspecialchars($docLabel, ENT_QUOTES); ?>">
+                                  <span class="sia-doc-card-icon"><i class="fa fa-file-text-o"></i></span>
+                                  <span class="sia-doc-card-title"><?php echo htmlspecialchars((string) $doc->title, ENT_QUOTES); ?></span>
+                                  <?php if ($doc->program) { ?><span class="sia-doc-card-tag"><?php echo htmlspecialchars((string) $doc->program, ENT_QUOTES); ?></span><?php } ?>
+                                </label>
+                              <?php } ?>
+                            </div>
+                            <p class="text-muted" id="sia-doc-empty" style="display:none;margin-top:10px;">Aucun document trouvé.</p>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" data-dismiss="modal">Terminé</button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   <?php } ?>
@@ -344,6 +369,66 @@
       var o = opt(st); if (!o) return;
       if (o.getAttribute('data-body') !== null) { document.getElementById('sia-sms-text').value = o.getAttribute('data-body') || ''; }
     });
+  }
+
+  var grid = document.getElementById('sia-doc-grid');
+  if (grid) {
+    var search = document.getElementById('sia-doc-search');
+    var chips  = document.getElementById('sia-doc-chips');
+    var badge  = document.getElementById('sia-doc-badge');
+    var empty  = document.getElementById('sia-doc-empty');
+    var cards  = Array.prototype.slice.call(grid.querySelectorAll('.sia-doc-card'));
+
+    function refresh() {
+      var checked = grid.querySelectorAll('input[type="checkbox"]:checked');
+      chips.innerHTML = '';
+      Array.prototype.forEach.call(checked, function (cb) {
+        var chip = document.createElement('span');
+        chip.className = 'sia-doc-chip';
+        var label = document.createElement('span');
+        label.textContent = cb.getAttribute('data-label');
+        var rm = document.createElement('button');
+        rm.type = 'button';
+        rm.innerHTML = '&times;';
+        rm.addEventListener('click', function () {
+          cb.checked = false;
+          cb.closest('.sia-doc-card').classList.remove('sia-doc-selected');
+          refresh();
+        });
+        chip.appendChild(label);
+        chip.appendChild(rm);
+        chips.appendChild(chip);
+      });
+      if (checked.length) {
+        badge.style.display = 'inline-block';
+        badge.textContent = checked.length;
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    cards.forEach(function (card) {
+      var cb = card.querySelector('input[type="checkbox"]');
+      cb.addEventListener('change', function () {
+        card.classList.toggle('sia-doc-selected', cb.checked);
+        refresh();
+      });
+    });
+
+    if (search) {
+      search.addEventListener('input', function () {
+        var q = search.value.trim().toLowerCase();
+        var any = false;
+        cards.forEach(function (card) {
+          var match = card.getAttribute('data-search').indexOf(q) !== -1;
+          card.style.display = match ? '' : 'none';
+          if (match) { any = true; }
+        });
+        empty.style.display = any ? 'none' : 'block';
+      });
+    }
+
+    refresh();
   }
 })();
 </script>
