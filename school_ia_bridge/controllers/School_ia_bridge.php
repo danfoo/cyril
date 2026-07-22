@@ -18,8 +18,12 @@ class School_ia_bridge extends AdminController
     /** Tableau de bord : indicateurs + entonnoir. */
     public function dashboard()
     {
+        $period = (int) $this->input->get('period'); // 0 = tout, sinon nb de jours
         $data['title']    = 'School IA — Tableau de bord';
-        $data['stats']    = $this->school_ia_bridge_model->stats();
+        $data['period']   = $period;
+        $data['stats']    = $this->school_ia_bridge_model->stats(60, $period);
+        $data['bySource'] = $this->school_ia_bridge_model->by_source($period);
+        $data['byStaff']  = $this->school_ia_bridge_model->by_staff($period);
         $data['dueTasks'] = $this->school_ia_bridge_model->pending_tasks(8);
         $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/dashboard', $data);
@@ -454,7 +458,7 @@ class School_ia_bridge extends AdminController
                 $skipped++;
                 continue;
             }
-            $this->school_ia_bridge_model->create_lead($rec);
+            $this->school_ia_bridge_model->create_lead($rec + ['source_site' => 'Import fichier']);
             $imported++;
         }
 

@@ -232,19 +232,31 @@ class School_ia_bridge_model extends App_Model
         return $this->db->order_by('score', 'desc')->get($this->table())->result();
     }
 
-    /** Indicateurs pour le tableau de bord. */
-    public function stats(int $hotThreshold = 60): array
+    /** Seuil de date pour une période en jours (0 = tout l'historique). */
+    private function since(int $sinceDays): ?string
+    {
+        return $sinceDays > 0 ? date('Y-m-d H:i:s', time() - $sinceDays * 86400) : null;
+    }
+
+    /** Indicateurs pour le tableau de bord (optionnellement sur une période). */
+    public function stats(int $hotThreshold = 60, int $sinceDays = 0): array
     {
         $this->ensure_schema();
         $t = $this->table();
+        $since = $this->since($sinceDays);
 
-        $total = (int) $this->db->count_all($t);
-        $hot = (int) $this->db->from($t)->where('score >=', $hotThreshold)->count_all_results();
+        if ($since) { $this->db->where('received_at >=', $since); }
+        $total = (int) $this->db->count_all_results($t);
+
+        if ($since) { $this->db->where('received_at >=', $since); }
+        $this->db->where('score >=', $hotThreshold);
+        $hot = (int) $this->db->count_all_results($t);
 
         $byStage = [];
         foreach (array_keys($this->stages()) as $slug) {
             $byStage[$slug] = 0;
         }
+        if ($since) { $this->db->where('received_at >=', $since); }
         foreach ($this->db->select('stage, COUNT(*) AS n')->group_by('stage')->get($t)->result() as $r) {
             $byStage[$r->stage] = (int) $r->n;
         }
@@ -252,13 +264,35 @@ class School_ia_bridge_model extends App_Model
         $inscrits = $byStage['inscrit'] ?? 0;
         $conversion = $total > 0 ? round($inscrits * 100 / $total, 1) : 0.0;
 
-        return [
-            'total'      => $total,
-            'hot'        => $hot,
-            'inscrits'   => $inscrits,
-            'conversion' => $conversion,
-            'byStage'    => $byStage,
-        ];
+        return compact('total', 'hot', 'inscrits', 'conversion', 'byStage');
+    }
+
+    /** Répartition des leads par source (site plugin, saisie, import). */
+    public function by_source(int $sinceDays = 0): array
+    {
+        $since = $this->since($sinceDays);
+        if ($since) { $this->db->where('received_at >=', $since); }
+        return $this->db
+            ->select("COALESCE(NULLIF(source_site,''),'—') AS src, COUNT(*) AS n")
+            ->group_by('source_site')
+            ->order_by('n', 'desc')
+            ->get($this->table())
+            ->result();
+    }
+
+    /** Performance par conseiller (leads assignés + inscrits). */
+    public function by_staff(int $sinceDays = 0): array
+    {
+        $since = $this->since($sinceDays);
+        $this->db
+            ->select('s.staffid, CONCAT(s.firstname, " ", s.lastname) AS name, COUNT(l.id) AS total, '
+                . 'SUM(CASE WHEN l.stage = "inscrit" THEN 1 ELSE 0 END) AS inscrits')
+            ->from($this->table() . ' l')
+            ->join(db_prefix() . 'staff s', 's.staffid = l.owner_id', 'inner')
+            ->group_by('l.owner_id')
+            ->order_by('total', 'desc');
+        if ($since) { $this->db->where('l.received_at >=', $since); }
+        return $this->db->get()->result();
     }
 
     public function get_lead(int $id)
@@ -288,7 +322,7 @@ class School_ia_bridge_model extends App_Model
             'formation'   => substr(trim((string) ($d['formation'] ?? '')), 0, 191) ?: null,
             'score'       => isset($d['score']) && $d['score'] !== '' ? (float) $d['score'] : 0,
             'stage'       => $stage,
-            'source_site' => 'Saisie manuelle',
+            'source_site' => !empty($d['source_site']) ? substr((string) $d['source_site'], 0, 191) : 'Saisie manuelle',
             'payload'     => json_encode($d, JSON_UNESCAPED_UNICODE),
             'received_at' => date('Y-m-d H:i:s'),
         ]);

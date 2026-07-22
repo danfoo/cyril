@@ -86,8 +86,10 @@ function sia_help(string $key): string
                <li><strong>Inscrits</strong> et <strong>taux de conversion</strong> : leads en étape « Inscrit » / total.</li>
                <li><strong>Entonnoir</strong> : répartition des leads par étape du pipeline.</li>
                <li><strong>Relances à faire</strong> : vos prochaines tâches dues.</li>
+               <li><strong>Par conseiller</strong> : leads assignés, inscrits et taux de conversion de chaque agent.</li>
+               <li><strong>Par source</strong> : d\'où viennent les leads (site plugin, saisie manuelle, import).</li>
              </ul>
-             <p><em>Configuration :</em> rien à régler, tout se met à jour automatiquement.</p>'],
+             <p><em>Période :</em> les boutons en haut (Tout / 7 / 30 / 90 jours) filtrent tous les indicateurs.</p>'],
         'pipeline' => ['Pipeline',
             '<p>Suivez la progression des leads par étape (Nouveau → … → Inscrit / Perdu).</p>
              <ul>
