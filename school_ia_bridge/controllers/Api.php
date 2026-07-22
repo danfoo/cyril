@@ -14,6 +14,18 @@ defined('BASEPATH') or exit('No direct script access allowed');
  */
 class Api extends App_Controller
 {
+    public function __construct()
+    {
+        parent::__construct();
+        // Garantit que les tables du CRM (messages de chat, concurrents…)
+        // existent AVANT toute insertion : le plugin peut appeler ces points
+        // d'entrée sans qu'un admin ait ouvert les pages du module, or c'est
+        // seulement là que le schéma était créé. Sans ça, les insertions
+        // échouaient en silence tout en renvoyant « ok » (2xx).
+        $this->load->model('school_ia_bridge/school_ia_bridge_model');
+        $this->school_ia_bridge_model->ensure_schema();
+    }
+
     public function receive()
     {
         header('Content-Type: application/json; charset=utf-8');
