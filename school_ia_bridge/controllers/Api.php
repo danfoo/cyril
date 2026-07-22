@@ -196,13 +196,21 @@ class Api extends App_Controller
     public function diag()
     {
         header('Content-Type: application/json; charset=utf-8');
-        $secret   = (string) get_option('school_ia_bridge_secret');
-        $provided = $this->input->get_request_header('X-SIA-Secret', true);
-        if ($provided === null || $provided === '') {
-            $provided = (string) ($this->input->get('secret') ?: $this->input->post('secret'));
+
+        // Accès autorisé si un membre du personnel est connecté à Perfex
+        // (le plus simple : ouvrez cette URL dans l'onglet où vous êtes déjà
+        // connecté), OU via le secret partagé pour un test externe.
+        $authorized = (function_exists('is_staff_logged_in') && is_staff_logged_in());
+        if (!$authorized) {
+            $secret   = (string) get_option('school_ia_bridge_secret');
+            $provided = $this->input->get_request_header('X-SIA-Secret', true);
+            if ($provided === null || $provided === '') {
+                $provided = (string) ($this->input->get('secret') ?: $this->input->post('secret'));
+            }
+            $authorized = ($secret !== '' && hash_equals($secret, (string) $provided));
         }
-        if ($secret === '' || !hash_equals($secret, (string) $provided)) {
-            $this->respond(['ok' => false, 'error' => 'unauthorized'], 401);
+        if (!$authorized) {
+            $this->respond(['ok' => false, 'error' => 'unauthorized', 'hint' => 'Ouvrez cette URL dans l\'onglet où vous êtes connecté à Perfex.'], 401);
             return;
         }
         $this->respond(['ok' => true, 'tables' => $this->school_ia_bridge_model->diag_counts()]);
