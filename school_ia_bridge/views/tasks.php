@@ -5,7 +5,7 @@
     <div class="row">
       <div class="col-md-10 col-md-offset-1">
 
-        <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-check-square-o"></i> Tâches à faire</h4>
+        <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-check-square-o"></i> Tâches à faire <?php echo sia_help('tasks'); ?></h4>
 
         <div class="panel_s"><div class="panel-body">
           <?php if (empty($tasks)) { ?>

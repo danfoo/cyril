@@ -6,7 +6,7 @@
       <div class="col-md-8 col-md-offset-2">
         <div class="panel_s">
           <div class="panel-body">
-            <h4 class="no-margin"><i class="fa fa-cog"></i> Réglages — Connexion du plugin School IA</h4>
+            <h4 class="no-margin"><i class="fa fa-cog"></i> Réglages — Connexion du plugin School IA <?php echo sia_help('settings'); ?></h4>
             <hr class="hr-panel-heading" />
             <p class="text-muted">
               Recopiez ces deux valeurs dans WordPress → <strong>School IA → Réglages → CRM</strong>

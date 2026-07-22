@@ -2,7 +2,7 @@
 <?php init_head(); ?>
 <div id="wrapper">
   <div class="content">
-    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-paper-plane"></i> Envoi groupé</h4>
+    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-paper-plane"></i> Envoi groupé <?php echo sia_help('bulk'); ?></h4>
 
     <ul class="nav nav-tabs" role="tablist" style="margin-bottom:15px;">
       <li role="presentation" class="active"><a href="#bulk-email" data-toggle="tab"><i class="fa fa-envelope"></i> E-mail groupé</a></li>

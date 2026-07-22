@@ -5,7 +5,7 @@
     <div class="row">
       <div class="col-md-8 col-md-offset-2">
         <div class="clearfix" style="margin-bottom:15px;">
-          <h4 class="no-margin pull-left"><i class="fa fa-user-plus"></i> Ajouter un lead</h4>
+          <h4 class="no-margin pull-left"><i class="fa fa-user-plus"></i> Ajouter un lead <?php echo sia_help('new_lead'); ?></h4>
           <a href="<?php echo admin_url('school_ia_bridge'); ?>" class="btn btn-default pull-right">Annuler</a>
         </div>
 

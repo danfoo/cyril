@@ -4,7 +4,7 @@
   <div class="content">
 
     <div class="clearfix" style="margin-bottom:15px;">
-      <h4 class="no-margin pull-left"><i class="fa fa-dashboard"></i> Tableau de bord — Admissions</h4>
+      <h4 class="no-margin pull-left"><i class="fa fa-dashboard"></i> Tableau de bord — Admissions <?php echo sia_help("dashboard"); ?></h4>
       <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-primary pull-right">
         <i class="fa fa-columns"></i> Pipeline
       </a>

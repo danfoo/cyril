@@ -9,6 +9,7 @@
       </a>
       <h4 class="no-margin"><i class="fa fa-user"></i>
         <?php echo htmlspecialchars((string) ($lead->name ?: ('Lead #' . $lead->id)), ENT_QUOTES); ?>
+        <?php echo sia_help('lead'); ?>
       </h4>
     </div>
 

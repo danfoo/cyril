@@ -5,7 +5,7 @@
     <div class="row">
       <div class="col-md-8 col-md-offset-2">
         <div class="clearfix" style="margin-bottom:15px;">
-          <h4 class="no-margin pull-left"><i class="fa fa-upload"></i> Importer des leads (CSV / Excel)</h4>
+          <h4 class="no-margin pull-left"><i class="fa fa-upload"></i> Importer des leads (CSV / Excel) <?php echo sia_help('import'); ?></h4>
           <a href="<?php echo admin_url('school_ia_bridge'); ?>" class="btn btn-default pull-right">Retour</a>
         </div>
 

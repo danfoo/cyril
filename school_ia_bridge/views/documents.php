@@ -2,7 +2,7 @@
 <?php init_head(); ?>
 <div id="wrapper">
   <div class="content">
-    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-folder-open"></i> Documents par programme</h4>
+    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-folder-open"></i> Documents par programme <?php echo sia_help('documents'); ?></h4>
 
     <div class="row">
       <!-- Upload -->

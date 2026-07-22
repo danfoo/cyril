@@ -2,7 +2,7 @@
 <?php init_head(); ?>
 <div id="wrapper">
   <div class="content">
-    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-random"></i> Séquences de relance automatiques</h4>
+    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-random"></i> Séquences de relance automatiques <?php echo sia_help('sequences'); ?></h4>
 
     <div class="row">
       <!-- Liste + création -->

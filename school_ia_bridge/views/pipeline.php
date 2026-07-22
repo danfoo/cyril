@@ -13,6 +13,7 @@
         <div class="clearfix" style="margin-bottom:15px;">
           <h4 class="no-margin pull-left"><i class="fa fa-columns"></i> Pipeline d'admission
             <small class="text-muted">— glissez-déposez les cartes</small>
+            <?php echo sia_help('pipeline'); ?>
           </h4>
           <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
             <i class="fa fa-user-plus"></i> Ajouter un lead

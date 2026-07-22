@@ -2,7 +2,7 @@
 <?php init_head(); ?>
 <div id="wrapper">
   <div class="content">
-    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-file-text-o"></i> Modèles d'e-mail & SMS</h4>
+    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-file-text-o"></i> Modèles d'e-mail & SMS <?php echo sia_help('templates'); ?></h4>
 
     <div class="row">
       <!-- Formulaire -->
