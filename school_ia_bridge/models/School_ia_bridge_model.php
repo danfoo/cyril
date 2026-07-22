@@ -974,37 +974,61 @@ class School_ia_bridge_model extends App_Model
     /**
      * Enregistre (ou met à jour) un lead reçu.
      * La déduplication se fait sur external_id + source_site quand ils existent.
+     *
+     * Deux garde-fous importants :
+     *  - on ne met à jour QUE les champs réellement fournis dans le payload :
+     *    une requête partielle ne doit jamais écraser un nom/e-mail existant
+     *    avec du vide ;
+     *  - on refuse de créer une fiche « fantôme » sans aucune donnée utile
+     *    (retourne 0), pour ne pas polluer la liste avec des « Lead #N » vides.
      */
     public function save_lead(array $p): int
     {
-        $data = [
-            'name'        => isset($p['name']) ? substr((string) $p['name'], 0, 191) : null,
-            'email'       => isset($p['email']) ? substr((string) $p['email'], 0, 191) : null,
-            'phone'       => isset($p['phone']) ? substr((string) $p['phone'], 0, 64) : null,
-            'formation'   => isset($p['formation']) ? substr((string) $p['formation'], 0, 191) : null,
-            'score'       => isset($p['score']) ? (float) $p['score'] : 0,
-            'band'        => isset($p['band']) ? substr((string) $p['band'], 0, 32) : null,
-            'source_site' => isset($p['source_site']) ? substr((string) $p['source_site'], 0, 191) : null,
-            'external_id' => isset($p['external_id']) ? substr((string) $p['external_id'], 0, 64) : null,
-            'description' => isset($p['description']) ? (string) $p['description'] : null,
-            'payload'     => json_encode($p, JSON_UNESCAPED_UNICODE),
-            // Vraie date d'arrivée envoyée par le plugin ; repli sur maintenant.
-            'received_at' => !empty($p['received_at']) ? substr((string) $p['received_at'], 0, 19) : date('Y-m-d H:i:s'),
-        ];
+        // Ne mappe que les champs présents dans le payload (clé existante).
+        $data = [];
+        if (array_key_exists('name', $p))        { $data['name']        = ($v = substr((string) $p['name'], 0, 191)) !== '' ? $v : null; }
+        if (array_key_exists('email', $p))       { $data['email']       = ($v = substr((string) $p['email'], 0, 191)) !== '' ? $v : null; }
+        if (array_key_exists('phone', $p))       { $data['phone']       = ($v = substr((string) $p['phone'], 0, 64)) !== '' ? $v : null; }
+        if (array_key_exists('formation', $p))   { $data['formation']   = ($v = substr((string) $p['formation'], 0, 191)) !== '' ? $v : null; }
+        if (array_key_exists('score', $p))       { $data['score']       = (float) $p['score']; }
+        if (array_key_exists('band', $p))        { $data['band']        = ($v = substr((string) $p['band'], 0, 32)) !== '' ? $v : null; }
+        if (array_key_exists('source_site', $p)) { $data['source_site'] = ($v = substr((string) $p['source_site'], 0, 191)) !== '' ? $v : null; }
+        if (array_key_exists('external_id', $p)) { $data['external_id'] = ($v = substr((string) $p['external_id'], 0, 64)) !== '' ? $v : null; }
+        if (array_key_exists('description', $p)) { $data['description'] = (string) $p['description']; }
+
+        $externalId = isset($p['external_id']) ? substr((string) $p['external_id'], 0, 64) : '';
+        $sourceSite = isset($p['source_site']) ? (string) $p['source_site'] : '';
 
         // Mise à jour si on a déjà reçu ce lead (même external_id + site, schéma
         // http(s) ignoré pour ne pas dupliquer un lead après un passage en SSL).
-        if (!empty($data['external_id']) && !empty($data['source_site'])) {
+        if ($externalId !== '' && $sourceSite !== '') {
             $sql = 'SELECT * FROM `' . $this->table() . '`
                     WHERE external_id = ? AND ' . $this->siteMatchSql() . ' = ?
                     LIMIT 1';
-            $existing = $this->db->query($sql, [$data['external_id'], $this->normalizeSite($data['source_site'])])->row();
+            $existing = $this->db->query($sql, [$externalId, $this->normalizeSite($sourceSite)])->row();
             if ($existing) {
-                $this->db->where('id', $existing->id)->update($this->table(), $data);
+                $data['payload'] = json_encode($p, JSON_UNESCAPED_UNICODE);
+                if (!empty($p['received_at'])) {
+                    $data['received_at'] = substr((string) $p['received_at'], 0, 19);
+                }
+                // N'écrase jamais des champs existants avec du vide.
+                $data = array_filter($data, static fn($v) => $v !== null && $v !== '');
+                if ($data) {
+                    $this->db->where('id', $existing->id)->update($this->table(), $data);
+                }
                 return (int) $existing->id;
             }
         }
 
+        // Création : refuse les fiches vides (payload sans identité ni contact).
+        $meaningful = !empty($data['name']) || !empty($data['email']) || !empty($data['phone'])
+            || !empty($data['formation']) || (!empty($data['score']) && (float) $data['score'] > 0);
+        if (!$meaningful) {
+            return 0;
+        }
+
+        $data['payload']     = json_encode($p, JSON_UNESCAPED_UNICODE);
+        $data['received_at'] = !empty($p['received_at']) ? substr((string) $p['received_at'], 0, 19) : date('Y-m-d H:i:s');
         $this->db->insert($this->table(), $data);
         return (int) $this->db->insert_id();
     }

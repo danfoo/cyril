@@ -45,7 +45,38 @@ class Api extends App_Controller
         }
 
         $this->load->model('school_ia_bridge/school_ia_bridge_model');
+
+        // Filet de sécurité : si un message de conversation atterrit ici par
+        // erreur (payload role+content sans données de lead), on le range comme
+        // message au lieu de créer une fiche vide qui écraserait le vrai lead.
+        $looksLikeChat = !empty($body['content'])
+            && in_array((string) ($body['role'] ?? ''), ['user', 'assistant'], true)
+            && empty($body['name']) && empty($body['email']) && empty($body['phone']) && !isset($body['score']);
+        if ($looksLikeChat) {
+            $lead = $this->school_ia_bridge_model->find_by_external(
+                (string) ($body['external_id'] ?? ''),
+                (string) ($body['source_site'] ?? '')
+            );
+            if (!$lead) {
+                $this->respond(['ok' => false, 'error' => 'lead_not_found'], 404);
+                return;
+            }
+            $this->school_ia_bridge_model->add_chat_message(
+                (int) $lead->id,
+                (string) $body['role'],
+                (string) $body['content'],
+                (string) ($body['canal'] ?? 'web'),
+                !empty($body['external_message_id']) ? (string) $body['external_message_id'] : null
+            );
+            $this->respond(['ok' => true, 'chat' => true]);
+            return;
+        }
+
         $id = $this->school_ia_bridge_model->save_lead($body);
+        if ($id === 0) {
+            $this->respond(['ok' => false, 'error' => 'empty_lead_ignored'], 422);
+            return;
+        }
 
         $this->respond(['ok' => true, 'id' => $id]);
     }
