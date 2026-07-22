@@ -52,6 +52,28 @@
 
         <div class="panel_s">
           <div class="panel-body">
+            <h4 class="no-margin"><i class="fa fa-magic"></i> Rapports IA (Claude)</h4>
+            <hr class="hr-panel-heading" />
+            <p class="text-muted">Clé API Anthropic pour générer les rapports de la page <strong>Reporting</strong>. Obtenue sur console.anthropic.com.</p>
+            <?php echo form_open(admin_url('school_ia_bridge/save_settings')); ?>
+              <input type="hidden" name="ai_form" value="1">
+              <div class="form-group">
+                <label class="control-label">Clé API Anthropic</label>
+                <input type="password" name="ai_api_key" class="form-control" autocomplete="new-password"
+                       placeholder="<?php echo $ai_has_key ? '•••••••• (laisser vide pour ne pas changer)' : 'sk-ant-...'; ?>">
+              </div>
+              <div class="form-group">
+                <label class="control-label">Modèle</label>
+                <input type="text" name="ai_model" class="form-control" value="<?php echo htmlspecialchars((string) $ai_model, ENT_QUOTES); ?>">
+                <p class="text-muted" style="font-size:12px;">Par défaut : <code>claude-opus-4-8</code>.</p>
+              </div>
+              <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <?php echo form_close(); ?>
+          </div>
+        </div>
+
+        <div class="panel_s">
+          <div class="panel-body">
             <h4 class="no-margin"><i class="fa fa-graduation-cap"></i> Programmes</h4>
             <hr class="hr-panel-heading" />
             <p class="text-muted">Un programme par ligne. Ils servent à classer les documents.</p>

@@ -205,6 +205,14 @@
 /* ---- Bouton d'aide ---- */
 #wrapper .content h4 .btn, #wrapper .content h5 .btn { vertical-align: middle; }
 
+/* ---- Rapport IA ---- */
+#wrapper .content .sia-report h4 { font-size: 16px; font-weight: 700; margin: 18px 0 8px; }
+#wrapper .content .sia-report h5 { font-size: 14px; font-weight: 700; margin: 14px 0 6px; }
+#wrapper .content .sia-report p { margin: 0 0 10px; color: var(--sia-text); }
+#wrapper .content .sia-report ul, #wrapper .content .sia-report ol { padding-left: 20px; margin: 0 0 12px; }
+#wrapper .content .sia-report li { margin-bottom: 5px; }
+#wrapper .content .sia-report strong { color: var(--sia-text); }
+
 /* ---- Inputs de type date/datetime cohérents ---- */
 #wrapper .content input[type="date"].form-control,
 #wrapper .content input[type="datetime-local"].form-control,

@@ -155,6 +155,15 @@ function sia_help(string $key): string
                <li>Un <strong>programme</strong> et une <strong>étape</strong> par défaut s\'appliquent aux lignes qui ne les précisent pas.</li>
                <li>Les e-mails déjà présents sont <strong>ignorés</strong> (pas de doublon).</li>
              </ul>'],
+        'reporting' => ['Reporting IA',
+            '<p>Génère un <strong>rapport d\'activité rédigé par l\'IA</strong> (Claude) pour la période choisie.</p>
+             <ol>
+               <li>Choisissez le <strong>type</strong> (journalier, hebdomadaire, mensuel, annuel) et une date de référence.</li>
+               <li>Vérifiez l\'aperçu des chiffres, puis cliquez <strong>« Générer avec l\'IA »</strong>.</li>
+               <li>L\'IA analyse les données (leads, conversions, sources, campagnes…) et produit une synthèse avec points forts, points de vigilance et <strong>recommandations concrètes</strong>.</li>
+             </ol>
+             <p>Chaque rapport est <strong>archivé</strong> et consultable à tout moment.</p>
+             <p><em>Prérequis :</em> une clé API Anthropic dans <strong>Réglages → Rapports IA</strong>.</p>'],
         'campaigns' => ['Statistiques des campagnes',
             '<p>Mesurez l\'efficacité de vos envois.</p>
              <ul>
@@ -205,6 +214,105 @@ function sia_help(string $key): string
         . '<div class="modal-body">' . $body . '</div>'
         . '<div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button></div>'
         . '</div></div></div>';
+}
+
+/** Formate un tableau associatif en "clé: valeur, clé: valeur". */
+function school_ia_kv(array $arr): string
+{
+    $parts = [];
+    foreach ($arr as $k => $v) {
+        $parts[] = $k . ': ' . $v;
+    }
+    return implode(', ', $parts);
+}
+
+/**
+ * Calcule l'intervalle de dates d'une période. Renvoie [from, to, label].
+ */
+function school_ia_period_range(string $period, string $date = ''): array
+{
+    $ref = $date !== '' ? strtotime($date) : time();
+    switch ($period) {
+        case 'day':
+            $from = date('Y-m-d 00:00:00', $ref);
+            $to   = date('Y-m-d 23:59:59', $ref);
+            $label = 'Rapport journalier — ' . date('d/m/Y', $ref);
+            break;
+        case 'week':
+            $mon = strtotime('monday this week', $ref);
+            $sun = strtotime('sunday this week', $ref);
+            $from = date('Y-m-d 00:00:00', $mon);
+            $to   = date('Y-m-d 23:59:59', $sun);
+            $label = 'Rapport hebdomadaire — semaine du ' . date('d/m/Y', $mon);
+            break;
+        case 'year':
+            $from = date('Y-01-01 00:00:00', $ref);
+            $to   = date('Y-12-31 23:59:59', $ref);
+            $label = 'Rapport annuel — ' . date('Y', $ref);
+            break;
+        case 'month':
+        default:
+            $from = date('Y-m-01 00:00:00', $ref);
+            $to   = date('Y-m-t 23:59:59', $ref);
+            $label = 'Rapport mensuel — ' . date('m/Y', $ref);
+            break;
+    }
+    return [$from, $to, $label];
+}
+
+/**
+ * Appelle l'API Claude (Anthropic) pour rédiger le rapport. Renvoie [ok, texte].
+ * Raw HTTPS via cURL (Perfex = PHP sans le SDK Anthropic).
+ */
+function school_ia_ai_generate(string $system, string $prompt): array
+{
+    $key = trim((string) get_option('sia_ai_api_key'));
+    if ($key === '') {
+        return [false, 'Clé API IA non configurée (Réglages → Rapports IA).'];
+    }
+    $model = trim((string) get_option('sia_ai_model')) ?: 'claude-opus-4-8';
+
+    $payload = json_encode([
+        'model'      => $model,
+        'max_tokens' => 3000,
+        'system'     => $system,
+        'messages'   => [['role' => 'user', 'content' => $prompt]],
+    ], JSON_UNESCAPED_UNICODE);
+
+    $ch = curl_init('https://api.anthropic.com/v1/messages');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_TIMEOUT        => 120,
+        CURLOPT_HTTPHEADER     => [
+            'content-type: application/json',
+            'x-api-key: ' . $key,
+            'anthropic-version: 2023-06-01',
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $cerr = curl_error($ch);
+    curl_close($ch);
+
+    if ($resp === false) {
+        return [false, 'Connexion à l\'IA échouée : ' . $cerr];
+    }
+    $data = json_decode((string) $resp, true);
+    if ($code >= 400) {
+        return [false, 'Erreur API (' . $code . ') : ' . ($data['error']['message'] ?? mb_substr((string) $resp, 0, 200))];
+    }
+    $text = '';
+    foreach (($data['content'] ?? []) as $block) {
+        if (($block['type'] ?? '') === 'text') {
+            $text .= $block['text'];
+        }
+    }
+    if (trim($text) === '') {
+        return [false, 'Réponse de l\'IA vide.'];
+    }
+    return [true, $text];
 }
 
 // ---- Utilitaires d'envoi partagés (utilisés par le cron des séquences) ----
@@ -377,7 +485,7 @@ function school_ia_bridge_head_css()
     if (strpos((string) ($_SERVER['REQUEST_URI'] ?? ''), 'school_ia_bridge') === false) {
         return;
     }
-    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=2">';
+    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=3">';
 }
 
 /**
@@ -450,6 +558,12 @@ function school_ia_bridge_admin_menu()
         'name'     => 'Statistiques',
         'href'     => admin_url('school_ia_bridge/campaigns'),
         'position' => 6,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+        'slug'     => 'school_ia_bridge_reporting',
+        'name'     => 'Reporting',
+        'href'     => admin_url('school_ia_bridge/reporting'),
+        'position' => 7,
     ]);
 
     if (staff_can('send', 'school_ia_bridge')) {

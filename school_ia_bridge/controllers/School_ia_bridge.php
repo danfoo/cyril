@@ -67,6 +67,78 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/campaigns', $data);
     }
 
+    /** Reporting : agrégats par période + rapports rédigés par l'IA. */
+    public function reporting()
+    {
+        $period = $this->input->get('period') ?: 'month';
+        $date   = (string) $this->input->get('date');
+        [$from, $to, $label] = school_ia_period_range($period, $date);
+
+        $data['title']   = 'School IA — Reporting';
+        $data['period']  = $period;
+        $data['date']    = $date;
+        $data['label']   = $label;
+        $data['from']    = $from;
+        $data['to']      = $to;
+        $data['agg']     = $this->school_ia_bridge_model->report_data($from, $to);
+        $data['reports'] = $this->school_ia_bridge_model->list_reports();
+        $data['report']  = $this->input->get('report') ? $this->school_ia_bridge_model->get_report((int) $this->input->get('report')) : null;
+        $data['ai_ready'] = trim((string) get_option('sia_ai_api_key')) !== '';
+        $data['model']   = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/reporting', $data);
+    }
+
+    /** Génère le rapport IA pour la période choisie (form Perfex → CSRF). */
+    public function reporting_generate()
+    {
+        $period = $this->input->post('period') ?: 'month';
+        $date   = (string) $this->input->post('date');
+        [$from, $to, $label] = school_ia_period_range($period, $date);
+        $agg = $this->school_ia_bridge_model->report_data($from, $to);
+
+        // Données mises en forme pour l'IA.
+        $lines = [];
+        $lines[] = 'Période : ' . $label . ' (du ' . $from . ' au ' . $to . ')';
+        $lines[] = 'Nouveaux leads : ' . $agg['leads_total'];
+        $lines[] = 'Inscrits : ' . $agg['inscrits'] . ' (taux de conversion ' . $agg['conversion'] . '%)';
+        $lines[] = 'Répartition par étape : ' . school_ia_kv($agg['by_stage']);
+        $lines[] = 'Par source : ' . school_ia_kv($agg['by_source']);
+        $lines[] = 'Formations les plus demandées : ' . (school_ia_kv($agg['top_formations']) ?: 'n/d');
+        $lines[] = 'E-mails envoyés : ' . $agg['email_sent'] . ' (ouverts ' . $agg['email_opened'] . ', taux d\'ouverture ' . $agg['open_rate'] . '%)';
+        $lines[] = 'SMS envoyés : ' . $agg['sms_sent'];
+        $lines[] = 'Tâches/relances créées : ' . $agg['tasks'];
+
+        $system = 'Tu es analyste CRM pour une école supérieure. À partir des données fournies, rédige un rapport clair, concis et ACTIONNABLE en français. '
+            . 'Réponds en HTML simple (balises autorisées : h4, h5, p, ul, ol, li, strong, em) — sans <html>, <head>, <body>, ni styles. '
+            . 'Structure : 1) Synthèse (2-3 phrases), 2) Points forts, 3) Points de vigilance, 4) Recommandations concrètes, 5) Prochaines actions. '
+            . 'Sois factuel, cite les chiffres, et donne des conseils réalistes pour améliorer les admissions.';
+        $prompt = "Données de la période :\n" . implode("\n", $lines);
+
+        [$ok, $out] = school_ia_ai_generate($system, $prompt);
+        if (!$ok) {
+            set_alert('danger', 'Génération impossible : ' . $out);
+            redirect(admin_url('school_ia_bridge/reporting?period=' . $period . ($date ? '&date=' . $date : '')));
+        }
+
+        $id = $this->school_ia_bridge_model->save_report([
+            'period'    => $period,
+            'label'     => $label,
+            'date_from' => $from,
+            'date_to'   => $to,
+            'content'   => $out,
+            'staff_id'  => get_staff_user_id(),
+        ]);
+        set_alert('success', 'Rapport généré.');
+        redirect(admin_url('school_ia_bridge/reporting?period=' . $period . ($date ? '&date=' . $date : '') . '&report=' . $id));
+    }
+
+    public function reporting_delete($id = 0)
+    {
+        $this->school_ia_bridge_model->delete_report((int) $id);
+        set_alert('success', 'Rapport supprimé.');
+        redirect(admin_url('school_ia_bridge/reporting'));
+    }
+
     /** Journal d'activité global. */
     public function activity()
     {
@@ -87,6 +159,8 @@ class School_ia_bridge extends AdminController
         $data['sms_account'] = get_option('sia_sms_accountid');
         $data['sms_sender']  = get_option('sia_sms_sender');
         $data['sms_has_pwd'] = get_option('sia_sms_password') !== '';
+        $data['ai_has_key']  = trim((string) get_option('sia_ai_api_key')) !== '';
+        $data['ai_model']    = get_option('sia_ai_model') ?: 'claude-opus-4-8';
         $this->load->view('school_ia_bridge/settings', $data);
     }
 
@@ -111,6 +185,13 @@ class School_ia_bridge extends AdminController
         }
         if ($this->input->post('reminders_form') !== null) {
             update_option('sia_reminders_enabled', $this->input->post('reminders_enabled') ? '1' : '0');
+        }
+        if ($this->input->post('ai_form') !== null) {
+            $aiKey = (string) $this->input->post('ai_api_key');
+            if ($aiKey !== '') { // ne pas écraser si laissé vide
+                update_option('sia_ai_api_key', $aiKey);
+            }
+            update_option('sia_ai_model', trim((string) $this->input->post('ai_model')) ?: 'claude-opus-4-8');
         }
         set_alert('success', 'Réglages enregistrés.');
         redirect(admin_url('school_ia_bridge/settings'));

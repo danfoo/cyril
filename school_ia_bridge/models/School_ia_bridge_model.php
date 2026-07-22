@@ -102,6 +102,19 @@ class School_ia_bridge_model extends App_Model
                 KEY `program` (`program`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
+        if (!$this->db->table_exists(db_prefix() . 'school_ia_reports')) {
+            $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_reports` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `period` varchar(10) NOT NULL DEFAULT 'month',
+                `label` varchar(120) DEFAULT NULL,
+                `date_from` datetime DEFAULT NULL,
+                `date_to` datetime DEFAULT NULL,
+                `content` longtext DEFAULT NULL,
+                `staff_id` int(11) DEFAULT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_messages')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_messages` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -387,6 +400,90 @@ class School_ia_bridge_model extends App_Model
             ->order_by('created_at', 'desc')
             ->get($this->activityTable())
             ->result();
+    }
+
+    // ---------- Reporting (agrégats période + rapports IA) ----------
+
+    /** Agrège les données du CRM entre deux dates (pour le rapport). */
+    public function report_data(string $from, string $to): array
+    {
+        $this->ensure_schema();
+        $t = $this->table();
+
+        $leadsTotal = (int) $this->db->where('received_at >=', $from)->where('received_at <=', $to)->count_all_results($t);
+
+        $byStage = [];
+        foreach (array_keys($this->stages()) as $s) { $byStage[$this->stageLabel($s)] = 0; }
+        $this->db->where('received_at >=', $from)->where('received_at <=', $to);
+        foreach ($this->db->select('stage, COUNT(*) n')->group_by('stage')->get($t)->result() as $r) {
+            $byStage[$this->stageLabel((string) $r->stage)] = (int) $r->n;
+        }
+
+        $bySource = [];
+        $this->db->where('received_at >=', $from)->where('received_at <=', $to);
+        foreach ($this->db->select("COALESCE(NULLIF(source_site,''),'—') src, COUNT(*) n")->group_by('source_site')->order_by('n', 'desc')->get($t)->result() as $r) {
+            $bySource[(string) $r->src] = (int) $r->n;
+        }
+
+        $topFormations = [];
+        $this->db->where('received_at >=', $from)->where('received_at <=', $to)->where('formation IS NOT NULL', null, false)->where('formation !=', '');
+        foreach ($this->db->select('formation, COUNT(*) n')->group_by('formation')->order_by('n', 'desc')->limit(8)->get($t)->result() as $r) {
+            $topFormations[(string) $r->formation] = (int) $r->n;
+        }
+
+        $inscrits = (int) $this->db->where('received_at >=', $from)->where('received_at <=', $to)->where('stage', 'inscrit')->count_all_results($t);
+
+        // Messages (e-mails / SMS) envoyés dans la période
+        $mt = $this->messagesTable();
+        $emailSent = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'email')->count_all_results($mt);
+        $emailOpened = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'email')->where('opened_at IS NOT NULL', null, false)->count_all_results($mt);
+        $smsSent = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'sms')->where('status', 'sent')->count_all_results($mt);
+
+        // Tâches terminées dans la période
+        $tasksDone = (int) $this->db->where('created_at >=', $from)->where('created_at <=', $to)->where('type', 'task')->count_all_results($this->activityTable());
+
+        return [
+            'leads_total'    => $leadsTotal,
+            'inscrits'       => $inscrits,
+            'conversion'     => $leadsTotal > 0 ? round($inscrits * 100 / $leadsTotal, 1) : 0,
+            'by_stage'       => $byStage,
+            'by_source'      => $bySource,
+            'top_formations' => $topFormations,
+            'email_sent'     => $emailSent,
+            'email_opened'   => $emailOpened,
+            'open_rate'      => $emailSent > 0 ? round($emailOpened * 100 / $emailSent, 1) : 0,
+            'sms_sent'       => $smsSent,
+            'tasks'          => $tasksDone,
+        ];
+    }
+
+    public function save_report(array $d): int
+    {
+        $this->db->insert(db_prefix() . 'school_ia_reports', [
+            'period'     => substr((string) ($d['period'] ?? 'month'), 0, 10),
+            'label'      => substr((string) ($d['label'] ?? ''), 0, 120),
+            'date_from'  => $d['date_from'] ?? null,
+            'date_to'    => $d['date_to'] ?? null,
+            'content'    => (string) ($d['content'] ?? ''),
+            'staff_id'   => $d['staff_id'] ?? null,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+        return (int) $this->db->insert_id();
+    }
+
+    public function list_reports(int $limit = 30): array
+    {
+        return $this->db->order_by('created_at', 'desc')->limit($limit)->get(db_prefix() . 'school_ia_reports')->result();
+    }
+
+    public function get_report(int $id)
+    {
+        return $this->db->where('id', $id)->get(db_prefix() . 'school_ia_reports')->row();
+    }
+
+    public function delete_report(int $id): void
+    {
+        $this->db->where('id', $id)->delete(db_prefix() . 'school_ia_reports');
     }
 
     // ---------- Messages & statistiques de campagne ----------
