@@ -1115,6 +1115,23 @@ class School_ia_bridge_model extends App_Model
                 'rows'   => $exists ? (int) $this->db->count_all_results($t) : 0,
             ];
         }
+
+        // Rattachement : combien de messages/mentions pointent vers un lead qui
+        // existe encore (« linked ») vs orphelin (lead supprimé puis recréé).
+        if (!empty($out['chat_messages']['exists'])) {
+            $out['chat_messages']['linked'] = (int) ($this->db->query(
+                'SELECT COUNT(*) AS n FROM `' . $this->chatTable() . '` c
+                 JOIN `' . $this->table() . '` l ON l.id = c.lead_id'
+            )->row()->n ?? 0);
+            $out['chat_messages']['orphaned'] = $out['chat_messages']['rows'] - $out['chat_messages']['linked'];
+        }
+        if (!empty($out['competitors']['exists'])) {
+            $out['competitors']['linked'] = (int) ($this->db->query(
+                'SELECT COUNT(*) AS n FROM `' . $this->competitorTable() . '` c
+                 JOIN `' . $this->table() . '` l ON l.id = c.lead_id'
+            )->row()->n ?? 0);
+            $out['competitors']['orphaned'] = $out['competitors']['rows'] - $out['competitors']['linked'];
+        }
         return $out;
     }
 
