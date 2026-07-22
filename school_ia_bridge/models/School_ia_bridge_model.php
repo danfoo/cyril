@@ -371,6 +371,20 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
+    /** Journal global : toutes les activités, avec le nom du lead (filtrable). */
+    public function global_activities(?string $type = null, int $limit = 300): array
+    {
+        $this->db->select('a.*, l.name AS lead_name')
+            ->from($this->activityTable() . ' a')
+            ->join($this->table() . ' l', 'l.id = a.lead_id', 'left')
+            ->order_by('a.created_at', 'desc')
+            ->limit($limit);
+        if ($type) {
+            $this->db->where('a.type', $type);
+        }
+        return $this->db->get()->result();
+    }
+
     public function add_activity(int $leadId, string $type, string $content, ?int $staffId = null): void
     {
         $this->db->insert($this->activityTable(), [

@@ -155,6 +155,13 @@ function sia_help(string $key): string
                <li>Un <strong>programme</strong> et une <strong>étape</strong> par défaut s\'appliquent aux lignes qui ne les précisent pas.</li>
                <li>Les e-mails déjà présents sont <strong>ignorés</strong> (pas de doublon).</li>
              </ul>'],
+        'activity' => ['Journal d\'activité',
+            '<p>Le flux central de <strong>tout ce qui se passe</strong> sur l\'ensemble des leads : notes, changements d\'étape, tâches, e-mails, SMS, assignations.</p>
+             <ul>
+               <li>Filtrez par <strong>type</strong> d\'activité avec les boutons du haut.</li>
+               <li>Chaque ligne indique <strong>qui</strong> a fait l\'action et <strong>quand</strong>, avec un lien vers le lead.</li>
+             </ul>
+             <p><em>Droits :</em> l\'accès aux fonctions du CRM se règle par rôle dans <strong>Setup → Rôles → School IA CRM</strong>.</p>'],
         'inbox' => ['Boîte de réception',
             '<p>La liste de tous les leads reçus.</p>
              <ul>
@@ -296,12 +303,35 @@ function school_ia_bridge_sequences_cron()
 }
 
 /**
- * Entrée de menu dans la barre latérale de l'admin Perfex.
+ * Enregistre les permissions du module (Setup → Rôles) et construit le menu
+ * en fonction des droits du membre connecté.
  */
-hooks()->add_action('admin_init', 'school_ia_bridge_admin_menu');
+hooks()->add_action('admin_init', 'school_ia_bridge_admin_init');
+function school_ia_bridge_admin_init()
+{
+    // --- Permissions (visibles dans Setup → Rôles) ---
+    register_staff_capabilities('school_ia_bridge', [
+        'capabilities' => [
+            'view'            => _l('Accéder au CRM School IA'),
+            'manage_leads'    => _l('Gérer les leads (ajout, import, étapes, tâches, notes)'),
+            'send'            => _l('Envoyer e-mails / SMS (individuels et groupés)'),
+            'manage_settings' => _l('Configurer (réglages, modèles, documents, séquences)'),
+        ],
+    ], _l('School IA CRM'));
+
+    school_ia_bridge_admin_menu();
+}
+
+/**
+ * Menu latéral, filtré selon les permissions.
+ */
 function school_ia_bridge_admin_menu()
 {
     $CI = &get_instance();
+    if (!staff_can('view', 'school_ia_bridge')) {
+        return;
+    }
+
     $CI->app_menu->add_sidebar_menu_item('school_ia_bridge', [
         'name'     => 'School IA CRM',
         'icon'     => 'fa fa-graduation-cap',
@@ -320,45 +350,57 @@ function school_ia_bridge_admin_menu()
         'position' => 2,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_bulk',
-        'name'     => 'Envoi groupé',
-        'href'     => admin_url('school_ia_bridge/bulk'),
-        'position' => 3,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_sequences',
-        'name'     => 'Séquences',
-        'href'     => admin_url('school_ia_bridge/sequences'),
-        'position' => 4,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_tasks',
         'name'     => 'Tâches',
         'href'     => admin_url('school_ia_bridge/tasks'),
-        'position' => 5,
+        'position' => 3,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_inbox',
         'name'     => 'Boîte de réception',
         'href'     => admin_url('school_ia_bridge'),
-        'position' => 6,
+        'position' => 4,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_templates',
-        'name'     => 'Modèles',
-        'href'     => admin_url('school_ia_bridge/templates'),
-        'position' => 7,
+        'slug'     => 'school_ia_bridge_activity',
+        'name'     => 'Journal',
+        'href'     => admin_url('school_ia_bridge/activity'),
+        'position' => 5,
     ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_documents',
-        'name'     => 'Documents',
-        'href'     => admin_url('school_ia_bridge/documents'),
-        'position' => 8,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_settings',
-        'name'     => 'Réglages',
-        'href'     => admin_url('school_ia_bridge/settings'),
-        'position' => 9,
-    ]);
+
+    if (staff_can('send', 'school_ia_bridge')) {
+        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+            'slug'     => 'school_ia_bridge_bulk',
+            'name'     => 'Envoi groupé',
+            'href'     => admin_url('school_ia_bridge/bulk'),
+            'position' => 6,
+        ]);
+    }
+
+    if (staff_can('manage_settings', 'school_ia_bridge')) {
+        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+            'slug'     => 'school_ia_bridge_sequences',
+            'name'     => 'Séquences',
+            'href'     => admin_url('school_ia_bridge/sequences'),
+            'position' => 7,
+        ]);
+        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+            'slug'     => 'school_ia_bridge_templates',
+            'name'     => 'Modèles',
+            'href'     => admin_url('school_ia_bridge/templates'),
+            'position' => 8,
+        ]);
+        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+            'slug'     => 'school_ia_bridge_documents',
+            'name'     => 'Documents',
+            'href'     => admin_url('school_ia_bridge/documents'),
+            'position' => 9,
+        ]);
+        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+            'slug'     => 'school_ia_bridge_settings',
+            'name'     => 'Réglages',
+            'href'     => admin_url('school_ia_bridge/settings'),
+            'position' => 10,
+        ]);
+    }
 }

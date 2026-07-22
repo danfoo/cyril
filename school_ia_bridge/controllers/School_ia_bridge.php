@@ -13,6 +13,18 @@ class School_ia_bridge extends AdminController
         parent::__construct();
         $this->load->model('school_ia_bridge/school_ia_bridge_model');
         $this->school_ia_bridge_model->ensure_schema();
+
+        if (!staff_can('view', 'school_ia_bridge')) {
+            access_denied('School IA CRM');
+        }
+    }
+
+    /** Refuse l'accès si le membre n'a pas la capacité demandée. */
+    private function need(string $cap): void
+    {
+        if (!staff_can($cap, 'school_ia_bridge')) {
+            access_denied('School IA CRM');
+        }
     }
 
     /** Tableau de bord : indicateurs + entonnoir. */
@@ -44,9 +56,20 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/leads', $data);
     }
 
+    /** Journal d'activité global. */
+    public function activity()
+    {
+        $type = $this->input->get('type') ?: null;
+        $data['title']      = 'School IA — Journal d\'activité';
+        $data['type']       = $type;
+        $data['activities'] = $this->school_ia_bridge_model->global_activities($type);
+        $this->load->view('school_ia_bridge/activity', $data);
+    }
+
     /** Réglages : point d'entrée + secret + identifiants SMS LAfricaMobile. */
     public function settings()
     {
+        $this->need('manage_settings');
         $data['title']       = 'School IA — Réglages';
         $data['secret']      = get_option('school_ia_bridge_secret');
         $data['endpoint']    = site_url('school_ia_bridge/api/receive');
@@ -59,6 +82,7 @@ class School_ia_bridge extends AdminController
     /** Enregistre les identifiants SMS (form Perfex → CSRF). */
     public function save_settings()
     {
+        $this->need('manage_settings');
         // On ne met à jour que les champs réellement présents (formulaires
         // distincts : SMS d'un côté, Programmes de l'autre).
         if ($this->input->post('sms_accountid') !== null) {
@@ -84,6 +108,7 @@ class School_ia_bridge extends AdminController
     /** Envoie un e-mail au lead (moteur d'e-mail de Perfex). */
     public function send_email($id = 0)
     {
+        $this->need('send');
         $id = (int) $id;
         $lead = $this->school_ia_bridge_model->get_lead($id);
         $subject = trim((string) $this->input->post('subject'));
@@ -147,6 +172,7 @@ class School_ia_bridge extends AdminController
     /** Page d'envoi groupé d'e-mails. */
     public function bulk()
     {
+        $this->need('send');
         $data['title']     = 'School IA — Envoi groupé';
         $data['programs']  = $this->school_ia_bridge_model->programs();
         $data['emailTpls'] = $this->school_ia_bridge_model->templates('email');
@@ -159,6 +185,7 @@ class School_ia_bridge extends AdminController
     /** Traite l'envoi groupé (form Perfex → CSRF). */
     public function bulk_send()
     {
+        $this->need('send');
         $filters = [
             'stage'     => $this->input->post('stage'),
             'program'   => $this->input->post('program'),
@@ -191,6 +218,7 @@ class School_ia_bridge extends AdminController
     /** Traite l'envoi groupé de SMS (form Perfex → CSRF). */
     public function bulk_sms_send()
     {
+        $this->need('send');
         $filters = [
             'stage'     => $this->input->post('stage'),
             'program'   => $this->input->post('program'),
@@ -220,6 +248,7 @@ class School_ia_bridge extends AdminController
     /** Envoie un SMS au lead via LAfricaMobile. */
     public function send_sms($id = 0)
     {
+        $this->need('send');
         $id = (int) $id;
         $lead = $this->school_ia_bridge_model->get_lead($id);
         $text = trim((string) $this->input->post('text'));
@@ -287,6 +316,7 @@ class School_ia_bridge extends AdminController
     /** Régénère le secret partagé (à recopier ensuite dans le plugin). */
     public function regenerate_secret()
     {
+        $this->need('manage_settings');
         update_option('school_ia_bridge_secret', bin2hex(random_bytes(16)));
         set_alert('warning', 'Nouveau secret généré. Recopiez-le dans le plugin School IA (Réglages → CRM), sinon les leads n\'arriveront plus.');
         redirect(admin_url('school_ia_bridge/settings'));
@@ -352,6 +382,7 @@ class School_ia_bridge extends AdminController
     /** Formulaire d'import CSV / Excel. */
     public function import()
     {
+        $this->need('manage_leads');
         $data['title']    = 'School IA — Importer des leads';
         $data['programs'] = $this->school_ia_bridge_model->programs();
         $data['model']    = $this->school_ia_bridge_model;
@@ -361,6 +392,7 @@ class School_ia_bridge extends AdminController
     /** Modèle CSV à télécharger. */
     public function import_template()
     {
+        $this->need('manage_leads');
         $this->load->helper('download');
         $csv = "nom,email,telephone,formation,score,etape\n"
              . "Awa Diallo,awa@exemple.com,221771234567,Licence Marketing,20,nouveau\n";
@@ -379,6 +411,7 @@ class School_ia_bridge extends AdminController
     /** Traite l'import (form multipart Perfex → CSRF). */
     public function import_run()
     {
+        $this->need('manage_leads');
         if (empty($_FILES['file']['name']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
             set_alert('warning', 'Aucun fichier valide sélectionné.');
             redirect(admin_url('school_ia_bridge/import'));
@@ -469,6 +502,7 @@ class School_ia_bridge extends AdminController
     /** Formulaire d'ajout manuel d'un lead. */
     public function new_lead()
     {
+        $this->need('manage_leads');
         $data['title']    = 'School IA — Ajouter un lead';
         $data['programs'] = $this->school_ia_bridge_model->programs();
         $data['model']    = $this->school_ia_bridge_model;
@@ -478,6 +512,7 @@ class School_ia_bridge extends AdminController
     /** Enregistre le lead saisi manuellement (form Perfex → CSRF). */
     public function store_lead()
     {
+        $this->need('manage_leads');
         $name  = trim((string) $this->input->post('name'));
         $email = trim((string) $this->input->post('email'));
         $phone = trim((string) $this->input->post('phone'));
@@ -530,6 +565,7 @@ class School_ia_bridge extends AdminController
     /** Gestionnaire de documents, groupés par programme. */
     public function documents()
     {
+        $this->need('manage_settings');
         $data['title']    = 'School IA — Documents';
         $data['grouped']  = $this->school_ia_bridge_model->documents_grouped();
         $data['programs'] = $this->school_ia_bridge_model->programs();
@@ -539,6 +575,7 @@ class School_ia_bridge extends AdminController
     /** Upload d'un document (form multipart Perfex → CSRF). */
     public function doc_upload()
     {
+        $this->need('manage_settings');
         $program = trim((string) $this->input->post('program'));
         $title   = trim((string) $this->input->post('title'));
 
@@ -584,6 +621,7 @@ class School_ia_bridge extends AdminController
     /** Téléchargement d'un document. */
     public function doc_download($id = 0)
     {
+        $this->need('manage_settings');
         $doc = $this->school_ia_bridge_model->get_document((int) $id);
         if (!$doc) {
             show_404();
@@ -598,6 +636,7 @@ class School_ia_bridge extends AdminController
 
     public function doc_delete($id = 0)
     {
+        $this->need('manage_settings');
         $doc = $this->school_ia_bridge_model->get_document((int) $id);
         if ($doc) {
             $path = $this->docsDir() . $doc->stored_name;
@@ -613,6 +652,7 @@ class School_ia_bridge extends AdminController
     /** Séquences de relance : liste + gestion des étapes d'une séquence. */
     public function sequences()
     {
+        $this->need('manage_settings');
         $data['title']     = 'School IA — Séquences';
         $data['sequences'] = $this->school_ia_bridge_model->sequences();
         $current = $this->input->get('id') ? $this->school_ia_bridge_model->get_sequence((int) $this->input->get('id')) : null;
@@ -626,6 +666,7 @@ class School_ia_bridge extends AdminController
 
     public function sequence_save()
     {
+        $this->need('manage_settings');
         $id = $this->school_ia_bridge_model->save_sequence([
             'id'     => (int) $this->input->post('id'),
             'name'   => $this->input->post('name'),
@@ -637,6 +678,7 @@ class School_ia_bridge extends AdminController
 
     public function sequence_delete($id = 0)
     {
+        $this->need('manage_settings');
         $this->school_ia_bridge_model->delete_sequence((int) $id);
         set_alert('success', 'Séquence supprimée.');
         redirect(admin_url('school_ia_bridge/sequences'));
@@ -644,6 +686,7 @@ class School_ia_bridge extends AdminController
 
     public function step_add()
     {
+        $this->need('manage_settings');
         $seqId = (int) $this->input->post('sequence_id');
         $this->school_ia_bridge_model->add_step([
             'sequence_id' => $seqId,
@@ -658,6 +701,7 @@ class School_ia_bridge extends AdminController
 
     public function step_delete($id = 0)
     {
+        $this->need('manage_settings');
         $step = $this->db->where('id', (int) $id)->get(db_prefix() . 'school_ia_sequence_steps')->row();
         $this->school_ia_bridge_model->delete_step((int) $id);
         set_alert('success', 'Étape supprimée.');
@@ -666,6 +710,7 @@ class School_ia_bridge extends AdminController
 
     public function enroll($leadId = 0)
     {
+        $this->need('manage_leads');
         $leadId = (int) $leadId;
         $seqId = (int) $this->input->post('sequence_id');
         if ($this->school_ia_bridge_model->get_lead($leadId) && $seqId) {
@@ -681,6 +726,7 @@ class School_ia_bridge extends AdminController
 
     public function unenroll($enrollmentId = 0)
     {
+        $this->need('manage_leads');
         $en = $this->db->where('id', (int) $enrollmentId)->get(db_prefix() . 'school_ia_enrollments')->row();
         if ($en) {
             $this->school_ia_bridge_model->stop_enrollment((int) $enrollmentId);
@@ -692,6 +738,7 @@ class School_ia_bridge extends AdminController
     /** Bibliothèque de modèles e-mail / SMS. */
     public function templates()
     {
+        $this->need('manage_settings');
         $data['title']     = 'School IA — Modèles';
         $data['templates'] = $this->school_ia_bridge_model->templates();
         $data['edit']      = $this->input->get('edit') ? $this->school_ia_bridge_model->get_template((int) $this->input->get('edit')) : null;
@@ -700,6 +747,7 @@ class School_ia_bridge extends AdminController
 
     public function template_save()
     {
+        $this->need('manage_settings');
         $this->school_ia_bridge_model->save_template([
             'id'      => (int) $this->input->post('id'),
             'type'    => $this->input->post('type'),
@@ -713,6 +761,7 @@ class School_ia_bridge extends AdminController
 
     public function template_delete($id = 0)
     {
+        $this->need('manage_settings');
         $this->school_ia_bridge_model->delete_template((int) $id);
         set_alert('success', 'Modèle supprimé.');
         redirect(admin_url('school_ia_bridge/templates'));
@@ -729,6 +778,7 @@ class School_ia_bridge extends AdminController
     /** Ajoute une tâche à un lead (form Perfex → CSRF). */
     public function task_add($leadId = 0)
     {
+        $this->need('manage_leads');
         $leadId = (int) $leadId;
         $title = trim((string) $this->input->post('title'));
         $due = trim((string) $this->input->post('due_at'));
@@ -744,6 +794,7 @@ class School_ia_bridge extends AdminController
     /** Coche/décoche une tâche (lien GET). */
     public function task_toggle($taskId = 0)
     {
+        $this->need('manage_leads');
         $task = $this->school_ia_bridge_model->get_task((int) $taskId);
         if ($task) {
             $this->school_ia_bridge_model->toggle_task((int) $taskId);
@@ -756,6 +807,7 @@ class School_ia_bridge extends AdminController
     /** Supprime une tâche (lien GET). */
     public function task_delete($taskId = 0)
     {
+        $this->need('manage_leads');
         $task = $this->school_ia_bridge_model->get_task((int) $taskId);
         if ($task) {
             $this->school_ia_bridge_model->delete_task((int) $taskId);
@@ -766,6 +818,7 @@ class School_ia_bridge extends AdminController
     /** Change l'étape du pipeline (lien GET → pas de blocage CSRF). */
     public function move($id = 0)
     {
+        $this->need('manage_leads');
         $id = (int) $id;
         $stage = $this->input->get('stage');
         $lead = $this->school_ia_bridge_model->get_lead($id);
@@ -799,6 +852,7 @@ class School_ia_bridge extends AdminController
     /** Ajoute une note (form Perfex → jeton CSRF inclus). */
     public function note($id = 0)
     {
+        $this->need('manage_leads');
         $id = (int) $id;
         $content = trim((string) $this->input->post('content'));
         $lead = $this->school_ia_bridge_model->get_lead($id);
@@ -812,6 +866,7 @@ class School_ia_bridge extends AdminController
     /** Assigne un responsable (staff). */
     public function assign($id = 0)
     {
+        $this->need('manage_leads');
         $id = (int) $id;
         $staffId = (int) $this->input->post('owner_id');
         if ($this->school_ia_bridge_model->get_lead($id)) {
