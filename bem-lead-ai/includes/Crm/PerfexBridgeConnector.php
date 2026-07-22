@@ -28,15 +28,22 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         $base = rtrim((string) Options::get('perfex_url'), '/');
         $band = ScoringEngine::band((float) $lead->score_final);
 
+        $prenom = trim((string) ($lead->prenom ?? ''));
         $payload = [
             'external_id' => (string) $lead->id,
             'source_site' => home_url(),
-            'name'        => trim(($lead->prenom ?: 'Lead') . ' #' . $lead->id),
+            // Nom réel du prospect si connu, sinon « Anonyme » — jamais « Lead »,
+            // qui prêtait à confusion avec d'anciens leads de test.
+            'name'        => ($prenom !== '' ? $prenom : 'Anonyme') . ' #' . $lead->id,
             'email'       => (string) ($lead->email ?? ''),
             'phone'       => (string) ($lead->phone ?? ''),
             'formation'   => (string) ($lead->formation_interet ?? ''),
             'score'       => (float) $lead->score_final,
             'band'        => $band,
+            // Vraie date d'arrivée du lead (première visite), pour que Perfex
+            // affiche « reçu le » à la bonne date et non à l'heure de synchro.
+            'received_at' => (string) ($lead->first_seen ?? ''),
+            'last_activity' => (string) ($lead->last_seen ?? ''),
             'description' => sprintf(
                 "Score: %s/100 (%s)\nFormation d'intérêt: %s\nCanaux: %s\nDernière activité: %s\nProvenance: %s",
                 $lead->score_final,

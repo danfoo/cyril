@@ -71,12 +71,13 @@
                   <th>Formation</th>
                   <th>Score</th>
                   <th>Étape</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
               <?php if (empty($leads)) { ?>
                 <tr>
-                  <td colspan="8" class="text-center text-muted" style="padding:30px;">
+                  <td colspan="9" class="text-center text-muted" style="padding:30px;">
                     Aucun lead reçu pour l'instant.
                   </td>
                 </tr>
@@ -96,9 +97,15 @@
                   <td><?php echo htmlspecialchars((string) $lead->formation, ENT_QUOTES); ?></td>
                   <td><span class="label label-info"><?php echo htmlspecialchars((string) $lead->score, ENT_QUOTES); ?></span></td>
                   <td>
-                    <span class="label" style="background:<?php echo $model->stageColor($stage); ?>;">
+                    <span class="label" style="background:<?php echo $model->stageColor($stage); ?>1a;color:<?php echo $model->stageColor($stage); ?>;">
                       <?php echo htmlspecialchars($model->stageLabel($stage), ENT_QUOTES); ?>
                     </span>
+                  </td>
+                  <td class="text-right">
+                    <a href="<?php echo admin_url('school_ia_bridge/lead_delete/' . (int) $lead->id); ?>" class="text-muted"
+                       onclick="return confirm('Supprimer définitivement ce lead et tout son historique ?');" title="Supprimer">
+                      <i class="fa fa-trash"></i>
+                    </a>
                   </td>
                 </tr>
               <?php }

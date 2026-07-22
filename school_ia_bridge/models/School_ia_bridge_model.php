@@ -988,7 +988,8 @@ class School_ia_bridge_model extends App_Model
             'external_id' => isset($p['external_id']) ? substr((string) $p['external_id'], 0, 64) : null,
             'description' => isset($p['description']) ? (string) $p['description'] : null,
             'payload'     => json_encode($p, JSON_UNESCAPED_UNICODE),
-            'received_at' => date('Y-m-d H:i:s'),
+            // Vraie date d'arrivée envoyée par le plugin ; repli sur maintenant.
+            'received_at' => !empty($p['received_at']) ? substr((string) $p['received_at'], 0, 19) : date('Y-m-d H:i:s'),
         ];
 
         // Mise à jour si on a déjà reçu ce lead (même external_id + site, schéma
@@ -1042,5 +1043,15 @@ class School_ia_bridge_model extends App_Model
             ->order_by('id', 'asc')
             ->get($this->chatTable())
             ->result();
+    }
+
+    /** Supprime un lead et tout ce qui s'y rattache (activités, tâches, messages, inscriptions). */
+    public function delete_lead(int $id): void
+    {
+        $this->db->where('lead_id', $id)->delete($this->activityTable());
+        $this->db->where('lead_id', $id)->delete($this->tasksTable());
+        $this->db->where('lead_id', $id)->delete($this->chatTable());
+        $this->db->where('lead_id', $id)->delete(db_prefix() . 'school_ia_enrollments');
+        $this->db->where('id', $id)->delete($this->table());
     }
 }

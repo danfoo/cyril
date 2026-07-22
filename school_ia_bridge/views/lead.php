@@ -59,6 +59,10 @@
           <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-default">
             <i class="fa fa-columns"></i> Pipeline
           </a>
+          <a href="<?php echo admin_url('school_ia_bridge/lead_delete/' . (int) $lead->id); ?>" class="btn btn-default"
+             onclick="return confirm('Supprimer définitivement ce lead et tout son historique ?');" title="Supprimer ce lead">
+            <i class="fa fa-trash text-danger"></i>
+          </a>
         </div>
       </div>
       <?php if (!empty($lead->description)) { ?>

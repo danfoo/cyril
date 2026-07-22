@@ -213,7 +213,6 @@ final class SettingsPage
         // Hors formulaire principal (évite tout formulaire imbriqué).
         $this->renderEmailTestButton($o);
         $this->renderPerfexSyncButton($o);
-        $this->renderChatResyncButton($o);
         $this->renderRebuildButton();
 
         echo '<hr><h2>' . esc_html__('Webhook à configurer côté CRM', 'bem-lead-ai') . '</h2>';
@@ -293,9 +292,10 @@ final class SettingsPage
             delete_transient('bem_perfex_sync_result');
             $ok = (int) ($result['ok'] ?? 0);
             $fail = (int) ($result['fail'] ?? 0);
+            $chat = (int) ($result['chat'] ?? 0);
             $klass = $fail > 0 ? 'notice-warning' : 'notice-success';
             echo '<div class="notice ' . $klass . ' inline"><p>'
-                . sprintf(esc_html__('%1$d réussi(s), %2$d échec(s).', 'bem-lead-ai'), $ok, $fail);
+                . sprintf(esc_html__('%1$d lead(s) réussi(s), %2$d échec(s), %3$d message(s) de conversation synchronisé(s).', 'bem-lead-ai'), $ok, $fail, $chat);
             if ($fail > 0 && !empty($result['info'])) {
                 echo '<br><strong>' . esc_html__('Dernière réponse de Perfex :', 'bem-lead-ai') . '</strong> <code>'
                     . esc_html((string) $result['info']) . '</code>';
@@ -306,18 +306,25 @@ final class SettingsPage
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field('bem_perfex_sync');
         echo '<input type="hidden" name="action" value="bem_perfex_sync">';
-        submit_button(__('Envoyer les leads existants vers Perfex', 'bem-lead-ai'), 'secondary', 'submit', false);
-        echo ' <span class="description">' . esc_html__('Pousse tout de suite les leads déjà présents (identifiés ou scorés) dans Perfex. Les nouveaux leads y sont ensuite envoyés automatiquement.', 'bem-lead-ai') . '</span>';
+        submit_button(__('Synchroniser les leads et conversations vers Perfex', 'bem-lead-ai'), 'secondary', 'submit', false);
+        echo ' <span class="description">' . esc_html__('Pousse tout de suite les leads déjà présents (nom, coordonnées, formation, score, date) ET l\'historique de leurs conversations IA. Les nouveaux leads et messages y sont ensuite envoyés automatiquement.', 'bem-lead-ai') . '</span>';
         echo '</form>';
     }
 
-    /** Envoi en masse des leads existants vers Perfex (pont maison, sinon API REST). */
+    /**
+     * Envoi en masse des leads existants vers Perfex (pont maison, sinon API REST).
+     * Avec le pont maison, pousse AUSSI l'historique des conversations IA de chaque
+     * lead : un seul bouton met la fiche Perfex complètement à jour (infos + chat).
+     */
     public static function handlePerfexSync(): void
     {
         if (!current_user_can('manage_options')) {
             wp_die('Forbidden');
         }
         check_admin_referer('bem_perfex_sync');
+        // Beaucoup de leads × messages = beaucoup de requêtes séquentielles :
+        // sans ça, le délai PHP par défaut coupe la boucle en plein milieu.
+        @set_time_limit(0);
 
         $bridge = new PerfexBridgeConnector();
         $rest = new PerfexConnector();
@@ -325,13 +332,28 @@ final class SettingsPage
 
         $ok = 0;
         $fail = 0;
+        $chat = 0;
         $info = '';
         if ($connector) {
+            $conversations = new ConversationRepository();
             foreach ((new LeadRepository())->allReal() as $lead) {
                 $connector->upsertLead($lead);
                 if ($connector instanceof PerfexBridgeConnector) {
                     if ($connector->lastCode >= 200 && $connector->lastCode < 300) {
                         $ok++;
+                        // Fiche créée/à jour : on rattache l'historique du chat.
+                        foreach ($conversations->history((int) $lead->id, 1000) as $message) {
+                            $connector->sendChatMessage(
+                                (int) $lead->id,
+                                (int) $message->id,
+                                (string) $message->role,
+                                (string) $message->contenu,
+                                (string) $message->canal
+                            );
+                            if ($connector->lastCode >= 200 && $connector->lastCode < 300) {
+                                $chat++;
+                            }
+                        }
                     } else {
                         $fail++;
                         $info = 'HTTP ' . $connector->lastCode
@@ -343,7 +365,7 @@ final class SettingsPage
             }
         }
 
-        set_transient('bem_perfex_sync_result', ['ok' => $ok, 'fail' => $fail, 'info' => $info], 120);
+        set_transient('bem_perfex_sync_result', ['ok' => $ok, 'fail' => $fail, 'chat' => $chat, 'info' => $info], 120);
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
         exit;
     }

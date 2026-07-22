@@ -646,6 +646,17 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/lead', $data);
     }
 
+    /** Supprime un lead et toutes ses données rattachées. */
+    public function lead_delete($id = 0)
+    {
+        $this->need('manage_leads');
+        if ($this->school_ia_bridge_model->get_lead((int) $id)) {
+            $this->school_ia_bridge_model->delete_lead((int) $id);
+            set_alert('success', 'Lead supprimé.');
+        }
+        redirect(admin_url('school_ia_bridge'));
+    }
+
     /** Dossier de stockage des documents. */
     private function docsDir(): string
     {
