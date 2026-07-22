@@ -208,6 +208,16 @@ class School_ia_bridge_model extends App_Model
         return $this->db->where('id', $id)->get($this->table())->row();
     }
 
+    /** Un lead avec cet e-mail existe-t-il déjà ? (dédoublonnage à l'import) */
+    public function email_exists(string $email): bool
+    {
+        $email = trim($email);
+        if ($email === '') {
+            return false;
+        }
+        return (bool) $this->db->where('email', $email)->count_all_results($this->table());
+    }
+
     /** Création manuelle d'un lead (saisie depuis le CRM). */
     public function create_lead(array $d): int
     {

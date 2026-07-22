@@ -264,6 +264,123 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/pipeline', $data);
     }
 
+    /** Formulaire d'import CSV / Excel. */
+    public function import()
+    {
+        $data['title']    = 'School IA — Importer des leads';
+        $data['programs'] = $this->school_ia_bridge_model->programs();
+        $data['model']    = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/import', $data);
+    }
+
+    /** Modèle CSV à télécharger. */
+    public function import_template()
+    {
+        $this->load->helper('download');
+        $csv = "nom,email,telephone,formation,score,etape\n"
+             . "Awa Diallo,awa@exemple.com,221771234567,Licence Marketing,20,nouveau\n";
+        force_download('modele_import_leads.csv', "\xEF\xBB\xBF" . $csv);
+    }
+
+    private function norm(string $s): string
+    {
+        $s = mb_strtolower(trim($s));
+        return strtr($s, [
+            'à' => 'a', 'â' => 'a', 'ä' => 'a', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'î' => 'i', 'ï' => 'i', 'ô' => 'o', 'ö' => 'o', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ç' => 'c',
+        ]);
+    }
+
+    /** Traite l'import (form multipart Perfex → CSRF). */
+    public function import_run()
+    {
+        if (empty($_FILES['file']['name']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            set_alert('warning', 'Aucun fichier valide sélectionné.');
+            redirect(admin_url('school_ia_bridge/import'));
+        }
+        $file = $_FILES['file'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+
+        // Lecture des lignes selon le format.
+        $rows = [];
+        if (in_array($ext, ['xlsx', 'xls'], true)) {
+            if (!class_exists('\\PhpOffice\\PhpSpreadsheet\\IOFactory')) {
+                set_alert('danger', 'Format Excel non pris en charge sur ce serveur. Enregistrez le fichier en CSV et réessayez.');
+                redirect(admin_url('school_ia_bridge/import'));
+            }
+            $rows = \PhpOffice\PhpSpreadsheet\IOFactory::load($file['tmp_name'])
+                ->getActiveSheet()->toArray(null, true, true, false);
+        } elseif (in_array($ext, ['csv', 'txt'], true)) {
+            $content = (string) file_get_contents($file['tmp_name']);
+            $content = preg_replace('/^\xEF\xBB\xBF/', '', $content); // BOM
+            $lines = preg_split('/\r\n|\r|\n/', $content);
+            $first = '';
+            foreach ($lines as $l) { if (trim($l) !== '') { $first = $l; break; } }
+            $delim = (substr_count($first, ';') > substr_count($first, ',')) ? ';' : ',';
+            foreach ($lines as $l) {
+                if (trim($l) !== '') { $rows[] = str_getcsv($l, $delim); }
+            }
+        } else {
+            set_alert('danger', 'Format non supporté (' . $ext . '). Utilisez CSV ou Excel.');
+            redirect(admin_url('school_ia_bridge/import'));
+        }
+
+        if (count($rows) < 2) {
+            set_alert('warning', 'Le fichier ne contient pas de données (en-tête + au moins une ligne attendus).');
+            redirect(admin_url('school_ia_bridge/import'));
+        }
+
+        // Cartographie des colonnes d'après l'en-tête.
+        $headers = array_shift($rows);
+        $map = [];
+        foreach ($headers as $i => $h) {
+            $n = $this->norm((string) $h);
+            if (strpos($n, 'mail') !== false || strpos($n, 'courriel') !== false) {
+                $map[$i] = 'email';
+            } elseif (strpos($n, 'tel') !== false || strpos($n, 'phone') !== false || strpos($n, 'numero') !== false || strpos($n, 'mobile') !== false || strpos($n, 'gsm') !== false) {
+                $map[$i] = 'phone';
+            } elseif (strpos($n, 'formation') !== false || strpos($n, 'programme') !== false || strpos($n, 'program') !== false || strpos($n, 'filiere') !== false || strpos($n, 'cursus') !== false) {
+                $map[$i] = 'formation';
+            } elseif (strpos($n, 'score') !== false || strpos($n, 'note') !== false) {
+                $map[$i] = 'score';
+            } elseif (strpos($n, 'etape') !== false || strpos($n, 'stage') !== false || strpos($n, 'statut') !== false || strpos($n, 'status') !== false) {
+                $map[$i] = 'stage';
+            } elseif (strpos($n, 'nom') !== false || strpos($n, 'name') !== false || strpos($n, 'prenom') !== false) {
+                $map[$i] = 'name';
+            }
+        }
+
+        $defProgram = trim((string) $this->input->post('default_program'));
+        $defStage = (string) $this->input->post('default_stage') ?: 'nouveau';
+
+        $imported = 0;
+        $skipped = 0;
+        foreach ($rows as $r) {
+            $rec = ['name' => '', 'email' => '', 'phone' => '', 'formation' => '', 'score' => '', 'stage' => ''];
+            foreach ($map as $i => $field) {
+                $rec[$field] = isset($r[$i]) ? trim((string) $r[$i]) : '';
+            }
+            if ($rec['name'] === '' && $rec['email'] === '' && $rec['phone'] === '') {
+                continue; // ligne vide
+            }
+            if ($rec['formation'] === '' && $defProgram !== '') {
+                $rec['formation'] = $defProgram;
+            }
+            if ($rec['stage'] === '') {
+                $rec['stage'] = $defStage;
+            }
+            if ($rec['email'] !== '' && $this->school_ia_bridge_model->email_exists($rec['email'])) {
+                $skipped++;
+                continue;
+            }
+            $this->school_ia_bridge_model->create_lead($rec);
+            $imported++;
+        }
+
+        set_alert('success', $imported . ' lead(s) importé(s)' . ($skipped > 0 ? ', ' . $skipped . ' doublon(s) ignoré(s).' : '.'));
+        redirect(admin_url('school_ia_bridge'));
+    }
+
     /** Formulaire d'ajout manuel d'un lead. */
     public function new_lead()
     {

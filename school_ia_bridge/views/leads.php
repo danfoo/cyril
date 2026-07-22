@@ -12,6 +12,9 @@
               <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
                 <i class="fa fa-user-plus"></i> Ajouter un lead
               </a>
+              <a href="<?php echo admin_url('school_ia_bridge/import'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
+                <i class="fa fa-upload"></i> Importer
+              </a>
               <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
                 <i class="fa fa-columns"></i> Voir le pipeline
               </a>
