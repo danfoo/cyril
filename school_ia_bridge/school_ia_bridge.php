@@ -170,7 +170,7 @@ function sia_help(string $key): string
                <li>Chaque ligne indique <strong>qui</strong> a fait l\'action et <strong>quand</strong>, avec un lien vers le lead.</li>
              </ul>
              <p><em>Droits :</em> l\'accès aux fonctions du CRM se règle par rôle dans <strong>Setup → Rôles → School IA CRM</strong>.</p>'],
-        'inbox' => ['Boîte de réception',
+        'inbox' => ['Contacts',
             '<p>La liste de tous les leads reçus.</p>
              <ul>
                <li><strong>Rechercher / filtrer</strong> par nom, e-mail, étape ou score.</li>
@@ -377,7 +377,7 @@ function school_ia_bridge_head_css()
     if (strpos((string) ($_SERVER['REQUEST_URI'] ?? ''), 'school_ia_bridge') === false) {
         return;
     }
-    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=1">';
+    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=2">';
 }
 
 /**
@@ -435,7 +435,7 @@ function school_ia_bridge_admin_menu()
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_inbox',
-        'name'     => 'Boîte de réception',
+        'name'     => 'Contacts',
         'href'     => admin_url('school_ia_bridge'),
         'position' => 4,
     ]);

@@ -19,7 +19,7 @@
             <i class="fa fa-user-plus"></i> Ajouter un lead
           </a>
           <a href="<?php echo admin_url('school_ia_bridge'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
-            <i class="fa fa-inbox"></i> Boîte de réception
+            <i class="fa fa-inbox"></i> Contacts
           </a>
         </div>
       </div>

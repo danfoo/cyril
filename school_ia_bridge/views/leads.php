@@ -11,7 +11,7 @@
               <?php $qs = http_build_query(array_filter([
                   'q' => $filters['q'] ?? '', 'stage' => $filters['stage'] ?? '', 'min_score' => $filters['min_score'] ?? '',
               ])); ?>
-              <h4 class="no-margin pull-left"><i class="fa fa-graduation-cap"></i> School IA — Boîte de réception <?php echo sia_help('inbox'); ?></h4>
+              <h4 class="no-margin pull-left"><i class="fa fa-graduation-cap"></i> School IA — Contacts <?php echo sia_help('inbox'); ?></h4>
               <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
                 <i class="fa fa-user-plus"></i> Ajouter un lead
               </a>

@@ -32,10 +32,13 @@
       ];
       foreach ($cards as $c) { ?>
         <div class="col-md-3 col-sm-6">
-          <div class="panel_s"><div class="panel-body">
-            <div style="border-left:4px solid <?php echo $c[2]; ?>; padding-left:12px;">
-              <div class="text-muted"><i class="fa <?php echo $c[3]; ?>"></i> <?php echo $c[0]; ?></div>
-              <h2 class="bold no-margin" style="margin-top:4px;"><?php echo $c[1]; ?></h2>
+          <div class="panel_s sia-kpi"><div class="panel-body">
+            <div class="sia-kpi-icon" style="color:<?php echo $c[2]; ?>;background:<?php echo $c[2]; ?>1a;">
+              <i class="fa <?php echo $c[3]; ?>"></i>
+            </div>
+            <div class="sia-kpi-meta">
+              <div class="sia-kpi-value"><?php echo $c[1]; ?></div>
+              <div class="sia-kpi-label"><?php echo $c[0]; ?></div>
             </div>
           </div></div>
         </div>

@@ -53,8 +53,9 @@
 #wrapper .content h4 { font-weight: 700; }
 #wrapper .content h5 { font-weight: 600; }
 #wrapper .content .text-muted { color: var(--sia-muted) !important; }
-#wrapper .content a { color: var(--sia-primary); }
-#wrapper .content a:hover { color: var(--sia-primary-600); }
+/* liens texte seulement — surtout PAS les boutons (sinon texte indigo sur fond indigo) */
+#wrapper .content a:not(.btn) { color: var(--sia-primary); }
+#wrapper .content a:not(.btn):hover { color: var(--sia-primary-600); }
 
 /* ---- Cartes / conteneurs ---- */
 #wrapper .content .panel_s {
@@ -64,12 +65,24 @@
   box-shadow: var(--sia-shadow);
   transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
 }
+#wrapper .content .panel_s { margin-bottom: 14px; }
 #wrapper .content .panel_s:hover { box-shadow: var(--sia-shadow-hover); }
-#wrapper .content .panel-body { padding: 18px 20px; }
-#wrapper .content hr, #wrapper .content .hr-panel-heading { border-color: var(--sia-border); }
+#wrapper .content .panel-body { padding: 16px 18px; }
+#wrapper .content hr, #wrapper .content .hr-panel-heading { border-color: var(--sia-border); margin: 12px 0; }
+#wrapper .content h4.no-margin { font-size: 18px; }
+#wrapper .content h5.bold { font-size: 14px; }
 
-/* ---- KPI / indicateurs ---- */
-#wrapper .content .panel-body h2.bold { font-weight: 800; font-size: 30px; letter-spacing:-.02em; }
+/* ---- KPI / indicateurs (compacts, pastille d'icône) ---- */
+#wrapper .content .sia-kpi .panel-body { display: flex; align-items: center; gap: 14px; padding: 15px 16px; }
+#wrapper .content .sia-kpi-icon {
+  width: 46px; height: 46px; flex: 0 0 46px;
+  border-radius: 13px; display: flex; align-items: center; justify-content: center;
+  font-size: 19px;
+}
+#wrapper .content .sia-kpi-value { font-size: 25px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+#wrapper .content .sia-kpi-value small { font-size: 14px; color: var(--sia-muted); font-weight: 600; }
+#wrapper .content .sia-kpi-label { font-size: 12.5px; color: var(--sia-muted); font-weight: 600; margin-top: 2px; }
+#wrapper .content .panel-body h2.bold { font-weight: 800; font-size: 26px; letter-spacing:-.02em; }
 #wrapper .content .panel-body h2.no-margin small { color: var(--sia-muted); font-weight:600; }
 
 /* ---- Boutons ---- */
@@ -81,12 +94,13 @@
   padding: 7px 14px;
 }
 #wrapper .content .btn-sm, #wrapper .content .btn-xs { border-radius: 8px; }
-#wrapper .content .btn-primary { background: var(--sia-primary); border-color: var(--sia-primary); box-shadow: 0 1px 2px rgba(79,70,229,.35); }
-#wrapper .content .btn-primary:hover, #wrapper .content .btn-primary:focus { background: var(--sia-primary-600); border-color: var(--sia-primary-600); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,70,229,.30); }
+#wrapper .content .btn-primary { background: var(--sia-primary); border-color: var(--sia-primary); color: #fff; box-shadow: 0 1px 2px rgba(79,70,229,.35); }
+#wrapper .content .btn-primary:hover, #wrapper .content .btn-primary:focus { background: var(--sia-primary-600); border-color: var(--sia-primary-600); color:#fff; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,70,229,.30); }
 #wrapper .content .btn-default {
   background: var(--sia-surface); color: var(--sia-text);
   border: 1px solid var(--sia-border);
 }
+#wrapper .content .btn-default:focus { color: var(--sia-text); }
 #wrapper .content .btn-default:hover { background: var(--sia-surface-2); border-color: #cdd4e4; transform: translateY(-1px); }
 
 /* ---- Champs ---- */
@@ -164,10 +178,16 @@
 #wrapper .content .sia-card {
   border-radius: 12px !important;
   border: 1px solid var(--sia-border);
+  box-shadow: 0 1px 2px rgba(15,23,42,.04);
   transition: transform .18s ease, box-shadow .18s ease;
+  margin-bottom: 10px !important;
 }
+#wrapper .content .sia-card .panel-body { padding: 11px 12px !important; }
 #wrapper .content .sia-card:hover { transform: translateY(-2px); box-shadow: var(--sia-shadow-hover); }
 #wrapper .content .sia-col.sia-over { background: var(--sia-primary-soft); outline: 2px dashed var(--sia-primary); border-radius: 12px; }
+/* colonnes du kanban : en-tête net + compteur pilule */
+#wrapper .content .sia-col { min-height: 40px; }
+#wrapper .content .sia-card a.bold { font-weight: 700; }
 
 /* ---- Alertes ---- */
 #wrapper .content .alert { border-radius: var(--sia-radius-sm); border: 1px solid var(--sia-border); }
