@@ -293,9 +293,10 @@ final class SettingsPage
             $ok = (int) ($result['ok'] ?? 0);
             $fail = (int) ($result['fail'] ?? 0);
             $chat = (int) ($result['chat'] ?? 0);
+            $comp = (int) ($result['comp'] ?? 0);
             $klass = $fail > 0 ? 'notice-warning' : 'notice-success';
             echo '<div class="notice ' . $klass . ' inline"><p>'
-                . sprintf(esc_html__('%1$d lead(s) réussi(s), %2$d échec(s), %3$d message(s) de conversation synchronisé(s).', 'bem-lead-ai'), $ok, $fail, $chat);
+                . sprintf(esc_html__('%1$d lead(s) réussi(s), %2$d échec(s), %3$d message(s) de conversation, %4$d mention(s) de concurrent synchronisé(s).', 'bem-lead-ai'), $ok, $fail, $chat, $comp);
             if ($fail > 0 && !empty($result['info'])) {
                 echo '<br><strong>' . esc_html__('Dernière réponse de Perfex :', 'bem-lead-ai') . '</strong> <code>'
                     . esc_html((string) $result['info']) . '</code>';
@@ -333,8 +334,10 @@ final class SettingsPage
         $ok = 0;
         $fail = 0;
         $chat = 0;
+        $comp = 0;
         $info = '';
         if ($connector) {
+            global $wpdb;
             $conversations = new ConversationRepository();
             foreach ((new LeadRepository())->allReal() as $lead) {
                 $connector->upsertLead($lead);
@@ -354,6 +357,22 @@ final class SettingsPage
                                 $chat++;
                             }
                         }
+                        // …ainsi que les mentions de concurrents déjà détectées.
+                        $mentions = $wpdb->get_results($wpdb->prepare(
+                            "SELECT id, nom_concurrent, extrait_contexte FROM {$wpdb->prefix}bem_competitor_mentions WHERE lead_id = %d ORDER BY id ASC",
+                            (int) $lead->id
+                        )) ?: [];
+                        foreach ($mentions as $m) {
+                            $connector->sendCompetitorMention(
+                                (int) $lead->id,
+                                (int) $m->id,
+                                (string) $m->nom_concurrent,
+                                (string) $m->extrait_contexte
+                            );
+                            if ($connector->lastCode >= 200 && $connector->lastCode < 300) {
+                                $comp++;
+                            }
+                        }
                     } else {
                         $fail++;
                         $info = 'HTTP ' . $connector->lastCode
@@ -365,7 +384,7 @@ final class SettingsPage
             }
         }
 
-        set_transient('bem_perfex_sync_result', ['ok' => $ok, 'fail' => $fail, 'chat' => $chat, 'info' => $info], 120);
+        set_transient('bem_perfex_sync_result', ['ok' => $ok, 'fail' => $fail, 'chat' => $chat, 'comp' => $comp, 'info' => $info], 120);
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
         exit;
     }

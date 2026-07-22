@@ -142,6 +142,23 @@
           <?php } ?>
         </div></div>
 
+        <?php if (!empty($competitors)) { ?>
+          <div class="panel_s"><div class="panel-body">
+            <h5 class="bold" style="margin-top:0;">
+              <span class="sia-panel-icon" style="background:#8a63d21a;color:#8a63d2;"><i class="fa fa-binoculars"></i></span>
+              Concurrents cités
+            </h5>
+            <?php foreach ($competitors as $co) { ?>
+              <div style="padding:6px 0; border-bottom:1px solid var(--sia-border);">
+                <span class="label" style="background:#8a63d21a;color:#8a63d2;"><?php echo htmlspecialchars((string) $co->name, ENT_QUOTES); ?></span>
+                <?php if (!empty($co->context)) { ?>
+                  <p class="text-muted" style="margin:6px 0 0; font-style:italic; font-size:12.5px;">« <?php echo htmlspecialchars((string) $co->context, ENT_QUOTES); ?> »</p>
+                <?php } ?>
+              </div>
+            <?php } ?>
+          </div></div>
+        <?php } ?>
+
         <div class="panel_s"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;">
             <span class="sia-panel-icon sia-ic-success"><i class="fa fa-user"></i></span>

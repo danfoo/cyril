@@ -130,6 +130,52 @@ class Api extends App_Controller
         $this->respond(['ok' => true]);
     }
 
+    /**
+     * Reçoit une mention de concurrent (veille concurrentielle) pour un lead
+     * connu. Même authentification et transport GET que receive_message.
+     */
+    public function receive_competitor()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $secret   = (string) get_option('school_ia_bridge_secret');
+        $provided = $this->input->get_request_header('X-SIA-Secret', true);
+        if ($provided === null || $provided === '') {
+            $provided = (string) ($this->input->get('secret') ?: $this->input->post('secret'));
+        }
+        if ($secret === '' || !hash_equals($secret, (string) $provided)) {
+            $this->respond(['ok' => false, 'error' => 'unauthorized'], 401);
+            return;
+        }
+
+        $externalId  = (string) ($this->input->get('external_id') ?: $this->input->post('external_id'));
+        $sourceSite  = (string) ($this->input->get('source_site') ?: $this->input->post('source_site'));
+        $name        = trim((string) ($this->input->get('name') ?: $this->input->post('name')));
+        $context     = (string) ($this->input->get('context') ?: $this->input->post('context'));
+        $externalRef = (string) ($this->input->get('external_ref') ?: $this->input->post('external_ref'));
+
+        if ($externalId === '' || $sourceSite === '' || $name === '') {
+            $this->respond(['ok' => false, 'error' => 'invalid_payload'], 400);
+            return;
+        }
+
+        $this->load->model('school_ia_bridge/school_ia_bridge_model');
+        $lead = $this->school_ia_bridge_model->find_by_external($externalId, $sourceSite);
+        if (!$lead) {
+            $this->respond(['ok' => false, 'error' => 'lead_not_found'], 404);
+            return;
+        }
+
+        $this->school_ia_bridge_model->add_competitor_mention(
+            (int) $lead->id,
+            $name,
+            $context,
+            $externalRef !== '' ? $externalRef : null
+        );
+
+        $this->respond(['ok' => true]);
+    }
+
     /** Pixel d'ouverture d'e-mail : marque le message comme ouvert. */
     public function track_open($token = '')
     {

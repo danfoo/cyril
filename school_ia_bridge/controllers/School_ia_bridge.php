@@ -149,6 +149,16 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/activity', $data);
     }
 
+    /** Veille concurrentielle : écoles concurrentes citées par les prospects. */
+    public function competitors()
+    {
+        $data['title']   = 'School IA — Veille concurrentielle';
+        $data['ranking'] = $this->school_ia_bridge_model->competitor_ranking();
+        $data['recent']  = $this->school_ia_bridge_model->recent_competitor_mentions();
+        $data['totals']  = $this->school_ia_bridge_model->competitor_totals();
+        $this->load->view('school_ia_bridge/competitors', $data);
+    }
+
     /** Réglages : point d'entrée + secret + identifiants SMS LAfricaMobile. */
     public function settings()
     {
@@ -642,6 +652,7 @@ class School_ia_bridge extends AdminController
         $data['sequences']  = $this->school_ia_bridge_model->active_sequences();
         $data['enrollments'] = $this->school_ia_bridge_model->enrollments_for_lead((int) $lead->id);
         $data['chatMessages'] = $this->school_ia_bridge_model->chat_messages((int) $lead->id);
+        $data['competitors']  = $this->school_ia_bridge_model->competitors_for_lead((int) $lead->id);
         $data['model']      = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/lead', $data);
     }

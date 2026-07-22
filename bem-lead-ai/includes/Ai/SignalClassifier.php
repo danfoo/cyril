@@ -109,12 +109,20 @@ PROMPT;
                 continue;
             }
             global $wpdb;
+            $name = sanitize_text_field((string) $competitor['name']);
+            $context = sanitize_textarea_field((string) ($competitor['context'] ?? ''));
             $wpdb->insert($wpdb->prefix . 'bem_competitor_mentions', [
                 'lead_id' => $leadId,
-                'nom_concurrent' => sanitize_text_field((string) $competitor['name']),
-                'extrait_contexte' => sanitize_textarea_field((string) ($competitor['context'] ?? '')),
+                'nom_concurrent' => $name,
+                'extrait_contexte' => $context,
                 'created_at' => current_time('mysql'),
             ]);
+            // Remontée vers le CRM Perfex (hors du flux, file asynchrone).
+            \BemLeadAi\Core\Queue::dispatch('bem_lead_ai_job_action', ['sync_competitor', $leadId, [
+                'mention_id' => (int) $wpdb->insert_id,
+                'name'       => $name,
+                'context'    => $context,
+            ]]);
         }
 
         // L'événement signal_update relance scoring + triggers (urgence, prix…).

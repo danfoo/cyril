@@ -356,6 +356,15 @@
 #wrapper .content .sia-chat-row-assistant .sia-chat-bubble { background: var(--sia-primary-soft); }
 #wrapper .content .sia-chat-meta { color: var(--sia-muted); font-size: 10.5px; font-weight: 600; margin-top: 4px; }
 
+/* ---- Veille concurrentielle : extraits ---- */
+#wrapper .content .sia-quote-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+#wrapper .content .sia-quote-card {
+  background: var(--sia-surface-2);
+  border-radius: var(--sia-radius-sm);
+  border-left: 3px solid #8a63d2;
+  padding: 10px 12px;
+}
+
 /* ---- Inputs de type date/datetime cohérents ---- */
 #wrapper .content input[type="date"].form-control,
 #wrapper .content input[type="datetime-local"].form-control,

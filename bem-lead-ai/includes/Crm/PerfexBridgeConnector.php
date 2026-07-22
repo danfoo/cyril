@@ -138,4 +138,47 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
             $this->lastError = '';
         }
     }
+
+    /**
+     * Envoie une mention de concurrent (veille concurrentielle) vers la fiche
+     * lead Perfex. Le lead doit déjà exister côté Perfex.
+     */
+    public function sendCompetitorMention(int $leadId, int $mentionId, string $name, string $context = ''): void
+    {
+        $base = rtrim((string) Options::get('perfex_url'), '/');
+        $secret = (string) Options::get('perfex_bridge_secret');
+
+        $payload = [
+            'external_id'  => (string) $leadId,
+            'source_site'  => home_url(),
+            'external_ref' => 'm' . $mentionId,
+            'name'         => $name,
+            'context'      => mb_substr($context, 0, 1500),
+        ];
+        $query = http_build_query(array_merge($payload, ['secret' => $secret]));
+        $url = $base . '/school_ia_bridge/api/receive_competitor?' . $query;
+
+        $response = wp_remote_get($url, [
+            'timeout' => 20,
+            'headers' => [
+                'X-SIA-Secret' => $secret,
+                'Accept'       => 'application/json',
+            ],
+        ]);
+
+        if (is_wp_error($response)) {
+            $this->lastCode = 0;
+            $this->lastError = $response->get_error_message();
+            error_log('[bem-lead-ai] Pont Perfex (concurrent) injoignable: ' . $this->lastError);
+            return;
+        }
+
+        $this->lastCode = (int) wp_remote_retrieve_response_code($response);
+        if ($this->lastCode < 200 || $this->lastCode >= 300) {
+            $this->lastError = wp_strip_all_tags((string) wp_remote_retrieve_body($response));
+            error_log('[bem-lead-ai] Pont Perfex (concurrent) a répondu ' . $this->lastCode . ': ' . $this->lastError);
+        } else {
+            $this->lastError = '';
+        }
+    }
 }

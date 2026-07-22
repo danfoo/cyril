@@ -19,6 +19,11 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_chat_messages';
     }
 
+    private function competitorTable(): string
+    {
+        return db_prefix() . 'school_ia_competitors';
+    }
+
     /** Normalise une URL de site (schéma + slash final) pour comparer http/https sans faux négatif. */
     private function normalizeSite(string $url): string
     {
@@ -222,6 +227,19 @@ class School_ia_bridge_model extends App_Model
                 `created_at` datetime DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 KEY `lead_id` (`lead_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+        if (!$this->db->table_exists($this->competitorTable())) {
+            $this->db->query('CREATE TABLE `' . $this->competitorTable() . "` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `lead_id` int(11) NOT NULL,
+                `external_ref` varchar(40) DEFAULT NULL,
+                `name` varchar(191) NOT NULL,
+                `context` text DEFAULT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `lead_id` (`lead_id`),
+                KEY `name` (`name`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
     }
@@ -1075,7 +1093,80 @@ class School_ia_bridge_model extends App_Model
         $this->db->where('lead_id', $id)->delete($this->activityTable());
         $this->db->where('lead_id', $id)->delete($this->tasksTable());
         $this->db->where('lead_id', $id)->delete($this->chatTable());
+        $this->db->where('lead_id', $id)->delete($this->competitorTable());
         $this->db->where('lead_id', $id)->delete(db_prefix() . 'school_ia_enrollments');
         $this->db->where('id', $id)->delete($this->table());
+    }
+
+    // ---------- Veille concurrentielle ----------
+
+    /** Enregistre une mention de concurrent (idempotent via external_ref). */
+    public function add_competitor_mention(int $leadId, string $name, string $context = '', ?string $externalRef = null): void
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return;
+        }
+        if ($externalRef !== null && $externalRef !== '') {
+            $exists = $this->db
+                ->where('external_ref', $externalRef)
+                ->count_all_results($this->competitorTable());
+            if ($exists) {
+                return;
+            }
+        }
+        $this->db->insert($this->competitorTable(), [
+            'lead_id'      => $leadId,
+            'external_ref' => $externalRef,
+            'name'         => substr($name, 0, 191),
+            'context'      => $context !== '' ? $context : null,
+            'created_at'   => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /** Classement des concurrents : mentions + nombre de prospects concernés. */
+    public function competitor_ranking(int $limit = 50): array
+    {
+        return $this->db->query(
+            'SELECT name, COUNT(*) AS mentions, COUNT(DISTINCT lead_id) AS leads, MAX(created_at) AS derniere
+             FROM `' . $this->competitorTable() . '`
+             GROUP BY name ORDER BY mentions DESC LIMIT ' . (int) $limit
+        )->result();
+    }
+
+    /** Derniers extraits de contexte (avec le nom du lead pour le lien). */
+    public function recent_competitor_mentions(int $limit = 30): array
+    {
+        return $this->db->query(
+            'SELECT c.name, c.context, c.lead_id, c.created_at, l.name AS lead_name
+             FROM `' . $this->competitorTable() . '` c
+             LEFT JOIN `' . $this->table() . "` l ON l.id = c.lead_id
+             WHERE c.context IS NOT NULL AND c.context <> ''
+             ORDER BY c.created_at DESC LIMIT " . (int) $limit
+        )->result();
+    }
+
+    /** Concurrents cités par un lead précis. */
+    public function competitors_for_lead(int $leadId): array
+    {
+        return $this->db
+            ->where('lead_id', $leadId)
+            ->order_by('created_at', 'desc')
+            ->get($this->competitorTable())
+            ->result();
+    }
+
+    /** Totaux pour les indicateurs de la page veille. */
+    public function competitor_totals(): array
+    {
+        $row = $this->db->query(
+            'SELECT COUNT(*) AS mentions, COUNT(DISTINCT name) AS concurrents, COUNT(DISTINCT lead_id) AS leads
+             FROM `' . $this->competitorTable() . '`'
+        )->row();
+        return [
+            'mentions'    => (int) ($row->mentions ?? 0),
+            'concurrents' => (int) ($row->concurrents ?? 0),
+            'leads'       => (int) ($row->leads ?? 0),
+        ];
     }
 }

@@ -33,6 +33,7 @@ final class ActionRunner
         match ($type) {
             'crm_sync' => $this->crmSync($lead),
             'sync_chat_message' => $this->syncChatMessage($lead, $args),
+            'sync_competitor' => $this->syncCompetitor($lead, $args),
             'notify' => $this->notify($lead, $args),
             'escalate' => (new HandoffManager())->open($lead, (string) ($args['motif'] ?? __('Escalade automatique', 'bem-lead-ai'))),
             'followup' => $this->followup($lead, (string) ($args['variant_group'] ?? 'relance_desengagement')),
@@ -75,6 +76,23 @@ final class ActionRunner
             (string) ($args['role'] ?? ''),
             (string) ($args['content'] ?? ''),
             (string) ($args['canal'] ?? 'web')
+        );
+    }
+
+    /** Envoie une mention de concurrent vers le pont Perfex (hors du flux). */
+    private function syncCompetitor(object $lead, array $args): void
+    {
+        $bridge = new PerfexBridgeConnector();
+        if (!$bridge->isConfigured()) {
+            return;
+        }
+        // Le lead doit exister côté Perfex : on l'y pousse d'abord si besoin.
+        $bridge->upsertLead($lead);
+        $bridge->sendCompetitorMention(
+            (int) $lead->id,
+            (int) ($args['mention_id'] ?? 0),
+            (string) ($args['name'] ?? ''),
+            (string) ($args['context'] ?? '')
         );
     }
 

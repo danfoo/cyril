@@ -174,6 +174,14 @@ function sia_help(string $key): string
                <li><strong>SMS</strong> : nombre d\'envois réussis / échoués.</li>
              </ul>
              <p><em>Note :</em> certains logiciels de messagerie bloquent les images ; le taux d\'ouverture réel peut être légèrement supérieur à l\'affiché. La période (haut de page) filtre les statistiques.</p>'],
+        'competitors' => ['Veille concurrentielle',
+            '<p>Les écoles concurrentes citées spontanément par les prospects dans leurs conversations avec le chatbot du site.</p>
+             <ul>
+               <li><strong>Classement</strong> : quels établissements reviennent le plus souvent dans les échanges.</li>
+               <li><strong>Prospects concernés</strong> : combien de leads distincts ont mentionné chaque concurrent.</li>
+               <li><strong>Extraits</strong> : le passage exact de la conversation, avec un lien vers le lead.</li>
+             </ul>
+             <p><em>Alimentation automatique :</em> les mentions sont détectées côté site par l\'IA et remontées ici. Rien n\'apparaît tant qu\'aucun prospect n\'a cité de concurrent.</p>'],
         'activity' => ['Journal d\'activité',
             '<p>Le flux central de <strong>tout ce qui se passe</strong> sur l\'ensemble des leads : notes, changements d\'étape, tâches, e-mails, SMS, assignations.</p>
              <ul>
@@ -487,7 +495,7 @@ function school_ia_bridge_head_css()
     if (strpos((string) ($_SERVER['REQUEST_URI'] ?? ''), 'school_ia_bridge') === false) {
         return;
     }
-    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=9">';
+    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=10">';
 }
 
 /**
@@ -562,10 +570,16 @@ function school_ia_bridge_admin_menu()
         'position' => 6,
     ]);
     $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+        'slug'     => 'school_ia_bridge_competitors',
+        'name'     => 'Veille concurrentielle',
+        'href'     => admin_url('school_ia_bridge/competitors'),
+        'position' => 7,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
         'slug'     => 'school_ia_bridge_reporting',
         'name'     => 'Reporting',
         'href'     => admin_url('school_ia_bridge/reporting'),
-        'position' => 7,
+        'position' => 8,
     ]);
 
     if (staff_can('send', 'school_ia_bridge')) {
