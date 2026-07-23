@@ -89,7 +89,7 @@ final class ChatOrchestrator
             (string) Options::get('chat_model'),
             $this->systemBlocks($lead),
             $messages,
-            800
+            1400 // marge suffisante pour ne pas couper les réponses détaillées en plein milieu
         );
 
         if (is_wp_error($reply)) {

@@ -76,7 +76,7 @@ class Api extends App_Controller
             $this->school_ia_bridge_model->add_chat_message(
                 (int) $lead->id,
                 (string) $body['role'],
-                (string) $body['content'],
+                $this->unpack_content((string) $body['content']),
                 (string) ($body['canal'] ?? 'web'),
                 !empty($body['external_message_id']) ? (string) $body['external_message_id'] : null
             );
@@ -175,7 +175,7 @@ class Api extends App_Controller
         $this->school_ia_bridge_model->add_chat_message(
             (int) $lead->id,
             $role,
-            $content,
+            $this->unpack_content($content),
             $canal,
             $externalMessageId !== '' ? $externalMessageId : null
         );
@@ -193,6 +193,21 @@ class Api extends App_Controller
             $s .= str_repeat('=', 4 - $pad);
         }
         return (string) base64_decode($s);
+    }
+
+    /**
+     * Décompresse un contenu de message reçu compressé (préfixe « SIAZ1: » =
+     * gzip + base64url, utilisé par le plugin WordPress pour les réponses IA
+     * longues qui ne tiendraient pas dans une URL GET). Renvoie tel quel sinon.
+     */
+    private function unpack_content(string $content): string
+    {
+        if (strncmp($content, 'SIAZ1:', 6) !== 0) {
+            return $content;
+        }
+        $gz = $this->b64url_decode(substr($content, 6));
+        $plain = function_exists('gzdecode') ? @gzdecode($gz) : false;
+        return $plain !== false ? $plain : $content;
     }
 
     /**

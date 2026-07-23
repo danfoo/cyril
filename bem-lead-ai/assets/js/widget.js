@@ -145,6 +145,7 @@
   /* ---- Widget de chat ------------------------------------------------ */
   var chatOpen = false;
   var lastMessageId = 0;
+  var renderedIds = {}; // ids déjà affichés — anti-doublon entre la réponse /chat et le polling
   var pollTimer = null;
 
   function buildWidget() {
@@ -258,7 +259,7 @@
           var msgs = (res && res.messages) || [];
           if (msgs.length) {
             msgs.forEach(function (m) {
-              addMessage(m.role === 'user' ? 'user' : 'assistant', m.contenu);
+              addMessage(m.role === 'user' ? 'user' : 'assistant', m.contenu, m.id);
               lastMessageId = Math.max(lastMessageId, m.id);
             });
             if (res.handoff) { root.querySelector('.bem-handoff-note').hidden = false; }
@@ -330,16 +331,23 @@
         if (res.handoff) {
           root.querySelector('.bem-handoff-note').hidden = false;
         } else if (res.reply) {
-          addMessage('assistant', res.reply);
+          addMessage('assistant', res.reply, res.last_message_id);
         }
-        if (res.last_message_id) lastMessageId = res.last_message_id;
+        if (res.last_message_id) { lastMessageId = Math.max(lastMessageId, res.last_message_id); }
       }).catch(function () {
         typing.remove();
         addMessage('assistant', "Désolé, un souci technique est survenu. Réessayez dans un instant.");
       });
     });
 
-    function addMessage(role, text) {
+    function addMessage(role, text, id) {
+      // Anti-doublon : si ce message (par id serveur) est déjà affiché, on
+      // l'ignore. Couvre la course entre la réponse directe de /chat et le
+      // polling /messages qui peuvent tous deux ramener la même réponse IA.
+      if (id != null) {
+        if (renderedIds[id]) { return null; }
+        renderedIds[id] = true;
+      }
       var isUser = role === 'user';
       var row = document.createElement('div');
       row.className = 'bem-row ' + (isUser ? 'bem-row-user' : 'bem-row-bot');
@@ -382,7 +390,7 @@
         api('/messages?session_id=' + encodeURIComponent(sessionId()) + '&after_id=' + lastMessageId + '&_=' + Date.now(), null, 'GET')
           .then(function (res) {
             (res.messages || []).forEach(function (m) {
-              addMessage(m.role === 'user' ? 'user' : 'assistant', m.contenu);
+              addMessage(m.role === 'user' ? 'user' : 'assistant', m.contenu, m.id);
               lastMessageId = Math.max(lastMessageId, m.id);
             });
             root.querySelector('.bem-handoff-note').hidden = !res.handoff;

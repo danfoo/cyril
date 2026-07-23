@@ -108,14 +108,25 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         $base = rtrim((string) Options::get('perfex_url'), '/');
         $secret = (string) Options::get('perfex_bridge_secret');
 
-        $content = mb_substr($content, 0, 2500);
+        // Compression pour tenir dans l'URL (GET) : une réponse IA longue, une
+        // fois url-encodée (accents, markdown → %XX), dépassait la longueur d'URL
+        // acceptée et le message était perdu côté Perfex. On gzip + base64url
+        // (uniquement [A-Za-z0-9-_], jamais bloqué par un pare-feu) ; Perfex décode.
+        $content = mb_substr($content, 0, 6000);
+        $encoded = $content;
+        if (function_exists('gzencode') && strlen($content) > 400) {
+            $gz = gzencode($content, 6);
+            if ($gz !== false) {
+                $encoded = 'SIAZ1:' . rtrim(strtr(base64_encode($gz), '+/', '-_'), '=');
+            }
+        }
 
         $payload = [
             'external_id'         => (string) $leadId,
             'source_site'         => home_url(),
             'external_message_id' => (string) $messageId,
             'role'                => $role,
-            'content'             => $content,
+            'content'             => $encoded,
             'canal'               => $canal,
         ];
         $query = http_build_query(array_merge($payload, ['secret' => $secret]));

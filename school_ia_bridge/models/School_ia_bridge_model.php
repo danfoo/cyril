@@ -1868,12 +1868,17 @@ class School_ia_bridge_model extends App_Model
         ]);
     }
 
-    /** Historique de la conversation IA d'un lead, ordre chronologique. */
+    /**
+     * Historique de la conversation IA d'un lead, en VRAI ordre chronologique.
+     * On trie par external_message_id (l'id de message WordPress, monotone) et
+     * non par l'ordre d'ARRIVÉE côté Perfex : la synchro est asynchrone et peut
+     * livrer les messages dans le désordre (created_at = heure de réception).
+     */
     public function chat_messages(int $leadId): array
     {
         return $this->db
             ->where('lead_id', $leadId)
-            ->order_by('id', 'asc')
+            ->order_by('CAST(external_message_id AS UNSIGNED) ASC, id ASC', '', false)
             ->get($this->chatTable())
             ->result();
     }
