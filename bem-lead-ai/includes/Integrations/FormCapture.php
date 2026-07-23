@@ -50,10 +50,12 @@ final class FormCapture
             } elseif ($type === 'name') {
                 $first = trim((string) ($entry[$id . '.3'] ?? ''));
                 $name = $first !== '' ? $first : ($val !== '' ? $val : $name);
-            } elseif ($val !== '' && $formation === null && $this->looksLikeFormation($label)) {
-                // Champ liste/bouton radio : la valeur stockée est souvent un code
-                // court (« MAGE », « Master ») ; on récupère le LIBELLÉ complet de
-                // l'option choisie plutôt que sa valeur brute.
+            } elseif ($val !== '' && $this->looksLikeFormation($label)) {
+                // Formulaires en cascade (Type → Diplôme recherché → Bachelors/
+                // Masters → programme précis) : on garde la valeur la PLUS PROFONDE
+                // (dernier champ programme rempli) = la formation réelle, ex.
+                // « Bachelor Prépa Ingénieur » plutôt que le niveau « Bachelor ».
+                // On récupère aussi le LIBELLÉ complet de l'option choisie.
                 $formation = $this->gfChoiceLabel($field, $val);
             } elseif ($val !== '') {
                 [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
@@ -97,7 +99,8 @@ final class FormCapture
                 $phone = $val;
             } elseif ($type === 'name') {
                 $name = $val;
-            } elseif ($formation === null && $this->looksLikeFormation($label)) {
+            } elseif ($this->looksLikeFormation($label)) {
+                // Cascade → on garde la dernière (plus profonde/précise) valeur.
                 $formation = $val;
             } else {
                 [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
@@ -170,7 +173,7 @@ final class FormCapture
     private function looksLikeFormation(string $label): bool
     {
         return (bool) (
-            preg_match('/formation|programme|fili[eè]re|cursus|parcours|sp[eé]cialit|dipl[oô]me/', $label)
+            preg_match('/formation|programme|fili[eè]re|cursus|parcours|sp[eé]cialit|dipl[oô]me|bachelor|master|mast[eè]re|\bmba\b|\bmsc\b|licence|doctorat|\bbts\b|\bdut\b|pr[eé]pa/', $label)
             && !preg_match('/type|r[eé]gime|modalit|rythme|niveau|statut|cycle|temps/', $label)
         );
     }
@@ -243,8 +246,8 @@ final class FormCapture
                 $email = $val;
             } elseif ($phone === null && preg_match('/t[eé]l|phone|whatsapp|mobile|num[eé]ro/', $k)) {
                 $phone = $val;
-            } elseif ($formation === null && $this->looksLikeFormation($k)) {
-                $formation = $val;
+            } elseif ($this->looksLikeFormation($k)) {
+                $formation = $val; // cascade → dernière valeur (la plus précise)
             } elseif ($name === null && preg_match('/nom|name|pr[eé]nom/', $k)) {
                 $name = $val;
             }
