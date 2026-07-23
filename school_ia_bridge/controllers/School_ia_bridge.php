@@ -40,7 +40,6 @@ class School_ia_bridge extends AdminController
         $data['filters']   = $filters;
         $data['rentrees']  = $this->school_ia_bridge_model->rentrees();
         $data['stats']     = $this->school_ia_bridge_model->stats(60, $filters);
-        $data['bySource']  = $this->school_ia_bridge_model->by_source($filters);
         $data['byFormation'] = $this->school_ia_bridge_model->by_formation($filters);
         $data['byStaff']   = $this->school_ia_bridge_model->by_staff($filters);
         $data['unassignedCount'] = $this->school_ia_bridge_model->unassigned_count($filters);

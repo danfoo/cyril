@@ -88,9 +88,10 @@ function sia_help(string $key): string
                <li><strong>Valeur du pipeline</strong> et <strong>CA réalisé</strong> : basés sur les frais par formation (Réglages) ; masqués tant qu\'aucun frais n\'est configuré.</li>
                <li><strong>Objectif d\'inscrits</strong> : jauge comparant les inscrits de la période à l\'objectif défini dans Réglages.</li>
                <li><strong>Leads non assignés</strong> et <strong>derniers leads reçus</strong> : aperçus rapides pour agir vite.</li>
-               <li><strong>Par conseiller / par source / par formation</strong> : répartition des leads.</li>
-               <li><strong>Maturité des leads</strong> : répartition froids (&lt; 40) / tièdes (40-59) / chauds (≥ 60).</li>
-               <li><strong>Entonnoir</strong> : répartition des leads par étape du pipeline.</li>
+               <li><strong>Par conseiller</strong> : leads assignés, inscrits et conversion de chaque agent.</li>
+               <li><strong>Par formation</strong> (camembert) : quelles filières attirent les candidats.</li>
+               <li><strong>Maturité des leads</strong> (camembert) : froids (&lt; 40) / tièdes (40-59) / chauds (≥ 60).</li>
+               <li><strong>Entonnoir</strong> (camembert) : répartition des leads par étape du pipeline.</li>
                <li><strong>Relances à faire</strong> : vos prochaines tâches dues.</li>
              </ul>
              <p><em>Période :</em> les boutons (Tout / 7 / 30 / 90 jours) ou une plage de dates personnalisée, combinables avec un filtre par <strong>rentrée</strong>, filtrent tous les indicateurs.</p>'],
@@ -228,6 +229,66 @@ function sia_help(string $key): string
         . '<div class="modal-body">' . $body . '</div>'
         . '<div class="modal-footer"><button type="button" class="btn btn-default" data-dismiss="modal">Fermer</button></div>'
         . '</div></div></div>';
+}
+
+/**
+ * Rendu d'un « camembert » (donut SVG autonome, sans dépendance JavaScript) +
+ * légende. Chaque tranche : ['label' => string, 'value' => number, 'color' => '#rrggbb'].
+ * Les tranches nulles sont ignorées ; renvoie un message si tout est à zéro.
+ */
+function sia_pie_block(array $slices, int $size = 168): string
+{
+    $total = 0.0;
+    foreach ($slices as $s) {
+        $total += max(0.0, (float) $s['value']);
+    }
+
+    if ($total <= 0) {
+        return '<p class="text-muted" style="margin:8px 0 0;">Aucune donnée sur cette période.</p>';
+    }
+
+    $thickness = 26;
+    $r    = ($size - $thickness) / 2;
+    $c    = $size / 2;
+    $circ = 2 * M_PI * $r;
+
+    $svg  = '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 ' . $size . ' ' . $size . '" role="img" class="sia-donut">';
+    $svg .= '<g transform="rotate(-90 ' . $c . ' ' . $c . ')">';
+    $svg .= '<circle class="sia-donut-track" cx="' . $c . '" cy="' . $c . '" r="' . round($r, 2) . '" fill="none" stroke="#eef1f5" stroke-width="' . $thickness . '"/>';
+    $offset = 0.0;
+    foreach ($slices as $s) {
+        $val = max(0.0, (float) $s['value']);
+        if ($val <= 0) {
+            continue;
+        }
+        $len = $circ * ($val / $total);
+        $svg .= '<circle cx="' . $c . '" cy="' . $c . '" r="' . round($r, 2) . '" fill="none"'
+            . ' stroke="' . htmlspecialchars((string) $s['color'], ENT_QUOTES) . '" stroke-width="' . $thickness . '"'
+            . ' stroke-dasharray="' . round($len, 2) . ' ' . round($circ - $len, 2) . '"'
+            . ' stroke-dashoffset="' . round(-$offset, 2) . '"/>';
+        $offset += $len;
+    }
+    $svg .= '</g>';
+    $svg .= '<text x="' . $c . '" y="' . $c . '" text-anchor="middle" dominant-baseline="central" class="sia-donut-center">' . (int) round($total) . '</text>';
+    $svg .= '</svg>';
+
+    $legend = '<ul class="sia-legend">';
+    foreach ($slices as $s) {
+        $val = max(0.0, (float) $s['value']);
+        if ($val <= 0) {
+            continue;
+        }
+        $pct   = round($val * 100 / $total);
+        $label = htmlspecialchars((string) $s['label'], ENT_QUOTES);
+        $legend .= '<li>'
+            . '<span class="sia-legend-dot" style="background:' . htmlspecialchars((string) $s['color'], ENT_QUOTES) . ';"></span>'
+            . '<span class="sia-legend-label" title="' . $label . '">' . $label . '</span>'
+            . '<span class="sia-legend-val">' . (int) $val . ' · ' . $pct . '%</span>'
+            . '</li>';
+    }
+    $legend .= '</ul>';
+
+    return '<div class="sia-pie"><div class="sia-pie-chart">' . $svg . '</div>' . $legend . '</div>';
 }
 
 /** Formate un tableau associatif en "clé: valeur, clé: valeur". */

@@ -372,3 +372,36 @@
 
 /* ---- Barres de progression maison (entonnoir, sources) ---- */
 #wrapper .content .panel-body > div[style*="background:#eef1f5"] { background: var(--sia-surface-2) !important; }
+
+/* ---- Camemberts (donut SVG) + légende ---- */
+#wrapper .content .sia-pie {
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap; margin-top: 10px;
+}
+#wrapper .content .sia-pie-chart { flex: 0 0 auto; }
+#wrapper .content .sia-donut { display: block; }
+#wrapper .content .sia-donut-track { stroke: var(--sia-surface-2); }
+#wrapper .content .sia-donut-center { fill: var(--sia-text); font-size: 26px; font-weight: 800; font-family: var(--sia-font); }
+#wrapper .content .sia-legend { list-style: none; margin: 0; padding: 0; flex: 1 1 220px; min-width: 200px; }
+#wrapper .content .sia-legend li {
+  display: flex; align-items: center; gap: 9px; padding: 5px 0; font-size: 13px;
+  border-bottom: 1px solid var(--sia-border);
+}
+#wrapper .content .sia-legend li:last-child { border-bottom: none; }
+#wrapper .content .sia-legend-dot { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
+#wrapper .content .sia-legend-label {
+  color: var(--sia-text); flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#wrapper .content .sia-legend-val { color: var(--sia-muted); font-weight: 600; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+
+/* Entonnoir (pleine largeur) : légende sur plusieurs colonnes */
+#wrapper .content .col-md-12 .sia-legend {
+  column-count: 2; column-gap: 28px;
+}
+#wrapper .content .col-md-12 .sia-legend li { break-inside: avoid; }
+@media (max-width: 767px) {
+  #wrapper .content .col-md-12 .sia-legend { column-count: 1; }
+}
+
+/* ---- Cellule date compacte (aperçus de leads) ---- */
+#wrapper .content .sia-date { font-size: 11.5px; white-space: nowrap; }

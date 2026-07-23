@@ -139,27 +139,26 @@
       <?php } ?>
     </div>
 
-    <!-- Objectif d'inscrits -->
-    <?php if ($target > 0) {
-        $pct = min(100, round($stats['inscrits'] * 100 / $target)); ?>
-      <div class="row">
-        <div class="col-md-12">
+    <!-- Objectif d'inscrits + Relances à faire (côte à côte) -->
+    <div class="row">
+      <?php if ($target > 0) {
+          $pct = min(100, round($stats['inscrits'] * 100 / $target)); ?>
+        <div class="col-md-5">
           <div class="panel_s"><div class="panel-body">
-            <div class="clearfix" style="margin-bottom:6px;">
+            <div class="clearfix" style="margin-bottom:8px;">
               <h5 class="bold pull-left" style="margin:0;"><i class="fa fa-bullseye"></i> Objectif d'inscrits</h5>
               <span class="pull-right bold"><?php echo (int) $stats['inscrits']; ?> / <?php echo (int) $target; ?> (<?php echo $pct; ?> %)</span>
             </div>
             <div style="height:12px; background:var(--sia-surface-2); border-radius:6px; overflow:hidden;">
               <div style="height:100%; width:<?php echo $pct; ?>%; background:<?php echo $pct >= 100 ? '#0a8f5b' : '#2e6ff2'; ?>;"></div>
             </div>
+            <p class="text-muted" style="margin:10px 0 0; font-size:12.5px;">
+              <?php echo max(0, (int) $target - (int) $stats['inscrits']); ?> inscription(s) restante(s) pour atteindre l'objectif.
+            </p>
           </div></div>
         </div>
-      </div>
-    <?php } ?>
-
-    <!-- Tâches à venir -->
-    <div class="row">
-      <div class="col-md-12">
+      <?php } ?>
+      <div class="<?php echo $target > 0 ? 'col-md-7' : 'col-md-12'; ?>">
         <div class="panel_s"><div class="panel-body">
           <div class="clearfix">
             <h5 class="bold pull-left" style="margin-top:0;">Relances à faire</h5>
@@ -216,7 +215,7 @@
                       </a>
                     </td>
                     <td class="text-muted"><?php echo htmlspecialchars((string) $l->formation, ENT_QUOTES); ?></td>
-                    <td class="text-right text-muted"><?php echo htmlspecialchars((string) $l->received_at, ENT_QUOTES); ?></td>
+                    <td class="text-right text-muted sia-date"><?php echo $l->received_at ? htmlspecialchars(date('d/m/Y H:i', strtotime((string) $l->received_at)), ENT_QUOTES) : ''; ?></td>
                   </tr>
                 <?php } ?>
               </tbody>
@@ -244,7 +243,7 @@
                     </td>
                     <td class="text-muted"><?php echo htmlspecialchars((string) ($l->email ?: $l->phone), ENT_QUOTES); ?></td>
                     <td class="text-muted"><?php echo htmlspecialchars((string) $l->formation, ENT_QUOTES); ?></td>
-                    <td class="text-right text-muted"><?php echo htmlspecialchars((string) $l->received_at, ENT_QUOTES); ?></td>
+                    <td class="text-right text-muted sia-date"><?php echo $l->received_at ? htmlspecialchars(date('d/m/Y H:i', strtotime((string) $l->received_at)), ENT_QUOTES) : ''; ?></td>
                   </tr>
                 <?php } ?>
               </tbody>
@@ -281,97 +280,56 @@
       </div>
     </div>
 
-    <!-- Par source, par formation, par score -->
+    <!-- Camemberts : par formation + maturité des leads -->
     <div class="row">
-      <div class="col-md-4">
-        <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;"><i class="fa fa-sitemap"></i> Par source</h5>
-          <?php
-          $srcMax = 1;
-          foreach ($bySource as $s) { $srcMax = max($srcMax, (int) $s->n); }
-          if (empty($bySource)) { echo '<p class="text-muted">Aucun lead sur cette période.</p>'; }
-          foreach ($bySource as $s) {
-              $pct = round((int) $s->n / $srcMax * 100); ?>
-            <div style="margin-bottom:8px;">
-              <div class="clearfix" style="margin-bottom:2px;">
-                <span class="pull-left"><?php echo htmlspecialchars((string) $s->src, ENT_QUOTES); ?></span>
-                <span class="pull-right bold"><?php echo (int) $s->n; ?></span>
-              </div>
-              <div style="height:8px; background:#eef1f5; border-radius:5px; overflow:hidden;">
-                <div style="height:100%; width:<?php echo $pct; ?>%; background:#2e6ff2;"></div>
-              </div>
-            </div>
-          <?php } ?>
-        </div></div>
-      </div>
-      <div class="col-md-4">
+      <div class="col-md-6">
         <div class="panel_s"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;"><i class="fa fa-graduation-cap"></i> Par formation</h5>
           <?php
-          $formMax = 1;
-          foreach ($byFormation as $s) { $formMax = max($formMax, (int) $s->n); }
-          if (empty($byFormation)) { echo '<p class="text-muted">Aucun lead sur cette période.</p>'; }
-          foreach ($byFormation as $s) {
-              $pct = round((int) $s->n / $formMax * 100); ?>
-            <div style="margin-bottom:8px;">
-              <div class="clearfix" style="margin-bottom:2px;">
-                <span class="pull-left"><?php echo htmlspecialchars((string) $s->formation, ENT_QUOTES); ?></span>
-                <span class="pull-right bold"><?php echo (int) $s->n; ?></span>
-              </div>
-              <div style="height:8px; background:#eef1f5; border-radius:5px; overflow:hidden;">
-                <div style="height:100%; width:<?php echo $pct; ?>%; background:#8a63d2;"></div>
-              </div>
-            </div>
-          <?php } ?>
+          $formPalette = ['#4f46e5', '#2563eb', '#0ea5e9', '#0a8f5b', '#d6a63a', '#e2683c', '#d64545', '#8a63d2'];
+          $formSlices = [];
+          foreach ($byFormation as $i => $s) {
+              $formSlices[] = [
+                  'label' => (string) $s->formation,
+                  'value' => (int) $s->n,
+                  'color' => $formPalette[$i % count($formPalette)],
+              ];
+          }
+          echo sia_pie_block($formSlices);
+          ?>
         </div></div>
       </div>
-      <div class="col-md-4">
+      <div class="col-md-6">
         <div class="panel_s"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;"><i class="fa fa-thermometer-half"></i> Maturité des leads</h5>
           <?php
           $sd = $stats['scoreDist'];
-          $sdTotal = max(1, $sd['froid'] + $sd['tiede'] + $sd['chaud']);
-          $sdRows = [
-              ['froid', 'Froids (< 40)', $sd['froid'], '#2563eb'],
-              ['tiede', 'Tièdes (40-59)', $sd['tiede'], '#d6a63a'],
-              ['chaud', 'Chauds (≥ 60)', $sd['chaud'], '#d64545'],
-          ];
-          foreach ($sdRows as [$key, $label, $n, $color]) {
-              $pct = round($n * 100 / $sdTotal); ?>
-            <div style="margin-bottom:8px;">
-              <div class="clearfix" style="margin-bottom:2px;">
-                <span class="pull-left"><?php echo $label; ?></span>
-                <span class="pull-right bold"><?php echo (int) $n; ?></span>
-              </div>
-              <div style="height:8px; background:#eef1f5; border-radius:5px; overflow:hidden;">
-                <div style="height:100%; width:<?php echo $pct; ?>%; background:<?php echo $color; ?>;"></div>
-              </div>
-            </div>
-          <?php } ?>
+          echo sia_pie_block([
+              ['label' => 'Froids (< 40)',   'value' => (int) $sd['froid'], 'color' => '#2563eb'],
+              ['label' => 'Tièdes (40-59)',  'value' => (int) $sd['tiede'], 'color' => '#d6a63a'],
+              ['label' => 'Chauds (≥ 60)',   'value' => (int) $sd['chaud'], 'color' => '#d64545'],
+          ]);
+          ?>
         </div></div>
       </div>
     </div>
 
-    <!-- Entonnoir par étape -->
+    <!-- Entonnoir par étape (camembert) -->
     <div class="row">
       <div class="col-md-12">
         <div class="panel_s"><div class="panel-body">
-          <h5 class="bold" style="margin-top:0;">Entonnoir par étape</h5>
+          <h5 class="bold" style="margin-top:0;"><i class="fa fa-filter"></i> Entonnoir par étape</h5>
           <?php
-          $max = max(1, ...array_values($stats['byStage']));
+          $stageSlices = [];
           foreach ($stats['byStage'] as $slug => $n) {
-              $pct = round($n / $max * 100);
-              $color = $model->stageColor($slug); ?>
-            <div style="margin-bottom:10px;">
-              <div class="clearfix" style="margin-bottom:3px;">
-                <span class="pull-left"><?php echo htmlspecialchars($model->stageLabel($slug), ENT_QUOTES); ?></span>
-                <span class="pull-right bold"><?php echo (int) $n; ?></span>
-              </div>
-              <div style="height:10px; background:#eef1f5; border-radius:6px; overflow:hidden;">
-                <div style="height:100%; width:<?php echo $pct; ?>%; background:<?php echo $color; ?>;"></div>
-              </div>
-            </div>
-          <?php } ?>
+              $stageSlices[] = [
+                  'label' => $model->stageLabel($slug),
+                  'value' => (int) $n,
+                  'color' => $model->stageColor($slug),
+              ];
+          }
+          echo sia_pie_block($stageSlices, 190);
+          ?>
         </div></div>
       </div>
     </div>
