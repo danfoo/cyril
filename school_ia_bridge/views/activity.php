@@ -21,7 +21,7 @@ $typeQs = function ($t) use ($staffId, $from, $to) {
 <div id="wrapper">
   <div class="content">
     <div class="row">
-      <div class="col-md-10 col-md-offset-1">
+      <div class="col-md-12">
         <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-history"></i> Journal d'activité <?php echo sia_help('activity'); ?></h4>
 
         <!-- Classement des plus actifs -->
@@ -99,6 +99,15 @@ $typeQs = function ($t) use ($staffId, $from, $to) {
             <p class="text-muted text-center" style="padding:30px;">Aucune activité pour ces critères.</p>
           <?php } else { ?>
             <table class="table">
+              <thead>
+                <tr>
+                  <th style="width:34px;"></th>
+                  <th>Activité</th>
+                  <th style="width:170px;">Lead</th>
+                  <th style="width:200px;">Auteur &amp; date</th>
+                  <th style="width:110px;" class="text-right">Action</th>
+                </tr>
+              </thead>
               <tbody>
                 <?php foreach ($activities as $a) {
                     $who = $a->staff_id ? get_staff_full_name((int) $a->staff_id) : 'Système';
