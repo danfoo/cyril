@@ -45,6 +45,15 @@
                 <label class="control-label">Score (optionnel)</label>
                 <input type="number" name="score" class="form-control" min="0" max="100" placeholder="0 à 100">
               </div>
+              <div class="col-md-6 form-group">
+                <label class="control-label">Rentrée (optionnel)</label>
+                <input type="text" name="rentree" class="form-control" list="sia-rentrees" placeholder="Ex. Septembre 2026">
+                <datalist id="sia-rentrees">
+                  <?php foreach ($rentrees as $r) { ?>
+                    <option value="<?php echo htmlspecialchars($r, ENT_QUOTES); ?>"></option>
+                  <?php } ?>
+                </datalist>
+              </div>
             </div>
             <p class="text-muted" style="font-size:12px;">Renseignez au moins un nom, un e-mail ou un téléphone.</p>
             <button type="submit" class="btn btn-primary"><i class="fa fa-check"></i> Créer le lead</button>

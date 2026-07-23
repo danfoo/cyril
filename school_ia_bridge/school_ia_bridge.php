@@ -84,12 +84,16 @@ function sia_help(string $key): string
                <li><strong>Leads au total</strong> : tous les leads reçus (plugin, saisie, import).</li>
                <li><strong>Leads chauds</strong> : score ≥ 60 (prospects les plus engagés).</li>
                <li><strong>Inscrits</strong> et <strong>taux de conversion</strong> : leads en étape « Inscrit » / total.</li>
+               <li><strong>Leads non assignés</strong> et <strong>délai moyen de 1ᵉʳ contact</strong> : suivi opérationnel de la prise en charge.</li>
+               <li><strong>Valeur du pipeline</strong> et <strong>CA réalisé</strong> : basés sur les frais par formation (Réglages) ; masqués tant qu\'aucun frais n\'est configuré.</li>
+               <li><strong>Objectif d\'inscrits</strong> : jauge comparant les inscrits de la période à l\'objectif défini dans Réglages.</li>
+               <li><strong>Leads non assignés</strong> et <strong>derniers leads reçus</strong> : aperçus rapides pour agir vite.</li>
+               <li><strong>Par conseiller / par source / par formation</strong> : répartition des leads.</li>
+               <li><strong>Maturité des leads</strong> : répartition froids (&lt; 40) / tièdes (40-59) / chauds (≥ 60).</li>
                <li><strong>Entonnoir</strong> : répartition des leads par étape du pipeline.</li>
                <li><strong>Relances à faire</strong> : vos prochaines tâches dues.</li>
-               <li><strong>Par conseiller</strong> : leads assignés, inscrits et taux de conversion de chaque agent.</li>
-               <li><strong>Par source</strong> : d\'où viennent les leads (site plugin, saisie manuelle, import).</li>
              </ul>
-             <p><em>Période :</em> les boutons en haut (Tout / 7 / 30 / 90 jours) filtrent tous les indicateurs.</p>'],
+             <p><em>Période :</em> les boutons (Tout / 7 / 30 / 90 jours) ou une plage de dates personnalisée, combinables avec un filtre par <strong>rentrée</strong>, filtrent tous les indicateurs.</p>'],
         'pipeline' => ['Pipeline',
             '<p>Suivez la progression des leads par étape (Nouveau → … → Inscrit / Perdu).</p>
              <ul>

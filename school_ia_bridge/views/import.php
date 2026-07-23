@@ -20,6 +20,7 @@
             <li><strong>Téléphone</strong> : téléphone, tel, mobile, numéro</li>
             <li><strong>Formation</strong> : formation, programme, filière</li>
             <li><strong>Score</strong> : score, note &nbsp;·&nbsp; <strong>Étape</strong> : étape, statut</li>
+            <li><strong>Rentrée</strong> : rentrée, promo, session, année</li>
           </ul>
           <a href="<?php echo admin_url('school_ia_bridge/import_template'); ?>" class="btn btn-default btn-sm">
             <i class="fa fa-download"></i> Télécharger un modèle CSV
@@ -48,6 +49,15 @@
                     <option value="<?php echo $s; ?>"><?php echo htmlspecialchars($conf[0], ENT_QUOTES); ?></option>
                   <?php } ?>
                 </select>
+              </div>
+              <div class="col-md-6 form-group">
+                <label class="control-label">Rentrée par défaut (si absente du fichier)</label>
+                <input type="text" name="default_rentree" class="form-control" list="sia-rentrees" placeholder="Ex. Septembre 2026">
+                <datalist id="sia-rentrees">
+                  <?php foreach ($rentrees as $r) { ?>
+                    <option value="<?php echo htmlspecialchars($r, ENT_QUOTES); ?>"></option>
+                  <?php } ?>
+                </datalist>
               </div>
             </div>
             <p class="text-muted" style="font-size:12px;">Les leads dont l'e-mail existe déjà sont ignorés (pas de doublon).</p>

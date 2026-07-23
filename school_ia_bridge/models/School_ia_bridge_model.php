@@ -83,6 +83,9 @@ class School_ia_bridge_model extends App_Model
         if (!$this->db->field_exists('owner_id', $this->table())) {
             $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `owner_id` INT NULL DEFAULT NULL');
         }
+        if (!$this->db->field_exists('rentree', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `rentree` VARCHAR(32) NULL DEFAULT NULL');
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_tasks')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_tasks` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -271,6 +274,12 @@ class School_ia_bridge_model extends App_Model
         if (isset($f['min_score']) && $f['min_score'] !== '') {
             $this->db->where('score >=', (float) $f['min_score']);
         }
+        if (!empty($f['rentree'])) {
+            $this->db->where('rentree', $f['rentree']);
+        }
+        if (!empty($f['unassigned'])) {
+            $this->db->where('owner_id IS NULL', null, false);
+        }
         return $this->db
             ->order_by('received_at', 'desc')
             ->limit($limit)
@@ -318,40 +327,85 @@ class School_ia_bridge_model extends App_Model
         return $sinceDays > 0 ? date('Y-m-d H:i:s', time() - $sinceDays * 86400) : null;
     }
 
-    /** Indicateurs pour le tableau de bord (optionnellement sur une période). */
-    public function stats(int $hotThreshold = 60, int $sinceDays = 0): array
+    /**
+     * Résout la borne [from, to] d'un filtre de période : une plage de dates
+     * personnalisée (date_from/date_to) prime sur les boutons prédéfinis (period).
+     */
+    private function dateRange(array $f): array
+    {
+        $from = !empty($f['date_from']) ? $f['date_from'] . ' 00:00:00' : null;
+        $to   = !empty($f['date_to']) ? $f['date_to'] . ' 23:59:59' : null;
+        if ($from === null && $to === null && !empty($f['period'])) {
+            $from = $this->since((int) $f['period']);
+        }
+        return [$from, $to];
+    }
+
+    /** Applique période + rentrée sur la requête en cours (leads, alias optionnel). */
+    private function applyLeadFilters(array $f, string $alias = ''): void
+    {
+        [$from, $to] = $this->dateRange($f);
+        $p = $alias !== '' ? $alias . '.' : '';
+        if ($from) { $this->db->where($p . 'received_at >=', $from); }
+        if ($to)   { $this->db->where($p . 'received_at <=', $to); }
+        if (!empty($f['rentree'])) { $this->db->where($p . 'rentree', $f['rentree']); }
+    }
+
+    /** Valeurs de rentrée déjà utilisées (pour le filtre du dashboard / datalist). */
+    public function rentrees(): array
+    {
+        return array_map(static fn($r) => $r->rentree, $this->db
+            ->select('DISTINCT rentree')
+            ->where('rentree IS NOT NULL', null, false)->where('rentree !=', '')
+            ->order_by('rentree', 'desc')
+            ->get($this->table())
+            ->result());
+    }
+
+    public function set_rentree(int $id, string $rentree): void
+    {
+        $this->db->where('id', $id)->update($this->table(), ['rentree' => substr(trim($rentree), 0, 32) ?: null]);
+    }
+
+    /** Indicateurs pour le tableau de bord (optionnellement filtrés). */
+    public function stats(int $hotThreshold = 60, array $filters = []): array
     {
         $this->ensure_schema();
         $t = $this->table();
-        $since = $this->since($sinceDays);
 
-        if ($since) { $this->db->where('received_at >=', $since); }
+        $this->applyLeadFilters($filters);
         $total = (int) $this->db->count_all_results($t);
 
-        if ($since) { $this->db->where('received_at >=', $since); }
+        $this->applyLeadFilters($filters);
         $this->db->where('score >=', $hotThreshold);
         $hot = (int) $this->db->count_all_results($t);
+
+        $this->applyLeadFilters($filters);
+        $this->db->where('score <', 40);
+        $cold = (int) $this->db->count_all_results($t);
+
+        $warm = max(0, $total - $hot - $cold);
 
         $byStage = [];
         foreach (array_keys($this->stages()) as $slug) {
             $byStage[$slug] = 0;
         }
-        if ($since) { $this->db->where('received_at >=', $since); }
+        $this->applyLeadFilters($filters);
         foreach ($this->db->select('stage, COUNT(*) AS n')->group_by('stage')->get($t)->result() as $r) {
             $byStage[$r->stage] = (int) $r->n;
         }
 
         $inscrits = $byStage['inscrit'] ?? 0;
         $conversion = $total > 0 ? round($inscrits * 100 / $total, 1) : 0.0;
+        $scoreDist = ['froid' => $cold, 'tiede' => $warm, 'chaud' => $hot];
 
-        return compact('total', 'hot', 'inscrits', 'conversion', 'byStage');
+        return compact('total', 'hot', 'inscrits', 'conversion', 'byStage', 'scoreDist');
     }
 
     /** Répartition des leads par source (site plugin, saisie, import). */
-    public function by_source(int $sinceDays = 0): array
+    public function by_source(array $filters = []): array
     {
-        $since = $this->since($sinceDays);
-        if ($since) { $this->db->where('received_at >=', $since); }
+        $this->applyLeadFilters($filters);
         return $this->db
             ->select("COALESCE(NULLIF(source_site,''),'—') AS src, COUNT(*) AS n")
             ->group_by('source_site')
@@ -360,10 +414,22 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
-    /** Performance par conseiller (leads assignés + inscrits). */
-    public function by_staff(int $sinceDays = 0): array
+    /** Répartition des leads par formation / programme visé. */
+    public function by_formation(array $filters = [], int $limit = 8): array
     {
-        $since = $this->since($sinceDays);
+        $this->applyLeadFilters($filters);
+        return $this->db
+            ->select("COALESCE(NULLIF(formation,''),'—') AS formation, COUNT(*) AS n")
+            ->group_by('formation')
+            ->order_by('n', 'desc')
+            ->limit($limit)
+            ->get($this->table())
+            ->result();
+    }
+
+    /** Performance par conseiller (leads assignés + inscrits). */
+    public function by_staff(array $filters = []): array
+    {
         $this->db
             ->select('s.staffid, CONCAT(s.firstname, " ", s.lastname) AS name, COUNT(l.id) AS total, '
                 . 'SUM(CASE WHEN l.stage = "inscrit" THEN 1 ELSE 0 END) AS inscrits')
@@ -371,8 +437,121 @@ class School_ia_bridge_model extends App_Model
             ->join(db_prefix() . 'staff s', 's.staffid = l.owner_id', 'inner')
             ->group_by('l.owner_id')
             ->order_by('total', 'desc');
-        if ($since) { $this->db->where('l.received_at >=', $since); }
+        $this->applyLeadFilters($filters, 'l');
         return $this->db->get()->result();
+    }
+
+    /** Nombre de leads sans responsable assigné. */
+    public function unassigned_count(array $filters = []): int
+    {
+        $this->applyLeadFilters($filters);
+        return (int) $this->db->where('owner_id IS NULL', null, false)->count_all_results($this->table());
+    }
+
+    /** Derniers leads non assignés (pour le widget du dashboard). */
+    public function unassigned_leads(array $filters = [], int $limit = 6): array
+    {
+        $this->applyLeadFilters($filters);
+        return $this->db
+            ->where('owner_id IS NULL', null, false)
+            ->order_by('received_at', 'desc')
+            ->limit($limit)
+            ->get($this->table())
+            ->result();
+    }
+
+    /** Derniers leads reçus (aperçu sur le dashboard). */
+    public function recent_leads(array $filters = [], int $limit = 8): array
+    {
+        $this->applyLeadFilters($filters);
+        return $this->db
+            ->order_by('received_at', 'desc')
+            ->limit($limit)
+            ->get($this->table())
+            ->result();
+    }
+
+    /**
+     * Délai moyen (en heures) entre la réception d'un lead et le premier
+     * contact réel (note, e-mail, SMS ou changement d'étape enregistré).
+     * Renvoie null si aucune donnée exploitable sur la période.
+     */
+    public function avg_first_contact_hours(array $filters = []): ?float
+    {
+        [$from, $to] = $this->dateRange($filters);
+        $params = [];
+        $where = '1=1';
+        if ($from) { $where .= ' AND l.received_at >= ?'; $params[] = $from; }
+        if ($to)   { $where .= ' AND l.received_at <= ?'; $params[] = $to; }
+        if (!empty($filters['rentree'])) { $where .= ' AND l.rentree = ?'; $params[] = $filters['rentree']; }
+
+        $sql = 'SELECT AVG(TIMESTAMPDIFF(MINUTE, l.received_at, fc.first_contact)) AS avg_minutes, COUNT(*) AS n
+                FROM `' . $this->table() . '` l
+                INNER JOIN (
+                    SELECT lead_id, MIN(created_at) AS first_contact
+                    FROM `' . $this->activityTable() . "`
+                    WHERE type IN ('note','email','sms','stage_change')
+                    GROUP BY lead_id
+                ) fc ON fc.lead_id = l.id
+                WHERE {$where}";
+        $row = $this->db->query($sql, $params)->row();
+        if (!$row || (int) $row->n === 0 || $row->avg_minutes === null) {
+            return null;
+        }
+        return round(((float) $row->avg_minutes) / 60, 1);
+    }
+
+    /** Parse les réglages "Formation:Montant" (un par ligne) en tarifs. */
+    public function program_fees(): array
+    {
+        $raw = (string) get_option('sia_program_fees');
+        $fees = [];
+        foreach (preg_split('/\r\n|\r|\n/', $raw) as $line) {
+            $line = trim($line);
+            if ($line === '' || strpos($line, ':') === false) {
+                continue;
+            }
+            [$name, $amount] = array_map('trim', explode(':', $line, 2));
+            if ($name !== '') {
+                $fees[$name] = (float) str_replace([' ', ','], ['', '.'], $amount);
+            }
+        }
+        return $fees;
+    }
+
+    /**
+     * Valeur financière du pipeline : somme des frais (par formation, définis
+     * dans les réglages) des leads actifs, séparée du montant déjà « réalisé »
+     * (leads inscrits). Les leads « perdu » ne comptent pas.
+     */
+    public function finance_summary(array $filters = []): array
+    {
+        $fees = $this->program_fees();
+        if (!$fees) {
+            return ['has_fees' => false, 'pipeline' => 0.0, 'realized' => 0.0];
+        }
+
+        $this->applyLeadFilters($filters);
+        $rows = $this->db
+            ->select("COALESCE(NULLIF(formation,''),'—') AS formation, stage, COUNT(*) AS n")
+            ->group_by('formation, stage')
+            ->get($this->table())
+            ->result();
+
+        $pipeline = 0.0;
+        $realized = 0.0;
+        foreach ($rows as $r) {
+            $fee = $fees[$r->formation] ?? null;
+            if ($fee === null) {
+                continue;
+            }
+            if ($r->stage === 'inscrit') {
+                $realized += $fee * (int) $r->n;
+            } elseif ($r->stage !== 'perdu') {
+                $pipeline += $fee * (int) $r->n;
+            }
+        }
+        return ['has_fees' => true, 'pipeline' => $pipeline, 'realized' => $realized];
     }
 
     public function get_lead(int $id)
@@ -418,6 +597,7 @@ class School_ia_bridge_model extends App_Model
             'formation'   => substr(trim((string) ($d['formation'] ?? '')), 0, 191) ?: null,
             'score'       => isset($d['score']) && $d['score'] !== '' ? (float) $d['score'] : 0,
             'stage'       => $stage,
+            'rentree'     => substr(trim((string) ($d['rentree'] ?? '')), 0, 32) ?: null,
             'source_site' => !empty($d['source_site']) ? substr((string) $d['source_site'], 0, 191) : 'Saisie manuelle',
             'payload'     => json_encode($d, JSON_UNESCAPED_UNICODE),
             'received_at' => date('Y-m-d H:i:s'),

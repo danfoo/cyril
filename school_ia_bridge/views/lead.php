@@ -39,6 +39,9 @@
             <?php if ($lead->score !== null && $lead->score !== '') { ?>
               <span><i class="fa fa-star"></i> score <?php echo htmlspecialchars((string) $lead->score, ENT_QUOTES); ?><?php echo $lead->band ? ' · ' . htmlspecialchars(str_replace('_', ' ', (string) $lead->band), ENT_QUOTES) : ''; ?></span>
             <?php } ?>
+            <?php if (!empty($lead->rentree)) { ?>
+              <span><i class="fa fa-calendar"></i> rentrée <?php echo htmlspecialchars((string) $lead->rentree, ENT_QUOTES); ?></span>
+            <?php } ?>
           </div>
         </div>
         <div class="sia-lead-head-actions">
@@ -180,7 +183,29 @@
             </div>
           <?php echo form_close(); ?>
         </div></div>
+
+        <div class="panel_s"><div class="panel-body">
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-info"><i class="fa fa-calendar"></i></span>
+            Rentrée / année académique
+          </h5>
+          <?php echo form_open(admin_url('school_ia_bridge/set_rentree/' . (int) $lead->id)); ?>
+            <div class="input-group">
+              <input type="text" name="rentree" class="form-control" list="sia-rentrees"
+                     value="<?php echo htmlspecialchars((string) ($lead->rentree ?? ''), ENT_QUOTES); ?>"
+                     placeholder="Ex. Septembre 2026">
+              <span class="input-group-btn">
+                <button type="submit" class="btn btn-primary">OK</button>
+              </span>
+            </div>
+          <?php echo form_close(); ?>
+        </div></div>
       </div>
+      <datalist id="sia-rentrees">
+        <?php foreach (($rentrees ?? []) as $r) { ?>
+          <option value="<?php echo htmlspecialchars($r, ENT_QUOTES); ?>"></option>
+        <?php } ?>
+      </datalist>
 
       <!-- Colonne activité / notes -->
       <div class="col-md-8">

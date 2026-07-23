@@ -27,17 +27,30 @@ class School_ia_bridge extends AdminController
         }
     }
 
-    /** Tableau de bord : indicateurs + entonnoir. */
+    /** Tableau de bord : indicateurs, entonnoir, segmentation et suivi opérationnel. */
     public function dashboard()
     {
-        $period = (int) $this->input->get('period'); // 0 = tout, sinon nb de jours
-        $data['title']    = 'School IA — Tableau de bord';
-        $data['period']   = $period;
-        $data['stats']    = $this->school_ia_bridge_model->stats(60, $period);
-        $data['bySource'] = $this->school_ia_bridge_model->by_source($period);
-        $data['byStaff']  = $this->school_ia_bridge_model->by_staff($period);
-        $data['dueTasks'] = $this->school_ia_bridge_model->pending_tasks(8);
-        $data['model']    = $this->school_ia_bridge_model;
+        $filters = [
+            'period'    => (int) $this->input->get('period'), // 0 = tout, sinon nb de jours
+            'date_from' => trim((string) $this->input->get('date_from')),
+            'date_to'   => trim((string) $this->input->get('date_to')),
+            'rentree'   => trim((string) $this->input->get('rentree')),
+        ];
+        $data['title']     = 'School IA — Tableau de bord';
+        $data['filters']   = $filters;
+        $data['rentrees']  = $this->school_ia_bridge_model->rentrees();
+        $data['stats']     = $this->school_ia_bridge_model->stats(60, $filters);
+        $data['bySource']  = $this->school_ia_bridge_model->by_source($filters);
+        $data['byFormation'] = $this->school_ia_bridge_model->by_formation($filters);
+        $data['byStaff']   = $this->school_ia_bridge_model->by_staff($filters);
+        $data['unassignedCount'] = $this->school_ia_bridge_model->unassigned_count($filters);
+        $data['unassignedLeads'] = $this->school_ia_bridge_model->unassigned_leads($filters, 6);
+        $data['recentLeads']     = $this->school_ia_bridge_model->recent_leads($filters, 8);
+        $data['avgFirstContact'] = $this->school_ia_bridge_model->avg_first_contact_hours($filters);
+        $data['finance']   = $this->school_ia_bridge_model->finance_summary($filters);
+        $data['target']    = (int) get_option('sia_target_inscrits');
+        $data['dueTasks']  = $this->school_ia_bridge_model->pending_tasks(8);
+        $data['model']     = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/dashboard', $data);
     }
 
@@ -45,14 +58,17 @@ class School_ia_bridge extends AdminController
     public function index()
     {
         $filters = [
-            'q'         => $this->input->get('q'),
-            'stage'     => $this->input->get('stage'),
-            'min_score' => $this->input->get('min_score'),
+            'q'           => $this->input->get('q'),
+            'stage'       => $this->input->get('stage'),
+            'min_score'   => $this->input->get('min_score'),
+            'rentree'     => $this->input->get('rentree'),
+            'unassigned'  => $this->input->get('unassigned'),
         ];
-        $data['title']   = 'School IA — Leads';
-        $data['leads']   = $this->school_ia_bridge_model->search($filters);
-        $data['filters'] = $filters;
-        $data['model']   = $this->school_ia_bridge_model;
+        $data['title']    = 'School IA — Leads';
+        $data['leads']    = $this->school_ia_bridge_model->search($filters);
+        $data['filters']  = $filters;
+        $data['rentrees'] = $this->school_ia_bridge_model->rentrees();
+        $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/leads', $data);
     }
 
@@ -215,6 +231,8 @@ class School_ia_bridge extends AdminController
         $data['sms_has_pwd'] = get_option('sia_sms_password') !== '';
         $data['ai_has_key']  = trim((string) get_option('sia_ai_api_key')) !== '';
         $data['ai_model']    = get_option('sia_ai_model') ?: 'claude-opus-4-8';
+        $data['program_fees'] = get_option('sia_program_fees');
+        $data['target_inscrits'] = (int) get_option('sia_target_inscrits');
         $this->load->view('school_ia_bridge/settings', $data);
     }
 
@@ -236,6 +254,12 @@ class School_ia_bridge extends AdminController
         }
         if ($this->input->post('programs') !== null) {
             update_option('sia_programs', (string) $this->input->post('programs'));
+        }
+        if ($this->input->post('program_fees') !== null) {
+            update_option('sia_program_fees', (string) $this->input->post('program_fees'));
+        }
+        if ($this->input->post('target_inscrits') !== null) {
+            update_option('sia_target_inscrits', (int) $this->input->post('target_inscrits'));
         }
         if ($this->input->post('reminders_form') !== null) {
             update_option('sia_reminders_enabled', $this->input->post('reminders_enabled') ? '1' : '0');
@@ -482,10 +506,11 @@ class School_ia_bridge extends AdminController
             'q'         => $this->input->get('q'),
             'stage'     => $this->input->get('stage'),
             'min_score' => $this->input->get('min_score'),
+            'rentree'   => $this->input->get('rentree'),
         ];
         $leads = $this->school_ia_bridge_model->search($filters, 100000);
 
-        $rows = [['ID', 'Nom', 'E-mail', 'Téléphone', 'Formation', 'Score', 'Étape', 'Source', 'Reçu le']];
+        $rows = [['ID', 'Nom', 'E-mail', 'Téléphone', 'Formation', 'Score', 'Étape', 'Rentrée', 'Source', 'Reçu le']];
         foreach ($leads as $l) {
             $rows[] = [
                 (int) $l->id,
@@ -495,6 +520,7 @@ class School_ia_bridge extends AdminController
                 (string) $l->formation,
                 (string) $l->score,
                 $this->school_ia_bridge_model->stageLabel($l->stage ?? 'nouveau'),
+                (string) ($l->rentree ?? ''),
                 (string) $l->source_site,
                 (string) $l->received_at,
             ];
@@ -529,6 +555,7 @@ class School_ia_bridge extends AdminController
         $this->need('manage_leads');
         $data['title']    = 'School IA — Importer des leads';
         $data['programs'] = $this->school_ia_bridge_model->programs();
+        $data['rentrees'] = $this->school_ia_bridge_model->rentrees();
         $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/import', $data);
     }
@@ -607,6 +634,8 @@ class School_ia_bridge extends AdminController
                 $map[$i] = 'score';
             } elseif (strpos($n, 'etape') !== false || strpos($n, 'stage') !== false || strpos($n, 'statut') !== false || strpos($n, 'status') !== false) {
                 $map[$i] = 'stage';
+            } elseif (strpos($n, 'rentree') !== false || strpos($n, 'promo') !== false || strpos($n, 'session') !== false || strpos($n, 'annee') !== false) {
+                $map[$i] = 'rentree';
             } elseif (strpos($n, 'nom') !== false || strpos($n, 'name') !== false || strpos($n, 'prenom') !== false) {
                 $map[$i] = 'name';
             }
@@ -614,11 +643,12 @@ class School_ia_bridge extends AdminController
 
         $defProgram = trim((string) $this->input->post('default_program'));
         $defStage = (string) $this->input->post('default_stage') ?: 'nouveau';
+        $defRentree = trim((string) $this->input->post('default_rentree'));
 
         $imported = 0;
         $skipped = 0;
         foreach ($rows as $r) {
-            $rec = ['name' => '', 'email' => '', 'phone' => '', 'formation' => '', 'score' => '', 'stage' => ''];
+            $rec = ['name' => '', 'email' => '', 'phone' => '', 'formation' => '', 'score' => '', 'stage' => '', 'rentree' => ''];
             foreach ($map as $i => $field) {
                 $rec[$field] = isset($r[$i]) ? trim((string) $r[$i]) : '';
             }
@@ -630,6 +660,9 @@ class School_ia_bridge extends AdminController
             }
             if ($rec['stage'] === '') {
                 $rec['stage'] = $defStage;
+            }
+            if ($rec['rentree'] === '' && $defRentree !== '') {
+                $rec['rentree'] = $defRentree;
             }
             if ($rec['email'] !== '' && $this->school_ia_bridge_model->email_exists($rec['email'])) {
                 $skipped++;
@@ -649,6 +682,7 @@ class School_ia_bridge extends AdminController
         $this->need('manage_leads');
         $data['title']    = 'School IA — Ajouter un lead';
         $data['programs'] = $this->school_ia_bridge_model->programs();
+        $data['rentrees'] = $this->school_ia_bridge_model->rentrees();
         $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/lead_new', $data);
     }
@@ -673,6 +707,7 @@ class School_ia_bridge extends AdminController
             'formation' => $this->input->post('formation'),
             'score'     => $this->input->post('score'),
             'stage'     => $this->input->post('stage'),
+            'rentree'   => $this->input->post('rentree'),
         ]);
         $this->school_ia_bridge_model->add_activity($id, 'note', 'Lead créé manuellement.', get_staff_user_id());
         set_alert('success', 'Lead ajouté.');
@@ -691,6 +726,7 @@ class School_ia_bridge extends AdminController
         $data['activities'] = $this->school_ia_bridge_model->activities((int) $lead->id);
         $data['tasks']      = $this->school_ia_bridge_model->tasks_for_lead((int) $lead->id);
         $data['staff']      = $this->db->where('active', 1)->get(db_prefix() . 'staff')->result();
+        $data['rentrees']   = $this->school_ia_bridge_model->rentrees();
         $data['emailTpls']  = $this->school_ia_bridge_model->templates('email');
         $data['smsTpls']    = $this->school_ia_bridge_model->templates('sms');
         $data['documents']  = $this->school_ia_bridge_model->documents();
@@ -1031,6 +1067,21 @@ class School_ia_bridge extends AdminController
             $this->school_ia_bridge_model->add_activity($id, 'assignment',
                 'Responsable : ' . ($staffId ? get_staff_full_name($staffId) : '—'), get_staff_user_id());
             set_alert('success', 'Responsable mis à jour.');
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . $id));
+    }
+
+    /** Renseigne la rentrée / année académique visée par le lead. */
+    public function set_rentree($id = 0)
+    {
+        $this->need('manage_leads');
+        $id = (int) $id;
+        $rentree = trim((string) $this->input->post('rentree'));
+        if ($this->school_ia_bridge_model->get_lead($id)) {
+            $this->school_ia_bridge_model->set_rentree($id, $rentree);
+            $this->school_ia_bridge_model->add_activity($id, 'note',
+                'Rentrée : ' . ($rentree !== '' ? $rentree : '—'), get_staff_user_id());
+            set_alert('success', 'Rentrée mise à jour.');
         }
         redirect(admin_url('school_ia_bridge/lead/' . $id));
     }
