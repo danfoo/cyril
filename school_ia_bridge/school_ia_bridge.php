@@ -568,17 +568,18 @@ function school_ia_personalize(string $text, object $lead): string
  * Envoie un e-mail à un lead AVEC suivi : enregistre le message, insère un
  * pixel d'ouverture invisible et réécrit les liens pour tracer les clics.
  */
-function school_ia_send_tracked_email(object $lead, string $subject, string $bodyText, string $campaign, array $attachPaths = []): bool
+function school_ia_send_tracked_email(object $lead, string $subject, string $bodyText, string $campaign, array $attachPaths = [], ?int $campaignId = null): bool
 {
     $CI = &get_instance();
     $CI->load->model('school_ia_bridge/school_ia_bridge_model');
     $token = $CI->school_ia_bridge_model->log_message([
-        'lead_id'  => (int) $lead->id,
-        'channel'  => 'email',
-        'campaign' => $campaign,
-        'subject'  => $subject,
-        'status'   => 'sent',
-        'staff_id' => function_exists('get_staff_user_id') ? (get_staff_user_id() ?: null) : null,
+        'lead_id'     => (int) $lead->id,
+        'channel'     => 'email',
+        'campaign'    => $campaign,
+        'campaign_id' => $campaignId,
+        'subject'     => $subject,
+        'status'      => 'sent',
+        'staff_id'    => function_exists('get_staff_user_id') ? (get_staff_user_id() ?: null) : null,
     ]);
 
     // Corps déjà en HTML (éditeur enrichi) → tel quel ; sinon on convertit les
@@ -608,16 +609,17 @@ function school_ia_send_tracked_email(object $lead, string $subject, string $bod
 }
 
 /** Journalise un SMS envoyé (pour les statistiques). */
-function school_ia_log_sms(int $leadId, bool $ok, string $campaign): void
+function school_ia_log_sms(int $leadId, bool $ok, string $campaign, ?int $campaignId = null): void
 {
     $CI = &get_instance();
     $CI->load->model('school_ia_bridge/school_ia_bridge_model');
     $CI->school_ia_bridge_model->log_message([
-        'lead_id'  => $leadId,
-        'channel'  => 'sms',
-        'campaign' => $campaign,
-        'status'   => $ok ? 'sent' : 'failed',
-        'staff_id' => function_exists('get_staff_user_id') ? (get_staff_user_id() ?: null) : null,
+        'lead_id'     => $leadId,
+        'channel'     => 'sms',
+        'campaign'    => $campaign,
+        'campaign_id' => $campaignId,
+        'status'      => $ok ? 'sent' : 'failed',
+        'staff_id'    => function_exists('get_staff_user_id') ? (get_staff_user_id() ?: null) : null,
     ]);
 }
 
@@ -841,15 +843,19 @@ function school_ia_bridge_admin_menu()
             'href' => admin_url('school_ia_bridge/bulk'), 'position' => 1,
         ]);
     }
+    $CI->app_menu->add_sidebar_children_item('sia_campaign', [
+        'slug' => 'sia_campaigns_list', 'name' => 'Campagnes',
+        'href' => admin_url('school_ia_bridge/campaigns_list'), 'position' => 2,
+    ]);
     if ($canManage) {
         $CI->app_menu->add_sidebar_children_item('sia_campaign', [
             'slug' => 'sia_sequences', 'name' => 'Séquences de relance',
-            'href' => admin_url('school_ia_bridge/sequences'), 'position' => 2,
+            'href' => admin_url('school_ia_bridge/sequences'), 'position' => 3,
         ]);
     }
     $CI->app_menu->add_sidebar_children_item('sia_campaign', [
         'slug' => 'sia_stats', 'name' => 'Statistiques',
-        'href' => admin_url('school_ia_bridge/campaigns'), 'position' => 3,
+        'href' => admin_url('school_ia_bridge/campaigns'), 'position' => 4,
     ]);
 
     // 6. Veille

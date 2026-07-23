@@ -80,6 +80,10 @@
           <div class="col-md-8">
             <div class="panel_s"><div class="panel-body">
               <h5 class="bold" style="margin-top:0;">2. Rédiger</h5>
+              <div class="form-group">
+                <label class="control-label">Nom de la campagne</label>
+                <input type="text" name="campaign_name" class="form-control" placeholder="Ex. Rentrée 2026 — leads chauds">
+              </div>
               <?php if (!empty($emailTpls)) { ?>
                 <div class="form-group">
                   <label class="control-label">Modèle</label>
@@ -139,6 +143,10 @@
           <div class="col-md-8">
             <div class="panel_s"><div class="panel-body">
               <h5 class="bold" style="margin-top:0;">2. Message SMS</h5>
+              <div class="form-group">
+                <label class="control-label">Nom de la campagne</label>
+                <input type="text" name="campaign_name" class="form-control" placeholder="Ex. Relance SMS — dossiers incomplets">
+              </div>
               <?php if (!empty($smsTpls)) { ?>
                 <div class="form-group">
                   <label class="control-label">Modèle</label>

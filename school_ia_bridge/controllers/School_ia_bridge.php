@@ -593,9 +593,12 @@ class School_ia_bridge extends AdminController
             }
         }
         // Envoi avec suivi (pixel d'ouverture + liens traqués + journal).
-        $ok = school_ia_send_tracked_email($lead, $subject, $message, $campaign, $paths);
+        $ok = school_ia_send_tracked_email($lead, $subject, $message, $campaign, $paths, $this->currentCampaignId);
         return [$ok, $names];
     }
+
+    /** Id de la campagne nommée en cours d'envoi (rattachement des messages). */
+    private $currentCampaignId = null;
 
     /** Personnalise un texte pour un lead ({prenom}, {formation}). */
     private function personalize(string $text, object $lead): string
@@ -673,8 +676,21 @@ class School_ia_bridge extends AdminController
         $subjectTpl = trim((string) $this->input->post('subject'));
         $bodyTpl    = trim((string) $this->input->post('message'));
         $attach     = (array) $this->input->post('attachments');
+        $name       = trim((string) $this->input->post('campaign_name'));
 
         $recipients = $this->school_ia_bridge_model->email_recipients($filters);
+
+        // Persiste la campagne pour le suivi (liste + fiche détail).
+        $this->currentCampaignId = $this->school_ia_bridge_model->create_campaign([
+            'name'        => $name !== '' ? $name : ('E-mail — ' . mb_substr($subjectTpl, 0, 60)),
+            'channel'     => 'email',
+            'subject'     => $subjectTpl,
+            'body'        => $bodyTpl,
+            'filters'     => $filters,
+            'attachments' => $attach,
+            'staff_id'    => get_staff_user_id(),
+        ]);
+
         $ok = 0;
         $fail = 0;
         foreach ($recipients as $lead) {
@@ -683,15 +699,16 @@ class School_ia_bridge extends AdminController
             [$sent] = $this->deliver_email($lead, $subject, $message, $attach, 'bulk');
             if ($sent) {
                 $ok++;
-                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'email', 'E-mail (envoi groupé) : ' . $subject, get_staff_user_id());
+                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'email', 'E-mail (campagne) : ' . $subject, get_staff_user_id());
             } else {
                 $fail++;
             }
         }
+        $this->school_ia_bridge_model->set_campaign_volume((int) $this->currentCampaignId, $ok);
 
         set_alert($fail > 0 ? 'warning' : 'success',
             $ok . ' e-mail(s) envoyé(s)' . ($fail > 0 ? ', ' . $fail . ' échec(s).' : '.'));
-        redirect(admin_url('school_ia_bridge/bulk'));
+        redirect(admin_url('school_ia_bridge/campaign/' . (int) $this->currentCampaignId));
     }
 
     /** Traite l'envoi groupé de SMS (form Perfex → CSRF). */
@@ -700,25 +717,112 @@ class School_ia_bridge extends AdminController
         $this->need('send');
         $filters = $this->bulkFilters();
         $bodyTpl = trim((string) $this->input->post('text'));
+        $name    = trim((string) $this->input->post('campaign_name'));
 
         $recipients = $this->school_ia_bridge_model->sms_recipients($filters);
+
+        $campaignId = $this->school_ia_bridge_model->create_campaign([
+            'name'     => $name !== '' ? $name : ('SMS — ' . date('d/m/Y H:i')),
+            'channel'  => 'sms',
+            'subject'  => null,
+            'body'     => $bodyTpl,
+            'filters'  => $filters,
+            'staff_id' => get_staff_user_id(),
+        ]);
+
         $ok = 0;
         $fail = 0;
         foreach ($recipients as $lead) {
             $text = $this->personalize($bodyTpl, $lead);
             [$sent] = $this->lam_send_sms((string) $lead->phone, $text, (int) $lead->id);
-            school_ia_log_sms((int) $lead->id, (bool) $sent, 'bulk');
+            school_ia_log_sms((int) $lead->id, (bool) $sent, 'bulk', $campaignId);
             if ($sent) {
                 $ok++;
-                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'sms', 'SMS (envoi groupé) : ' . mb_substr($text, 0, 100), get_staff_user_id());
+                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'sms', 'SMS (campagne) : ' . mb_substr($text, 0, 100), get_staff_user_id());
             } else {
                 $fail++;
             }
         }
+        $this->school_ia_bridge_model->set_campaign_volume((int) $campaignId, $ok);
 
         set_alert($fail > 0 ? 'warning' : 'success',
             $ok . ' SMS envoyé(s)' . ($fail > 0 ? ', ' . $fail . ' échec(s).' : '.'));
-        redirect(admin_url('school_ia_bridge/bulk'));
+        redirect(admin_url('school_ia_bridge/campaign/' . (int) $campaignId));
+    }
+
+    /** Liste des campagnes (envois de masse persistés). */
+    public function campaigns_list()
+    {
+        $data['title']     = 'School IA — Campagnes';
+        $data['campaigns'] = $this->school_ia_bridge_model->campaigns_list();
+        $this->load->view('school_ia_bridge/campaigns_list', $data);
+    }
+
+    /** Fiche détail d'une campagne : KPIs + destinataires + relance. */
+    public function campaign($id = 0)
+    {
+        $id = (int) $id;
+        $campaign = $this->school_ia_bridge_model->get_campaign($id);
+        if (!$campaign) {
+            show_404();
+        }
+        $filter = (string) ($this->input->get('f') ?: 'all');
+        if (!in_array($filter, ['all', 'opened', 'clicked', 'unopened', 'converted'], true)) { $filter = 'all'; }
+
+        $data['title']       = 'Campagne — ' . $campaign->name;
+        $data['campaign']    = $campaign;
+        $data['filter']      = $filter;
+        $data['kpis']        = $this->school_ia_bridge_model->campaign_kpis($id);
+        $data['recipients']  = $this->school_ia_bridge_model->campaign_recipients_by_id($id, $filter);
+        $data['nonOpeners']  = ($campaign->channel === 'email') ? count($this->school_ia_bridge_model->campaign_non_openers($id)) : 0;
+        $data['model']       = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/campaign_detail', $data);
+    }
+
+    /** Supprime une campagne (les messages restent dans l'historique). */
+    public function campaign_delete($id = 0)
+    {
+        $this->need('send');
+        if ($this->school_ia_bridge_model->get_campaign((int) $id)) {
+            $this->school_ia_bridge_model->delete_campaign((int) $id);
+            set_alert('success', 'Campagne supprimée.');
+        }
+        redirect(admin_url('school_ia_bridge/campaigns_list'));
+    }
+
+    /** Relance les destinataires n'ayant pas ouvert une campagne e-mail. */
+    public function campaign_resend($id = 0)
+    {
+        $this->need('send');
+        $id = (int) $id;
+        $campaign = $this->school_ia_bridge_model->get_campaign($id);
+        if (!$campaign || $campaign->channel !== 'email') {
+            set_alert('warning', 'Relance impossible pour cette campagne.');
+            redirect(admin_url('school_ia_bridge/campaign/' . $id));
+        }
+        $targets = $this->school_ia_bridge_model->campaign_non_openers($id);
+        if (empty($targets)) {
+            set_alert('success', 'Aucun non-ouvreur à relancer — tout le monde a ouvert. 🎉');
+            redirect(admin_url('school_ia_bridge/campaign/' . $id));
+        }
+
+        // Les nouveaux envois sont rattachés à la même campagne (le suivi cumule).
+        $this->currentCampaignId = $id;
+        $subjectTpl = 'Rappel : ' . (string) $campaign->subject;
+        $attach = $campaign->attachments ? array_filter(array_map('intval', explode(',', (string) $campaign->attachments))) : [];
+        $ok = 0;
+        foreach ($targets as $lead) {
+            $subject = $this->personalize($subjectTpl, $lead);
+            $message = $this->personalize((string) $campaign->body, $lead);
+            [$sent] = $this->deliver_email($lead, $subject, $message, $attach, 'bulk');
+            if ($sent) {
+                $ok++;
+                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'email', 'Relance non-ouvreurs : ' . $subject, get_staff_user_id());
+            }
+        }
+        $this->school_ia_bridge_model->set_campaign_volume($id, (int) $campaign->volume + $ok);
+        set_alert('success', $ok . ' relance(s) envoyée(s) aux non-ouvreurs.');
+        redirect(admin_url('school_ia_bridge/campaign/' . $id));
     }
 
     /** Envoie un SMS au lead via LAfricaMobile. */

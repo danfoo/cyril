@@ -278,6 +278,28 @@ class School_ia_bridge_model extends App_Model
                 KEY `name` (`name`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
+        // Campagnes nommées (envois de masse persistés).
+        if (!$this->db->table_exists($this->campaignsTable())) {
+            $this->db->query('CREATE TABLE `' . $this->campaignsTable() . "` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `name` varchar(191) NOT NULL,
+                `channel` varchar(10) NOT NULL DEFAULT 'email',
+                `subject` varchar(255) DEFAULT NULL,
+                `body` text DEFAULT NULL,
+                `filters` text DEFAULT NULL,
+                `attachments` varchar(255) DEFAULT NULL,
+                `volume` int(11) NOT NULL DEFAULT 0,
+                `staff_id` int(11) DEFAULT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `channel` (`channel`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+        // Lien message → campagne nommée.
+        if ($this->db->table_exists($this->messagesTable())
+            && !$this->db->field_exists('campaign_id', $this->messagesTable())) {
+            $this->db->query('ALTER TABLE `' . $this->messagesTable() . '` ADD `campaign_id` INT NULL DEFAULT NULL, ADD KEY `campaign_id` (`campaign_id`)');
+        }
 
         $this->seed_default_templates();
     }
@@ -956,22 +978,159 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_messages';
     }
 
+    private function campaignsTable(): string
+    {
+        return db_prefix() . 'school_ia_campaigns';
+    }
+
     /** Enregistre un message envoyé et renvoie son jeton de suivi. */
     public function log_message(array $d): string
     {
         $token = bin2hex(random_bytes(8));
         $this->db->insert($this->messagesTable(), [
-            'lead_id'  => (int) ($d['lead_id'] ?? 0) ?: null,
-            'channel'  => in_array($d['channel'] ?? 'email', ['email', 'sms'], true) ? $d['channel'] : 'email',
-            'campaign' => substr((string) ($d['campaign'] ?? 'single'), 0, 20),
-            'subject'  => isset($d['subject']) ? substr((string) $d['subject'], 0, 255) : null,
-            'token'    => $token,
-            'status'   => substr((string) ($d['status'] ?? 'sent'), 0, 12),
-            'clicks'   => 0,
-            'staff_id' => $d['staff_id'] ?? null,
-            'sent_at'  => date('Y-m-d H:i:s'),
+            'lead_id'     => (int) ($d['lead_id'] ?? 0) ?: null,
+            'channel'     => in_array($d['channel'] ?? 'email', ['email', 'sms'], true) ? $d['channel'] : 'email',
+            'campaign'    => substr((string) ($d['campaign'] ?? 'single'), 0, 20),
+            'campaign_id' => (int) ($d['campaign_id'] ?? 0) ?: null,
+            'subject'     => isset($d['subject']) ? substr((string) $d['subject'], 0, 255) : null,
+            'token'       => $token,
+            'status'      => substr((string) ($d['status'] ?? 'sent'), 0, 12),
+            'clicks'      => 0,
+            'staff_id'    => $d['staff_id'] ?? null,
+            'sent_at'     => date('Y-m-d H:i:s'),
         ]);
         return $token;
+    }
+
+    // ---------- Campagnes nommées (liste + détail) ----------
+
+    /** Crée une campagne et renvoie son id. */
+    public function create_campaign(array $d): int
+    {
+        $this->ensure_schema();
+        $this->db->insert($this->campaignsTable(), [
+            'name'        => substr(trim((string) ($d['name'] ?? '')), 0, 191) ?: ('Campagne du ' . date('d/m/Y H:i')),
+            'channel'     => in_array($d['channel'] ?? 'email', ['email', 'sms'], true) ? $d['channel'] : 'email',
+            'subject'     => isset($d['subject']) ? substr((string) $d['subject'], 0, 255) : null,
+            'body'        => (string) ($d['body'] ?? ''),
+            'filters'     => json_encode($d['filters'] ?? [], JSON_UNESCAPED_UNICODE),
+            'attachments' => !empty($d['attachments']) ? substr(implode(',', array_map('intval', (array) $d['attachments'])), 0, 255) : null,
+            'volume'      => (int) ($d['volume'] ?? 0),
+            'staff_id'    => $d['staff_id'] ?? null,
+            'created_at'  => date('Y-m-d H:i:s'),
+        ]);
+        return (int) $this->db->insert_id();
+    }
+
+    public function get_campaign(int $id)
+    {
+        return $this->db->where('id', $id)->get($this->campaignsTable())->row();
+    }
+
+    public function set_campaign_volume(int $id, int $volume): void
+    {
+        $this->db->where('id', $id)->update($this->campaignsTable(), ['volume' => $volume]);
+    }
+
+    /** Liste des campagnes avec agrégats (volume réel, ouvertures, clics, conversions). */
+    public function campaigns_list(int $limit = 200): array
+    {
+        $this->ensure_schema();
+        $c = $this->campaignsTable();
+        $m = $this->messagesTable();
+        return $this->db->query(
+            'SELECT c.*,
+                    COUNT(msg.id) AS sent,
+                    SUM(msg.opened_at IS NOT NULL) AS opened,
+                    SUM(msg.clicks > 0) AS clicked,
+                    COUNT(DISTINCT CASE WHEN msg.clicks > 0 AND l.stage = "inscrit" THEN msg.lead_id END) AS conversions
+             FROM `' . $c . '` c
+             LEFT JOIN `' . $m . '` msg ON msg.campaign_id = c.id
+             LEFT JOIN `' . $this->table() . '` l ON l.id = msg.lead_id
+             GROUP BY c.id
+             ORDER BY c.created_at DESC
+             LIMIT ' . (int) $limit
+        )->result();
+    }
+
+    /** Agrégats d'une campagne précise. */
+    public function campaign_kpis(int $id): array
+    {
+        $m = $this->messagesTable();
+        $row = $this->db->query(
+            'SELECT COUNT(msg.id) AS sent,
+                    SUM(msg.opened_at IS NOT NULL) AS opened,
+                    SUM(msg.clicks > 0) AS clicked,
+                    SUM(msg.status = "failed") AS failed,
+                    COUNT(DISTINCT CASE WHEN msg.clicks > 0 AND l.stage = "inscrit" THEN msg.lead_id END) AS conversions,
+                    COUNT(DISTINCT CASE WHEN msg.clicks > 0 THEN msg.lead_id END) AS clickers
+             FROM `' . $m . '` msg
+             LEFT JOIN `' . $this->table() . '` l ON l.id = msg.lead_id
+             WHERE msg.campaign_id = ?',
+            [$id]
+        )->row();
+        $sent = (int) ($row->sent ?? 0);
+        $opened = (int) ($row->opened ?? 0);
+        $clicked = (int) ($row->clicked ?? 0);
+        $clickers = (int) ($row->clickers ?? 0);
+        return [
+            'sent'        => $sent,
+            'opened'      => $opened,
+            'clicked'     => $clicked,
+            'failed'      => (int) ($row->failed ?? 0),
+            'conversions' => (int) ($row->conversions ?? 0),
+            'clickers'    => $clickers,
+            'open_rate'   => $sent > 0 ? round($opened * 100 / $sent, 1) : 0.0,
+            'click_rate'  => $sent > 0 ? round($clicked * 100 / $sent, 1) : 0.0,
+            'conv_rate'   => $clickers > 0 ? round((int) ($row->conversions ?? 0) * 100 / $clickers, 1) : 0.0,
+        ];
+    }
+
+    /**
+     * Destinataires d'une campagne, filtrables : all | opened | clicked |
+     * unopened | converted.
+     */
+    public function campaign_recipients_by_id(int $id, string $filter = 'all', int $limit = 1000): array
+    {
+        $m = $this->messagesTable();
+        $cond = 'msg.campaign_id = ?';
+        switch ($filter) {
+            case 'opened':    $cond .= ' AND msg.opened_at IS NOT NULL'; break;
+            case 'unopened':  $cond .= ' AND msg.opened_at IS NULL'; break;
+            case 'clicked':   $cond .= ' AND msg.clicks > 0'; break;
+            case 'converted': $cond .= ' AND msg.clicks > 0 AND l.stage = "inscrit"'; break;
+        }
+        return $this->db->query(
+            'SELECT msg.lead_id, l.name AS lead_name, l.email, l.phone, l.stage AS lead_stage, l.score AS lead_score,
+                    msg.opened_at, msg.clicks, msg.status, msg.sent_at
+             FROM `' . $m . '` msg
+             LEFT JOIN `' . $this->table() . '` l ON l.id = msg.lead_id
+             WHERE ' . $cond . '
+             ORDER BY (msg.clicks > 0) DESC, (msg.opened_at IS NOT NULL) DESC, msg.sent_at DESC
+             LIMIT ' . (int) $limit,
+            [$id]
+        )->result();
+    }
+
+    /** Leads d'une campagne e-mail qui n'ont pas ouvert (pour relance). */
+    public function campaign_non_openers(int $id): array
+    {
+        $m = $this->messagesTable();
+        return $this->db->query(
+            'SELECT DISTINCT l.*
+             FROM `' . $m . '` msg
+             JOIN `' . $this->table() . '` l ON l.id = msg.lead_id
+             WHERE msg.campaign_id = ? AND msg.channel = "email" AND msg.opened_at IS NULL
+               AND l.email IS NOT NULL AND l.email <> ""',
+            [$id]
+        )->result();
+    }
+
+    public function delete_campaign(int $id): void
+    {
+        $this->db->where('id', $id)->delete($this->campaignsTable());
+        // Les messages restent (historique) mais perdent le rattachement.
+        $this->db->where('campaign_id', $id)->update($this->messagesTable(), ['campaign_id' => null]);
     }
 
     public function mark_open(string $token): void
