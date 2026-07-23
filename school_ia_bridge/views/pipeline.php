@@ -1,10 +1,24 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
 <style>
-  .sia-col { min-height: 60px; border-radius: 6px; transition: background .15s; }
+  /* Piste horizontale : colonnes plus larges et de largeur fixe → scroll
+     horizontal propre quand il y a beaucoup d'étapes. */
+  .sia-pipe-track { display: flex; gap: 14px; padding-bottom: 12px; }
+  .sia-pipe-col { flex: 0 0 300px; width: 300px; }
+  /* La liste de cartes défile verticalement pour ne pas exploser la page quand
+     une colonne contient une vingtaine de leads. */
+  .sia-col { min-height: 60px; border-radius: 6px; transition: background .15s; max-height: calc(100vh - 250px); overflow-y: auto; overflow-x: hidden; padding: 2px; }
   .sia-col.sia-over { background: #eef4ff; outline: 2px dashed #2e6ff2; }
-  .sia-card { cursor: grab; }
+
+  /* Carte : accent coloré à gauche selon l'étape (progression visible),
+     poignée de glisser-déposer et retour visuel au survol. */
+  .sia-card { cursor: grab; position: relative; transition: box-shadow .15s ease, transform .15s ease; }
+  .sia-card:hover { box-shadow: 0 6px 16px rgba(15,23,42,.13); transform: translateY(-1px); }
   .sia-card:active { cursor: grabbing; }
+  .sia-drag-handle { position: absolute; top: 8px; right: 9px; color: #c3c9d4; font-size: 13px; line-height: 1; cursor: grab; }
+  .sia-card:hover .sia-drag-handle { color: #6b7280; }
+  .sia-stage-badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 20px; margin-top: 6px; }
+  @media (max-width: 768px) { .sia-pipe-col { flex-basis: 260px; width: 260px; } }
 </style>
 <div id="wrapper">
   <div class="content">
@@ -26,10 +40,10 @@
     </div>
 
     <div style="overflow-x:auto;">
-      <div style="display:flex; gap:12px; min-width:900px; padding-bottom:10px;">
+      <div class="sia-pipe-track">
         <?php foreach ($grouped as $slug => $leads) {
             $color = $model->stageColor($slug); ?>
-          <div style="flex:1 1 0; min-width:210px;">
+          <div class="sia-pipe-col">
             <div class="panel_s" style="border-top:3px solid <?php echo $color; ?>;">
               <div class="panel-body">
                 <h5 class="bold" style="margin-top:0;">
@@ -40,16 +54,20 @@
 
                 <div class="sia-col" data-stage="<?php echo $slug; ?>">
                 <?php foreach ($leads as $lead) { ?>
-                  <div class="panel_s sia-card" draggable="true" data-id="<?php echo (int) $lead->id; ?>" style="margin-bottom:8px;">
-                    <div class="panel-body" style="padding:10px;">
-                      <a href="<?php echo admin_url('school_ia_bridge/lead/' . (int) $lead->id); ?>" class="bold">
+                  <div class="panel_s sia-card" draggable="true" data-id="<?php echo (int) $lead->id; ?>" style="margin-bottom:8px; border-left:4px solid <?php echo $color; ?>;">
+                    <div class="panel-body" style="padding:10px 12px;">
+                      <span class="sia-drag-handle" title="Glissez la carte pour changer d'étape"><i class="fa fa-arrows"></i></span>
+                      <a href="<?php echo admin_url('school_ia_bridge/lead/' . (int) $lead->id); ?>" class="bold" style="padding-right:18px; display:inline-block;">
                         <?php echo htmlspecialchars((string) ($lead->name ?: ('Lead #' . $lead->id)), ENT_QUOTES); ?>
                       </a>
                       <div class="text-muted" style="font-size:12px; margin:4px 0;">
                         <?php echo htmlspecialchars((string) ($lead->formation ?: '—'), ENT_QUOTES); ?>
                         · <span class="label label-info"><?php echo htmlspecialchars((string) $lead->score, ENT_QUOTES); ?></span>
                       </div>
-                      <div class="btn-group btn-group-xs">
+                      <span class="sia-stage-badge" style="background:<?php echo $color; ?>1a; color:<?php echo $color; ?>;">
+                        <?php echo htmlspecialchars($model->stageLabel($slug), ENT_QUOTES); ?>
+                      </span>
+                      <div class="btn-group btn-group-xs" style="margin-top:6px;">
                         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
                           Déplacer <span class="caret"></span>
                         </button>
