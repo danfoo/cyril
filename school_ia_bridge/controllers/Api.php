@@ -114,6 +114,37 @@ class Api extends App_Controller
 
         $externalId = (string) ($this->input->get('external_id') ?: $this->input->post('external_id'));
         $sourceSite = (string) ($this->input->get('source_site') ?: $this->input->post('source_site'));
+        $kind       = (string) ($this->input->get('kind') ?: $this->input->post('kind') ?: 'message');
+
+        $this->load->model('school_ia_bridge/school_ia_bridge_model');
+
+        // Point d'entrée mutualisé : une mention de concurrent peut passer par
+        // ici (kind=competitor) car le chemin « receive_message » n'est pas
+        // filtré par l'hébergeur, contrairement à « receive_competitor ».
+        if ($kind === 'competitor') {
+            update_option('sia_competitor_calls', (int) get_option('sia_competitor_calls') + 1);
+            $name        = trim((string) ($this->input->get('name') ?: $this->input->post('name')));
+            $context     = (string) ($this->input->get('context') ?: $this->input->post('context'));
+            $externalRef = (string) ($this->input->get('external_ref') ?: $this->input->post('external_ref'));
+            if ($externalId === '' || $sourceSite === '' || $name === '') {
+                $this->respond(['ok' => false, 'error' => 'invalid_payload'], 400);
+                return;
+            }
+            $lead = $this->school_ia_bridge_model->find_by_external($externalId, $sourceSite);
+            if (!$lead) {
+                $this->respond(['ok' => false, 'error' => 'lead_not_found'], 404);
+                return;
+            }
+            $this->school_ia_bridge_model->add_competitor_mention(
+                (int) $lead->id,
+                $name,
+                $context,
+                $externalRef !== '' ? $externalRef : null
+            );
+            $this->respond(['ok' => true, 'kind' => 'competitor']);
+            return;
+        }
+
         $role       = (string) ($this->input->get('role') ?: $this->input->post('role'));
         $content    = (string) ($this->input->get('content') ?: $this->input->post('content'));
         $canal      = (string) ($this->input->get('canal') ?: $this->input->post('canal') ?: 'web');
@@ -124,7 +155,6 @@ class Api extends App_Controller
             return;
         }
 
-        $this->load->model('school_ia_bridge/school_ia_bridge_model');
         $lead = $this->school_ia_bridge_model->find_by_external($externalId, $sourceSite);
         if (!$lead) {
             $this->respond(['ok' => false, 'error' => 'lead_not_found'], 404);

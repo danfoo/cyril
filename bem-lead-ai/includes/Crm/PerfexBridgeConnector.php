@@ -151,12 +151,16 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         $payload = [
             'external_id'  => (string) $leadId,
             'source_site'  => home_url(),
+            'kind'         => 'competitor',
             'external_ref' => 'm' . $mentionId,
             'name'         => $name,
             'context'      => mb_substr($context, 0, 1500),
         ];
+        // On passe par « receive_message » (chemin non filtré par l'hébergeur)
+        // avec kind=competitor : « receive_competitor » était intercepté et
+        // renvoyait un faux 200 sans jamais atteindre le code.
         $query = http_build_query(array_merge($payload, ['secret' => $secret]));
-        $url = $base . '/school_ia_bridge/api/receive_competitor?' . $query;
+        $url = $base . '/school_ia_bridge/api/receive_message?' . $query;
 
         $response = wp_remote_get($url, [
             'timeout' => 20,
