@@ -683,7 +683,9 @@ class School_ia_bridge_model extends App_Model
         $mt = $this->messagesTable();
         $emailSent = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'email')->count_all_results($mt);
         $emailOpened = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'email')->where('opened_at IS NOT NULL', null, false)->count_all_results($mt);
+        $emailClicked = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'email')->where('clicks >', 0)->count_all_results($mt);
         $smsSent = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'sms')->where('status', 'sent')->count_all_results($mt);
+        $smsFailed = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'sms')->where('status', 'failed')->count_all_results($mt);
 
         // Tâches terminées dans la période
         $tasksDone = (int) $this->db->where('created_at >=', $from)->where('created_at <=', $to)->where('type', 'task')->count_all_results($this->activityTable());
@@ -697,10 +699,80 @@ class School_ia_bridge_model extends App_Model
             'top_formations' => $topFormations,
             'email_sent'     => $emailSent,
             'email_opened'   => $emailOpened,
+            'email_clicked'  => $emailClicked,
             'open_rate'      => $emailSent > 0 ? round($emailOpened * 100 / $emailSent, 1) : 0,
+            'click_rate'     => $emailSent > 0 ? round($emailClicked * 100 / $emailSent, 1) : 0,
             'sms_sent'       => $smsSent,
+            'sms_failed'     => $smsFailed,
             'tasks'          => $tasksDone,
         ];
+    }
+
+    /** Performance par conseiller sur un intervalle de dates (pour le reporting). */
+    public function by_staff_range(string $from, string $to): array
+    {
+        return $this->db
+            ->select('CONCAT(s.firstname, " ", s.lastname) AS name, COUNT(l.id) AS total, '
+                . 'SUM(CASE WHEN l.stage = "inscrit" THEN 1 ELSE 0 END) AS inscrits')
+            ->from($this->table() . ' l')
+            ->join(db_prefix() . 'staff s', 's.staffid = l.owner_id', 'inner')
+            ->where('l.received_at >=', $from)
+            ->where('l.received_at <=', $to)
+            ->group_by('l.owner_id')
+            ->order_by('total', 'desc')
+            ->get()
+            ->result();
+    }
+
+    /** Répartition des activités (interactions) par type sur un intervalle. */
+    public function activity_breakdown(string $from, string $to): array
+    {
+        $out = [];
+        foreach ($this->db
+            ->select('type, COUNT(*) AS n')
+            ->where('created_at >=', $from)->where('created_at <=', $to)
+            ->group_by('type')
+            ->get($this->activityTable())->result() as $r) {
+            $out[(string) $r->type] = (int) $r->n;
+        }
+        return $out;
+    }
+
+    /**
+     * Série temporelle des nouveaux leads sur un intervalle, en buckets continus
+     * (zéros inclus). $granularity : 'hour', 'day' ou 'month'.
+     * @return array<int,array{label:string,value:int}>
+     */
+    public function leads_series(string $from, string $to, string $granularity = 'day'): array
+    {
+        $conf = [
+            'hour'  => ['%Y-%m-%d %H', 'H\h', '+1 hour'],
+            'day'   => ['%Y-%m-%d', 'd/m', '+1 day'],
+            'month' => ['%Y-%m', 'M', '+1 month'],
+        ];
+        [$sqlFmt, $phpFmt, $step] = $conf[$granularity] ?? $conf['day'];
+
+        $rows = $this->db->query(
+            'SELECT DATE_FORMAT(received_at, ?) AS k, COUNT(*) AS n FROM `' . $this->table() . '`
+             WHERE received_at >= ? AND received_at <= ? GROUP BY k',
+            [$sqlFmt, $from, $to]
+        )->result();
+        $map = [];
+        foreach ($rows as $r) { $map[$r->k] = (int) $r->n; }
+
+        // Correspondance clé PHP → clé SQL (mêmes composantes date).
+        $keyFmt = ['%Y-%m-%d %H' => 'Y-m-d H', '%Y-%m-%d' => 'Y-m-d', '%Y-%m' => 'Y-m'][$sqlFmt];
+
+        $series = [];
+        $cur = strtotime($from);
+        $end = strtotime($to);
+        $guard = 0;
+        while ($cur <= $end && $guard++ < 1000) {
+            $k = date($keyFmt, $cur);
+            $series[] = ['label' => date($phpFmt, $cur), 'value' => $map[$k] ?? 0];
+            $cur = strtotime($step, $cur);
+        }
+        return $series;
     }
 
     public function save_report(array $d): int
@@ -725,6 +797,19 @@ class School_ia_bridge_model extends App_Model
     public function get_report(int $id)
     {
         return $this->db->where('id', $id)->get(db_prefix() . 'school_ia_reports')->row();
+    }
+
+    /** Dernier rapport IA enregistré pour exactement cette période (ou null). */
+    public function latest_report(string $period, string $from, string $to)
+    {
+        return $this->db
+            ->where('period', $period)
+            ->where('date_from', $from)
+            ->where('date_to', $to)
+            ->order_by('created_at', 'desc')
+            ->limit(1)
+            ->get(db_prefix() . 'school_ia_reports')
+            ->row();
     }
 
     public function delete_report(int $id): void

@@ -296,6 +296,80 @@ function sia_pie_block(array $slices, int $size = 150): string
         . '<div style="flex:0 0 auto;">' . $svg . '</div>' . $legend . '</div>';
 }
 
+/**
+ * Histogramme SVG autonome (barres verticales à dégradé, sans dépendance JS).
+ * $series : liste de ['label' => string, 'value' => number].
+ */
+function sia_bar_chart(array $series, int $height = 160): string
+{
+    if (empty($series)) {
+        return '<p class="text-muted" style="margin:8px 0 0;">Aucune donnée sur cette période.</p>';
+    }
+    $max = 1;
+    foreach ($series as $s) { $max = max($max, (int) $s['value']); }
+
+    $n       = count($series);
+    $slot    = 46;
+    $barW    = 26;
+    $padTop  = 18;
+    $padBot  = 26;
+    $chartH  = $height - $padTop - $padBot;
+    $w       = $n * $slot;
+    $labelEvery = (int) max(1, ceil($n / 16));
+
+    $svg  = '<svg viewBox="0 0 ' . $w . ' ' . $height . '" width="100%" height="' . $height . '" preserveAspectRatio="xMinYMid meet" style="display:block;min-width:' . $w . 'px;">';
+    $svg .= '<defs><linearGradient id="siaBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#4f46e5"/></linearGradient></defs>';
+    foreach ($series as $i => $s) {
+        $val = (int) $s['value'];
+        $h   = $val > 0 ? (int) max(3, round($val / $max * $chartH)) : 0;
+        $x   = $i * $slot + ($slot - $barW) / 2;
+        $y   = $padTop + ($chartH - $h);
+        if ($h > 0) {
+            $svg .= '<rect x="' . $x . '" y="' . $y . '" width="' . $barW . '" height="' . $h . '" rx="5" fill="url(#siaBarGrad)"/>';
+            $svg .= '<text x="' . ($x + $barW / 2) . '" y="' . ($y - 5) . '" text-anchor="middle" style="font-size:10px;font-weight:700;fill:var(--sia-text,#0f172a);">' . $val . '</text>';
+        } else {
+            $svg .= '<rect x="' . $x . '" y="' . ($padTop + $chartH - 2) . '" width="' . $barW . '" height="2" rx="1" fill="#cbd5e1"/>';
+        }
+        if ($i % $labelEvery === 0) {
+            $svg .= '<text x="' . ($x + $barW / 2) . '" y="' . ($height - 8) . '" text-anchor="middle" style="font-size:10px;fill:var(--sia-muted,#64748b);">' . htmlspecialchars((string) $s['label'], ENT_QUOTES) . '</text>';
+        }
+    }
+    $svg .= '</svg>';
+    return '<div style="overflow-x:auto;margin-top:6px;">' . $svg . '</div>';
+}
+
+/**
+ * Badge de variation vs période précédente (▲ vert / ▼ rouge / — neutre).
+ * Hausse considérée « positive » (adapté aux leads, inscrits, envois…).
+ */
+function sia_delta($current, $previous): string
+{
+    $cur = (float) $current;
+    $prev = (float) $previous;
+    $base = 'font-size:11.5px;font-weight:600;';
+    if ($prev == 0.0) {
+        if ($cur == 0.0) {
+            return '<span style="' . $base . 'color:#94a3b8;">— vs préc.</span>';
+        }
+        return '<span style="' . $base . 'color:#16a34a;">▲ nouveau vs préc.</span>';
+    }
+    $pct = (int) round(($cur - $prev) / $prev * 100);
+    if ($pct === 0) {
+        return '<span style="' . $base . 'color:#94a3b8;">→ 0 % vs préc.</span>';
+    }
+    $up = $pct > 0;
+    return '<span style="' . $base . 'color:' . ($up ? '#16a34a' : '#dc2626') . ';">'
+        . ($up ? '▲ +' : '▼ ') . $pct . ' % vs préc.</span>';
+}
+
+/** Intervalle de la période PRÉCÉDENTE (même granularité). Renvoie [from,to,label]. */
+function school_ia_prev_range(string $period, string $from): array
+{
+    $shift = ['day' => '-1 day', 'week' => '-1 week', 'month' => '-1 month', 'year' => '-1 year'][$period] ?? '-1 month';
+    $prevRef = date('Y-m-d', strtotime($shift, strtotime($from)));
+    return school_ia_period_range($period, $prevRef);
+}
+
 /** Formate un tableau associatif en "clé: valeur, clé: valeur". */
 function school_ia_kv(array $arr): string
 {

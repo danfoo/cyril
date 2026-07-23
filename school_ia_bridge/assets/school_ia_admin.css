@@ -462,3 +462,11 @@
 
 /* Camembert : anneau de fond adapté au thème (le reste est en styles inline) */
 #wrapper .content .sia-donut-track { stroke: var(--sia-surface-2); }
+
+/* ---- Impression / export PDF (Reporting) ---- */
+@media print {
+  .sia-no-print { display: none !important; }
+  #wrapper .content .panel_s { box-shadow: none !important; border: 1px solid #e6e9f0 !important; break-inside: avoid; }
+  #wrapper .content { background: #fff !important; }
+  a[href]:after { content: ""; } /* n'imprime pas les URL entre parenthèses */
+}

@@ -90,18 +90,114 @@ class School_ia_bridge extends AdminController
         $date   = (string) $this->input->get('date');
         [$from, $to, $label] = school_ia_period_range($period, $date);
 
-        $data['title']   = 'School IA — Reporting';
-        $data['period']  = $period;
-        $data['date']    = $date;
-        $data['label']   = $label;
-        $data['from']    = $from;
-        $data['to']      = $to;
-        $data['agg']     = $this->school_ia_bridge_model->report_data($from, $to);
-        $data['reports'] = $this->school_ia_bridge_model->list_reports();
-        $data['report']  = $this->input->get('report') ? $this->school_ia_bridge_model->get_report((int) $this->input->get('report')) : null;
+        // Période précédente (comparaison) + granularité du graphique de tendance.
+        [$pFrom, $pTo, $pLabel] = school_ia_prev_range($period, $from);
+        $granularity = ['day' => 'hour', 'week' => 'day', 'month' => 'day', 'year' => 'month'][$period] ?? 'day';
+
+        $data['title']    = 'School IA — Reporting';
+        $data['period']   = $period;
+        $data['date']     = $date;
+        $data['label']    = $label;
+        $data['from']     = $from;
+        $data['to']       = $to;
+        $data['agg']      = $this->school_ia_bridge_model->report_data($from, $to);
+        $data['prevAgg']  = $this->school_ia_bridge_model->report_data($pFrom, $pTo);
+        $data['prevLabel'] = $pLabel;
+        $data['series']   = $this->school_ia_bridge_model->leads_series($from, $to, $granularity);
+        $data['byStaff']  = $this->school_ia_bridge_model->by_staff_range($from, $to);
+        $data['activityBreakdown'] = $this->school_ia_bridge_model->activity_breakdown($from, $to);
+        $data['reports']  = $this->school_ia_bridge_model->list_reports();
+        // Affiche par défaut le dernier rapport IA de la période (s'il existe).
+        $data['report']   = $this->input->get('report')
+            ? $this->school_ia_bridge_model->get_report((int) $this->input->get('report'))
+            : $this->school_ia_bridge_model->latest_report($period, $from, $to);
         $data['ai_ready'] = trim((string) get_option('sia_ai_api_key')) !== '';
-        $data['model']   = $this->school_ia_bridge_model;
+        $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/reporting', $data);
+    }
+
+    /** Export CSV de la synthèse de la période (KPIs + ventilations). */
+    public function reporting_export()
+    {
+        $period = $this->input->get('period') ?: 'month';
+        $date   = (string) $this->input->get('date');
+        [$from, $to, $label] = school_ia_period_range($period, $date);
+        $agg    = $this->school_ia_bridge_model->report_data($from, $to);
+        $byStaff = $this->school_ia_bridge_model->by_staff_range($from, $to);
+
+        $rows = [];
+        $rows[] = ['School IA — ' . $label];
+        $rows[] = ['Du', date('d/m/Y', strtotime($from)), 'au', date('d/m/Y', strtotime($to))];
+        $rows[] = [];
+        $rows[] = ['Indicateur', 'Valeur'];
+        $rows[] = ['Nouveaux leads', $agg['leads_total']];
+        $rows[] = ['Inscrits', $agg['inscrits']];
+        $rows[] = ['Taux de conversion (%)', $agg['conversion']];
+        $rows[] = ['E-mails envoyés', $agg['email_sent']];
+        $rows[] = ['E-mails ouverts', $agg['email_opened']];
+        $rows[] = ['Taux d\'ouverture (%)', $agg['open_rate']];
+        $rows[] = ['E-mails cliqués', $agg['email_clicked']];
+        $rows[] = ['Taux de clic (%)', $agg['click_rate']];
+        $rows[] = ['SMS envoyés', $agg['sms_sent']];
+        $rows[] = ['SMS en échec', $agg['sms_failed']];
+        $rows[] = ['Tâches/relances créées', $agg['tasks']];
+        $rows[] = [];
+        $rows[] = ['Étape du pipeline', 'Leads'];
+        foreach ($agg['by_stage'] as $stage => $n) { $rows[] = [$stage, $n]; }
+        $rows[] = [];
+        $rows[] = ['Formation', 'Leads'];
+        foreach ($agg['top_formations'] as $f => $n) { $rows[] = [$f, $n]; }
+        $rows[] = [];
+        $rows[] = ['Source', 'Leads'];
+        foreach ($agg['by_source'] as $s => $n) { $rows[] = [$s, $n]; }
+        $rows[] = [];
+        $rows[] = ['Conseiller', 'Leads', 'Inscrits'];
+        foreach ($byStaff as $st) { $rows[] = [$st->name, (int) $st->total, (int) $st->inscrits]; }
+
+        $this->load->helper('download');
+        $out = "\xEF\xBB\xBF";
+        foreach ($rows as $r) {
+            $out .= implode(';', array_map(static function ($c) {
+                return '"' . str_replace('"', '""', (string) $c) . '"';
+            }, $r)) . "\r\n";
+        }
+        force_download('rapport_' . $period . '_' . date('Ymd', strtotime($from)) . '.csv', $out);
+    }
+
+    /** Envoie un rapport IA enregistré par e-mail (form Perfex → CSRF). */
+    public function reporting_email()
+    {
+        $reportId = (int) $this->input->post('report_id');
+        $to       = trim((string) $this->input->post('email'));
+        $report   = $this->school_ia_bridge_model->get_report($reportId);
+        $backUrl  = admin_url('school_ia_bridge/reporting?report=' . $reportId);
+
+        if (!$report) {
+            set_alert('warning', 'Rapport introuvable.');
+            redirect(admin_url('school_ia_bridge/reporting'));
+        }
+        if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            set_alert('warning', 'Adresse e-mail invalide.');
+            redirect($backUrl);
+        }
+
+        $subject = 'School IA — ' . (string) $report->label;
+        $html = '<h3 style="font-family:Arial,sans-serif;">' . htmlspecialchars((string) $report->label, ENT_QUOTES) . '</h3>'
+            . '<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#222;">' . (string) $report->content . '</div>';
+
+        $this->load->library('email');
+        $this->email->clear(true);
+        $this->email->from(get_option('smtp_email') ?: get_option('companyname'), get_option('companyname'));
+        $this->email->to($to);
+        $this->email->subject($subject);
+        $this->email->message($html);
+        $this->email->set_mailtype('html');
+        if ($this->email->send(false)) {
+            set_alert('success', 'Rapport envoyé à ' . $to . '.');
+        } else {
+            set_alert('danger', 'Échec de l\'envoi. Vérifiez la configuration SMTP de Perfex (Setup → Settings → Email).');
+        }
+        redirect($backUrl);
     }
 
     /** Génère le rapport IA pour la période choisie (form Perfex → CSRF). */
@@ -112,22 +208,32 @@ class School_ia_bridge extends AdminController
         [$from, $to, $label] = school_ia_period_range($period, $date);
         $agg = $this->school_ia_bridge_model->report_data($from, $to);
 
+        // Comparaison avec la période précédente + performance par conseiller.
+        [$pFrom, $pTo, $pLabel] = school_ia_prev_range($period, $from);
+        $prev = $this->school_ia_bridge_model->report_data($pFrom, $pTo);
+        $byStaff = $this->school_ia_bridge_model->by_staff_range($from, $to);
+        $staffLines = [];
+        foreach ($byStaff as $st) {
+            $staffLines[] = $st->name . ' (' . (int) $st->total . ' leads, ' . (int) $st->inscrits . ' inscrits)';
+        }
+
         // Données mises en forme pour l'IA.
         $lines = [];
         $lines[] = 'Période : ' . $label . ' (du ' . $from . ' au ' . $to . ')';
-        $lines[] = 'Nouveaux leads : ' . $agg['leads_total'];
-        $lines[] = 'Inscrits : ' . $agg['inscrits'] . ' (taux de conversion ' . $agg['conversion'] . '%)';
+        $lines[] = 'Nouveaux leads : ' . $agg['leads_total'] . ' (période précédente ' . $pLabel . ' : ' . $prev['leads_total'] . ')';
+        $lines[] = 'Inscrits : ' . $agg['inscrits'] . ' (taux de conversion ' . $agg['conversion'] . '% ; période précédente : ' . $prev['inscrits'] . ' inscrits, ' . $prev['conversion'] . '%)';
         $lines[] = 'Répartition par étape : ' . school_ia_kv($agg['by_stage']);
         $lines[] = 'Par source : ' . school_ia_kv($agg['by_source']);
         $lines[] = 'Formations les plus demandées : ' . (school_ia_kv($agg['top_formations']) ?: 'n/d');
-        $lines[] = 'E-mails envoyés : ' . $agg['email_sent'] . ' (ouverts ' . $agg['email_opened'] . ', taux d\'ouverture ' . $agg['open_rate'] . '%)';
-        $lines[] = 'SMS envoyés : ' . $agg['sms_sent'];
+        $lines[] = 'Performance par conseiller : ' . (implode(' ; ', $staffLines) ?: 'aucun lead assigné');
+        $lines[] = 'E-mails envoyés : ' . $agg['email_sent'] . ' (ouverts ' . $agg['email_opened'] . ', taux d\'ouverture ' . $agg['open_rate'] . '% ; cliqués ' . $agg['email_clicked'] . ', taux de clic ' . $agg['click_rate'] . '%)';
+        $lines[] = 'SMS : ' . $agg['sms_sent'] . ' envoyés, ' . $agg['sms_failed'] . ' en échec';
         $lines[] = 'Tâches/relances créées : ' . $agg['tasks'];
 
         $system = 'Tu es analyste CRM pour une école supérieure. À partir des données fournies, rédige un rapport clair, concis et ACTIONNABLE en français. '
             . 'Réponds en HTML simple (balises autorisées : h4, h5, p, ul, ol, li, strong, em) — sans <html>, <head>, <body>, ni styles. '
-            . 'Structure : 1) Synthèse (2-3 phrases), 2) Points forts, 3) Points de vigilance, 4) Recommandations concrètes, 5) Prochaines actions. '
-            . 'Sois factuel, cite les chiffres, et donne des conseils réalistes pour améliorer les admissions.';
+            . 'Structure : 1) Synthèse (2-3 phrases), 2) Évolution vs période précédente (croissance/baisse chiffrée), 3) Points forts, 4) Points de vigilance, 5) Recommandations concrètes, 6) Prochaines actions. '
+            . 'Sois factuel, cite les chiffres, compare à la période précédente, et donne des conseils réalistes pour améliorer les admissions.';
         $prompt = "Données de la période :\n" . implode("\n", $lines);
 
         [$ok, $out] = school_ia_ai_generate($system, $prompt);
