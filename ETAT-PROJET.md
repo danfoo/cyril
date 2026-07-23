@@ -50,7 +50,9 @@ des deux côtés.
   (Nouveau → Contacté → Qualifié → Relance → Candidature → Inscrit / Perdu).
 - **Fiche lead** retravaillée : en-tête avec avatar/initiales, badge d'étape,
   infos en puces, menu « Changer d'étape », suppression du lead.
-- **Contacts** (liste) : recherche, filtres, export CSV/Excel, suppression.
+- **Contacts** (liste) : recherche, filtres (étape, **rentrée**, score min, non
+  assignés), export CSV/Excel, suppression. La **rentrée** (session d'admission
+  visée) est aussi affichée sur la fiche lead.
 - **Tâches & relances** datées (date + heure), rappels e-mail automatiques (cron).
 - **Notes** affichées en cartes sur la fiche.
 - **Journal d'activité** global (toutes actions, filtrable par type).
@@ -77,8 +79,10 @@ des deux côtés.
 - **Capture de la formation d'intérêt** depuis la conversation (remplit le champ si vide).
 
 ### Pilotage
-- **Tableau de bord** enrichi (par conseiller, par source, filtres de période).
-- **Reporting IA** (Claude) : rapports journalier / hebdo / mensuel / annuel.
+- **Tableau de bord** premium (grille KPI à dégradé, camemberts, 4 zones
+  hiérarchiques, par conseiller, par source, filtres de période).
+- **Reporting IA** (Claude) : rapports journalier / hebdo / mensuel / annuel, avec
+  analyse complète, comparaisons, graphiques, export, et gestion de plusieurs rapports.
 - **Import** CSV / Excel, **Export** CSV / Excel.
 - **Aides contextuelles** « ? » sur chaque page.
 - **Droits par rôle** (Setup → Rôles → School IA CRM).
