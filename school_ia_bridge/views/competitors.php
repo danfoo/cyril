@@ -72,32 +72,29 @@
     <!-- Indicateurs + tendance -->
     <div class="row">
       <?php
-      // Badge de tendance des mentions (mois en cours vs précédent).
-      $trendHtml = '';
+      // Badge de tendance des mentions (mois en cours vs précédent), lisible sur fond dégradé.
       if ($trend['pct'] === null) {
-          $trendHtml = '<span style="color:#d97706;font-size:11.5px;font-weight:600;">▲ nouveau ce mois</span>';
+          $trendTxt = '▲ nouveau ce mois';
       } elseif ($trend['pct'] === 0) {
-          $trendHtml = '<span style="color:#94a3b8;font-size:11.5px;font-weight:600;">→ stable vs mois préc.</span>';
+          $trendTxt = '→ stable vs mois préc.';
       } else {
-          $up = $trend['pct'] > 0;
-          $trendHtml = '<span style="color:' . ($up ? '#d97706' : '#16a34a') . ';font-size:11.5px;font-weight:600;">'
-              . ($up ? '▲ +' : '▼ ') . $trend['pct'] . ' % vs mois préc.</span>';
+          $trendTxt = ($trend['pct'] > 0 ? '▲ +' : '▼ ') . $trend['pct'] . ' % vs mois préc.';
       }
+      $trendHtml = '<span style="display:inline-block;background:rgba(255,255,255,.22);color:#fff;'
+          . 'font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;">' . $trendTxt . '</span>';
       $kpis = [
-          ['Mentions totales', $totals['mentions'], '#dc2626', 'fa-fire', $trendHtml],
-          ['Concurrents identifiés', $totals['concurrents'], '#8a63d2', 'fa-binoculars', ''],
-          ['Prospects concernés', $totals['leads'], '#2563eb', 'fa-users', ''],
+          ['Mentions totales', $totals['mentions'], 'linear-gradient(135deg,#fb7185,#e11d48)', 'fa-fire', $trendHtml],
+          ['Concurrents identifiés', $totals['concurrents'], 'linear-gradient(135deg,#a78bfa,#7c3aed)', 'fa-binoculars', ''],
+          ['Prospects concernés', $totals['leads'], 'linear-gradient(135deg,#38bdf8,#2563eb)', 'fa-users', ''],
       ];
       foreach ($kpis as $c) { ?>
-        <div class="col-md-4 col-sm-6">
-          <div class="panel_s sia-kpi"><div class="panel-body">
-            <div class="sia-kpi-icon" style="color:<?php echo $c[2]; ?>;background:<?php echo $c[2]; ?>1a;"><i class="fa <?php echo $c[3]; ?>"></i></div>
-            <div class="sia-kpi-meta">
-              <div class="sia-kpi-value"><?php echo (int) $c[1]; ?></div>
-              <div class="sia-kpi-label"><?php echo $c[0]; ?></div>
-              <?php if ($c[4] !== '') { ?><div style="margin-top:3px;"><?php echo $c[4]; ?></div><?php } ?>
-            </div>
-          </div></div>
+        <div class="col-md-4 col-sm-6 sia-stat-col">
+          <div class="sia-stat-card" style="position:relative;overflow:hidden;border-radius:16px;padding:18px 20px;min-height:104px;color:#fff;display:flex;flex-direction:column;justify-content:center;background:<?php echo $c[2]; ?>;box-shadow:0 6px 18px rgba(15,23,42,.14);">
+            <div style="position:relative;z-index:1;font-size:26px;font-weight:800;line-height:1.08;letter-spacing:-.02em;"><?php echo (int) $c[1]; ?></div>
+            <div style="position:relative;z-index:1;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.92;margin-top:5px;"><?php echo $c[0]; ?></div>
+            <?php if ($c[4] !== '') { ?><div style="position:relative;z-index:1;margin-top:8px;"><?php echo $c[4]; ?></div><?php } ?>
+            <i class="fa <?php echo $c[3]; ?>" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:54px;opacity:.20;"></i>
+          </div>
         </div>
       <?php } ?>
     </div>
