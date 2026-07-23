@@ -159,6 +159,19 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/competitors', $data);
     }
 
+    /** Page de diagnostic : état des tables, dernier appel concurrent, test d'écriture. */
+    public function debug()
+    {
+        $this->need('manage_settings');
+        $data['title']      = 'School IA — Diagnostic';
+        $data['tables']     = $this->school_ia_bridge_model->diag_counts();
+        $data['writeTest']  = $this->school_ia_bridge_model->diag_write_test();
+        $data['compCalls']  = (int) get_option('sia_competitor_calls');
+        $data['lastCall']   = json_decode((string) get_option('sia_last_competitor_call'), true);
+        $data['endpoint']   = site_url('school_ia_bridge/api/receive');
+        $this->load->view('school_ia_bridge/debug', $data);
+    }
+
     /** Réglages : point d'entrée + secret + identifiants SMS LAfricaMobile. */
     public function settings()
     {

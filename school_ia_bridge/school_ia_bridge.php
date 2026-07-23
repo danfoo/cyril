@@ -616,5 +616,11 @@ function school_ia_bridge_admin_menu()
             'href'     => admin_url('school_ia_bridge/settings'),
             'position' => 10,
         ]);
+        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
+            'slug'     => 'school_ia_bridge_debug',
+            'name'     => 'Diagnostic',
+            'href'     => admin_url('school_ia_bridge/debug'),
+            'position' => 11,
+        ]);
     }
 }

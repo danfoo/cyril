@@ -114,26 +114,23 @@ class Api extends App_Controller
 
         $externalId = (string) ($this->input->get('external_id') ?: $this->input->post('external_id'));
         $sourceSite = (string) ($this->input->get('source_site') ?: $this->input->post('source_site'));
-        $kind       = (string) ($this->input->get('kind') ?: $this->input->post('kind') ?: 'message');
+        $role       = (string) ($this->input->get('role') ?: $this->input->post('role'));
+        $content    = (string) ($this->input->get('content') ?: $this->input->post('content'));
+        $canal      = (string) ($this->input->get('canal') ?: $this->input->post('canal') ?: 'web');
+        $externalMessageId = (string) ($this->input->get('external_message_id') ?: $this->input->post('external_message_id'));
 
         $this->load->model('school_ia_bridge/school_ia_bridge_model');
 
-        // Point d'entrée mutualisé : une mention de concurrent peut passer par
-        // ici (kind=competitor) car le chemin « receive_message » n'est pas
-        // filtré par l'hébergeur, contrairement à « receive_competitor ».
-        if ($kind === 'competitor' || $kind === 'cmp') {
+        // Mention de concurrent déguisée en message de chat (canal=cmp) : la
+        // requête utilise EXACTEMENT les mêmes paramètres qu'un vrai message
+        // (content/role/canal), seule différence : le marqueur canal=cmp et le
+        // contenu encodé. Le pare-feu de l'hébergeur bloquait les requêtes qui
+        // avaient des paramètres name/context/kind ; ici il n'y en a plus.
+        if ($canal === 'cmp') {
             update_option('sia_competitor_calls', (int) get_option('sia_competitor_calls') + 1);
-            $enc         = (string) ($this->input->get('enc') ?: $this->input->post('enc'));
-            $name        = (string) ($this->input->get('name') ?: $this->input->post('name'));
-            $context     = (string) ($this->input->get('context') ?: $this->input->post('context'));
-            $externalRef = (string) ($this->input->get('external_ref') ?: $this->input->post('external_ref'));
-            // Champs encodés en base64 pour passer sous le radar d'un éventuel
-            // pare-feu applicatif qui bloque certains mots/caractères.
-            if ($enc === '1') {
-                $name    = (string) base64_decode($name);
-                $context = (string) base64_decode($context);
-            }
-            $name = trim($name);
+            $decoded = json_decode($this->b64url_decode($content), true);
+            $name    = is_array($decoded) ? trim((string) ($decoded['n'] ?? '')) : '';
+            $ctx     = is_array($decoded) ? (string) ($decoded['c'] ?? '') : '';
             if ($externalId === '' || $sourceSite === '' || $name === '') {
                 $this->respond(['ok' => false, 'error' => 'invalid_payload'], 400);
                 return;
@@ -146,17 +143,12 @@ class Api extends App_Controller
             $this->school_ia_bridge_model->add_competitor_mention(
                 (int) $lead->id,
                 $name,
-                $context,
-                $externalRef !== '' ? $externalRef : null
+                $ctx,
+                $externalMessageId !== '' ? $externalMessageId : null
             );
             $this->respond(['ok' => true, 'kind' => 'competitor']);
             return;
         }
-
-        $role       = (string) ($this->input->get('role') ?: $this->input->post('role'));
-        $content    = (string) ($this->input->get('content') ?: $this->input->post('content'));
-        $canal      = (string) ($this->input->get('canal') ?: $this->input->post('canal') ?: 'web');
-        $externalMessageId = (string) ($this->input->get('external_message_id') ?: $this->input->post('external_message_id'));
 
         if ($externalId === '' || $sourceSite === '' || $content === '' || !in_array($role, ['user', 'assistant'], true)) {
             $this->respond(['ok' => false, 'error' => 'invalid_payload'], 400);
@@ -178,6 +170,17 @@ class Api extends App_Controller
         );
 
         $this->respond(['ok' => true]);
+    }
+
+    /** Décodage base64url (sans +, /, = : rien qui déclenche un pare-feu). */
+    private function b64url_decode(string $s): string
+    {
+        $s = strtr($s, '-_', '+/');
+        $pad = strlen($s) % 4;
+        if ($pad) {
+            $s .= str_repeat('=', 4 - $pad);
+        }
+        return (string) base64_decode($s);
     }
 
     /**

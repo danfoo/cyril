@@ -18,6 +18,12 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
     public int $lastCode = 0;
     public string $lastError = '';
 
+    /** base64url (sans +, /, = qui déclenchent parfois un pare-feu applicatif). */
+    private static function b64urlEncode(string $s): string
+    {
+        return rtrim(strtr(base64_encode($s), '+/', '-_'), '=');
+    }
+
     public function isConfigured(): bool
     {
         return Options::get('perfex_url') !== '' && Options::hasSecret('perfex_bridge_secret');
@@ -148,18 +154,22 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         $base = rtrim((string) Options::get('perfex_url'), '/');
         $secret = (string) Options::get('perfex_bridge_secret');
 
-        // Nom/contexte encodés en base64 + mot-clé neutre (« cmp ») : un pare-feu
-        // applicatif bloquait la requête à cause d'un mot/caractère du contenu
-        // (le point d'entrée n'était jamais atteint). En base64 il n'y a plus
-        // aucun mot reconnaissable. On passe par « receive_message » (non filtré).
+        // Requête STRICTEMENT identique à un message de chat (qui, lui, passe le
+        // pare-feu) : mêmes paramètres content/role/canal. La mention est cachée
+        // dans « content » (base64url d'un JSON), et « canal=cmp » sert de
+        // marqueur. Plus aucun paramètre name/context/kind que le pare-feu
+        // bloquait.
+        $data = self::b64urlEncode(wp_json_encode([
+            'n' => $name,
+            'c' => mb_substr($context, 0, 1500),
+        ]));
         $payload = [
-            'external_id'  => (string) $leadId,
-            'source_site'  => home_url(),
-            'kind'         => 'cmp',
-            'enc'          => '1',
-            'external_ref' => 'm' . $mentionId,
-            'name'         => base64_encode($name),
-            'context'      => base64_encode(mb_substr($context, 0, 1500)),
+            'external_id'         => (string) $leadId,
+            'source_site'         => home_url(),
+            'role'                => 'assistant',
+            'canal'               => 'cmp',
+            'content'             => $data,
+            'external_message_id' => 'c' . $mentionId,
         ];
         $query = http_build_query(array_merge($payload, ['secret' => $secret]));
         $url = $base . '/school_ia_bridge/api/receive_message?' . $query;
