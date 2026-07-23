@@ -59,7 +59,6 @@ final class Mailer
             'hot_lead' => (bool) (int) Options::get('notify_hot_lead'),
             'handoff' => (bool) (int) Options::get('notify_handoff'),
             'task_reminder' => (bool) (int) Options::get('notify_task_reminder'),
-            'new_conversation' => (bool) (int) Options::get('notify_new_conversation'),
             default => true,
         };
     }

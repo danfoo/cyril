@@ -32,16 +32,6 @@ final class ChatOrchestrator
         (new EventRepository())->record((int) $lead->id, 'chat_message', ['length' => mb_strlen($message)], $canal);
         $this->syncMessageToCrm((int) $lead->id, $userMessageId, 'user', $message, $canal);
 
-        // Nouvelle conversation (tout premier message du lead) : prévenir les
-        // conseillers par e-mail pour une prise en charge. Asynchrone : aucun
-        // impact sur la latence perçue du chat.
-        if ($conversations->countUserMessages((int) $lead->id) === 1) {
-            Queue::dispatch('bem_lead_ai_job_action', ['notify_new_conversation', (int) $lead->id, [
-                'message' => $message,
-                'canal'   => $canal,
-            ]]);
-        }
-
         // Classification multi-signaux en asynchrone (jamais dans le fil).
         Queue::dispatch('bem_lead_ai_job_classify', [(int) $lead->id]);
 

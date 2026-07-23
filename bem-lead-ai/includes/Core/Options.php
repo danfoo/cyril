@@ -104,7 +104,6 @@ final class Options
             'notify_hot_lead' => 1,      // lead chaud/très chaud détecté
             'notify_handoff' => 1,       // escalade vers un conseiller humain
             'notify_task_reminder' => 1, // rappel de tâche CRM à échéance
-            'notify_new_conversation' => 1, // nouvelle conversation démarrée (prise en charge)
             'notify_from_name' => '',    // vide = nom de la marque (School IA)
             // WhatsApp — passerelle "click-to-chat" (pas d'API Business)
             'whatsapp_enabled' => 1,

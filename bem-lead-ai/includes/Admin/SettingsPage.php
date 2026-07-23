@@ -146,7 +146,6 @@ final class SettingsPage
             $this->text('admissions_email', 'E-mail équipe admissions (destinataire des alertes)', $o),
             $this->text('notify_from_name', 'Nom de l\'expéditeur (vide = School IA)', $o),
             $this->checkbox('notify_email_enabled', 'Activer les notifications e-mail', $o),
-            $this->checkbox('notify_new_conversation', '→ Alerte à chaque nouvelle conversation démarrée (prise en charge)', $o),
             $this->checkbox('notify_hot_lead', '→ Alerte quand un lead devient chaud / très chaud', $o),
             $this->checkbox('notify_handoff', '→ Alerte lors d\'une escalade vers un conseiller humain', $o),
             $this->checkbox('notify_task_reminder', '→ Rappel quotidien des tâches de suivi à échéance', $o),
@@ -679,7 +678,7 @@ final class SettingsPage
         $input = wp_unslash((array) ($_POST['s'] ?? []));
         $defaults = Options::defaults();
         $checkboxes = ['whatsapp_enabled', 'widget_enabled', 'capture_forms',
-            'notify_email_enabled', 'notify_new_conversation', 'notify_hot_lead', 'notify_handoff', 'notify_task_reminder'];
+            'notify_email_enabled', 'notify_hot_lead', 'notify_handoff', 'notify_task_reminder'];
         $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill', 'program_links'];
         $clean = [];
         foreach ($defaults as $key => $default) {
