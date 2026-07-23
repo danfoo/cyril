@@ -804,6 +804,23 @@ class School_ia_bridge_model extends App_Model
         $this->db->where('id', $id)->update($this->table(), ['owner_id' => $staffId ?: null]);
     }
 
+    /**
+     * Prise en charge « premier arrivé, premier servi » : n'assigne le lead que
+     * s'il n'a PAS encore de responsable. Renvoie true si ce membre devient le
+     * responsable, false si un autre l'avait déjà pris entre-temps. Atomique au
+     * niveau SQL (WHERE owner_id IS NULL) : sans risque de course même si
+     * plusieurs conseillers cliquent depuis la même alerte e-mail.
+     */
+    public function claim_owner(int $id, int $staffId): bool
+    {
+        if ($staffId <= 0) {
+            return false;
+        }
+        $this->db->where('id', $id)->where('owner_id IS NULL', null, false)
+            ->update($this->table(), ['owner_id' => $staffId]);
+        return $this->db->affected_rows() > 0;
+    }
+
     /** Historique / activités d'un lead (récent en premier). */
     public function activities(int $leadId): array
     {

@@ -58,6 +58,7 @@
             <?php if (empty($lead->owner_id)) { ?>
               <?php echo form_open(admin_url('school_ia_bridge/assign/' . (int) $lead->id), ['style' => 'display:inline;']); ?>
                 <input type="hidden" name="owner_id" value="<?php echo (int) get_staff_user_id(); ?>">
+                <input type="hidden" name="claim" value="1">
                 <button type="submit" class="btn btn-primary"><i class="fa fa-hand-paper-o"></i> Prendre en charge</button>
               <?php echo form_close(); ?>
             <?php } ?>

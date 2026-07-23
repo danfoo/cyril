@@ -1700,12 +1700,34 @@ class School_ia_bridge extends AdminController
         $this->need('manage_leads');
         $id = (int) $id;
         $staffId = (int) $this->input->post('owner_id');
-        if ($this->school_ia_bridge_model->get_lead($id)) {
-            $this->school_ia_bridge_model->set_owner($id, $staffId);
-            $this->school_ia_bridge_model->add_activity($id, 'assignment',
-                'Responsable : ' . ($staffId ? get_staff_full_name($staffId) : '—'), get_staff_user_id());
-            set_alert('success', 'Responsable mis à jour.');
+        if (!$this->school_ia_bridge_model->get_lead($id)) {
+            redirect(admin_url('school_ia_bridge/lead/' . $id));
+            return;
         }
+
+        // « Prendre en charge » = prise en charge premier arrivé, premier servi :
+        // on n'écrase JAMAIS un responsable déjà positionné (plusieurs conseillers
+        // peuvent cliquer depuis la même alerte e-mail).
+        if ($this->input->post('claim')) {
+            if ($this->school_ia_bridge_model->claim_owner($id, $staffId)) {
+                $this->school_ia_bridge_model->add_activity($id, 'assignment',
+                    'Pris en charge par ' . get_staff_full_name($staffId), get_staff_user_id());
+                set_alert('success', 'Vous avez pris en charge ce lead.');
+            } else {
+                $current = (int) ($this->school_ia_bridge_model->get_lead($id)->owner_id ?? 0);
+                $who = $current ? get_staff_full_name($current) : 'un autre conseiller';
+                set_alert('warning', 'Ce lead a déjà été pris en charge par ' . $who . '.');
+            }
+            redirect(admin_url('school_ia_bridge/lead/' . $id));
+            return;
+        }
+
+        // Réassignation manuelle (liste déroulante, ex. par un responsable) :
+        // l'écrasement reste autorisé.
+        $this->school_ia_bridge_model->set_owner($id, $staffId);
+        $this->school_ia_bridge_model->add_activity($id, 'assignment',
+            'Responsable : ' . ($staffId ? get_staff_full_name($staffId) : '—'), get_staff_user_id());
+        set_alert('success', 'Responsable mis à jour.');
         redirect(admin_url('school_ia_bridge/lead/' . $id));
     }
 
