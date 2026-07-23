@@ -1289,6 +1289,18 @@ class School_ia_bridge_model extends App_Model
         update_option('sia_comp_scan_' . $leadId, (string) $lastId);
     }
 
+    /** Renseigne la formation d'intérêt d'un lead si elle est encore vide. */
+    public function set_formation_if_empty(int $leadId, string $formation): void
+    {
+        $formation = trim($formation);
+        if ($formation === '') {
+            return;
+        }
+        $this->db->where('id', $leadId)
+            ->group_start()->where('formation', null)->or_where('formation', '')->group_end()
+            ->update($this->table(), ['formation' => substr($formation, 0, 191)]);
+    }
+
     /** Totaux pour les indicateurs de la page veille. */
     public function competitor_totals(): array
     {

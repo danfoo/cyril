@@ -162,59 +162,22 @@ class School_ia_bridge extends AdminController
 
     /**
      * Analyse les conversations déjà stockées dans Perfex avec l'IA (Claude) pour
-     * en extraire les écoles concurrentes citées — sans dépendre de WordPress.
+     * en extraire les écoles concurrentes + la formation — sans dépendre de WordPress.
+     * ?force=1 réanalyse tout (ignore les repères de scan).
      */
     public function competitors_scan()
     {
         $this->need('manage_settings');
         @set_time_limit(0);
 
-        if (trim((string) get_option('sia_ai_api_key')) === '') {
-            set_alert('warning', 'Configurez d\'abord votre clé API Claude dans Réglages → Rapports IA.');
-            redirect(admin_url('school_ia_bridge/competitors'));
+        $force = (string) $this->input->get('force') === '1';
+        $res = school_ia_scan_competitors($force);
+
+        if (!empty($res['error'])) {
+            set_alert('warning', 'IA : ' . $res['error']);
+        } else {
+            set_alert('success', "Analyse terminée : {$res['scanned']} conversation(s) analysée(s), {$res['found']} mention(s) de concurrent enregistrée(s).");
         }
-
-        $school = trim((string) get_option('companyname')) ?: 'notre école';
-        $system = "Tu analyses la conversation entre un prospect et le conseiller d'orientation de {$school}. "
-            . "Identifie UNIQUEMENT les établissements CONCURRENTS (autres écoles/universités) que le PROSPECT mentionne "
-            . "spontanément (où il envisage d'aller, qu'il compare, où il a candidaté). "
-            . "N'inclus JAMAIS {$school} elle-même, ni des noms de formations, ni des villes seules. "
-            . "Réponds STRICTEMENT en JSON : un tableau d'objets {\"name\":\"Nom de l'école\",\"context\":\"courte citation du passage\"}. "
-            . "Si aucun concurrent n'est cité, réponds []. Aucune autre sortie que le JSON.";
-
-        $found = 0;
-        $scanned = 0;
-        foreach ($this->school_ia_bridge_model->conversations_for_scan() as $convo) {
-            $leadId = (int) $convo['lead_id'];
-            // Ne retraite pas une conversation inchangée depuis le dernier scan.
-            if ($convo['last_id'] <= $this->school_ia_bridge_model->competitor_scan_marker($leadId)) {
-                continue;
-            }
-            $scanned++;
-            [$ok, $out] = school_ia_ai_generate($system, "Conversation :\n\n" . $convo['text']);
-            if (!$ok) {
-                set_alert('warning', 'IA : ' . $out);
-                break;
-            }
-            // Extrait le JSON même si l'IA l'entoure de texte.
-            if (preg_match('/\[.*\]/s', $out, $m)) {
-                $list = json_decode($m[0], true);
-                if (is_array($list)) {
-                    foreach ($list as $c) {
-                        $name = trim((string) ($c['name'] ?? ''));
-                        if ($name === '') { continue; }
-                        $ref = 'ai_' . md5($leadId . '|' . mb_strtolower($name));
-                        $this->school_ia_bridge_model->add_competitor_mention(
-                            $leadId, $name, (string) ($c['context'] ?? ''), $ref
-                        );
-                        $found++;
-                    }
-                }
-            }
-            $this->school_ia_bridge_model->set_competitor_scan_marker($leadId, (int) $convo['last_id']);
-        }
-
-        set_alert('success', "Analyse terminée : {$scanned} conversation(s) analysée(s), {$found} mention(s) de concurrent enregistrée(s).");
         redirect(admin_url('school_ia_bridge/competitors'));
     }
 
@@ -283,6 +246,7 @@ class School_ia_bridge extends AdminController
                 update_option('sia_ai_api_key', $aiKey);
             }
             update_option('sia_ai_model', trim((string) $this->input->post('ai_model')) ?: 'claude-opus-4-8');
+            update_option('sia_comp_auto', $this->input->post('comp_auto') ? '1' : '0');
         }
         set_alert('success', 'Réglages enregistrés.');
         redirect(admin_url('school_ia_bridge/settings'));

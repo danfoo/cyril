@@ -5,10 +5,17 @@
 
     <div class="clearfix" style="margin-bottom:6px;">
       <?php if ($ai_ready) { ?>
-        <a href="<?php echo admin_url('school_ia_bridge/competitors_scan'); ?>" class="btn btn-primary pull-right"
-           onclick="this.classList.add('disabled');this.innerHTML='<i class=\'fa fa-spinner fa-spin\'></i> Analyse en cours…';">
-          <i class="fa fa-magic"></i> Analyser les conversations avec l'IA
-        </a>
+        <div class="pull-right" style="display:flex;gap:8px;">
+          <a href="<?php echo admin_url('school_ia_bridge/competitors_scan'); ?>" class="btn btn-primary"
+             onclick="this.classList.add('disabled');this.innerHTML='<i class=\'fa fa-spinner fa-spin\'></i> Analyse…';">
+            <i class="fa fa-magic"></i> Analyser les nouvelles conversations
+          </a>
+          <a href="<?php echo admin_url('school_ia_bridge/competitors_scan?force=1'); ?>" class="btn btn-default"
+             title="Réanalyser toutes les conversations (ignore ce qui a déjà été analysé)"
+             onclick="this.classList.add('disabled');this.innerHTML='<i class=\'fa fa-spinner fa-spin\'></i> Analyse…';">
+            <i class="fa fa-refresh"></i> Tout réanalyser
+          </a>
+        </div>
       <?php } ?>
       <h4 class="no-margin"><i class="fa fa-binoculars"></i> Veille concurrentielle <?php echo sia_help('competitors'); ?></h4>
     </div>

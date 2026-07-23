@@ -67,6 +67,10 @@
                 <input type="text" name="ai_model" class="form-control" value="<?php echo htmlspecialchars((string) $ai_model, ENT_QUOTES); ?>">
                 <p class="text-muted" style="font-size:12px;">Par défaut : <code>claude-opus-4-8</code>.</p>
               </div>
+              <label style="font-weight:normal;display:block;margin-bottom:8px;">
+                <input type="checkbox" name="comp_auto" value="1" <?php echo get_option('sia_comp_auto') !== '0' ? 'checked' : ''; ?>>
+                Analyser automatiquement les conversations pour la <strong>veille concurrentielle</strong> (à chaque cron ; ne traite que les nouvelles conversations)
+              </label>
               <button type="submit" class="btn btn-primary">Enregistrer</button>
             <?php echo form_close(); ?>
           </div>

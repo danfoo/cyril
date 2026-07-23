@@ -325,6 +325,77 @@ function school_ia_ai_generate(string $system, string $prompt): array
     return [true, $text];
 }
 
+/**
+ * Analyse les conversations stockées avec l'IA pour en extraire les écoles
+ * concurrentes ET la formation d'intérêt. Utilisé par le bouton manuel ET le
+ * cron automatique. Retourne ['scanned'=>int,'found'=>int,'error'=>?string].
+ */
+function school_ia_scan_competitors(bool $force = false): array
+{
+    if (trim((string) get_option('sia_ai_api_key')) === '') {
+        return ['scanned' => 0, 'found' => 0, 'error' => 'Clé API Claude non configurée.'];
+    }
+    $CI = &get_instance();
+    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+    $model = $CI->school_ia_bridge_model;
+
+    $school = trim((string) get_option('companyname')) ?: 'notre école';
+    $system = "Tu analyses une conversation entre un prospect et le conseiller d'orientation de {$school}.\n"
+        . "Ta mission : repérer TOUTES les AUTRES écoles / universités / instituts / centres de formation "
+        . "(concurrents) que le PROSPECT mentionne, même en passant : où il pense aller, qu'il compare, où il a "
+        . "déjà candidaté ou étudié, qu'un proche fréquente, etc. Sois EXHAUSTIF : liste chaque établissement cité, "
+        . "même une seule fois. Corrige les fautes de frappe sur les noms connus.\n"
+        . "N'inclus JAMAIS {$school} elle-même. N'inclus pas les simples noms de villes ni de formations.\n"
+        . "Repère aussi la formation/le programme qui intéresse le prospect (ex. « Master Finance »).\n"
+        . "Réponds STRICTEMENT en JSON, sans texte autour :\n"
+        . "{\"competitors\":[{\"name\":\"Nom exact de l'école\",\"context\":\"courte citation du passage\"}],\"formation\":\"formation d'intérêt ou vide\"}";
+
+    $scanned = 0;
+    $found = 0;
+    foreach ($model->conversations_for_scan() as $convo) {
+        $leadId = (int) $convo['lead_id'];
+        if (!$force && $convo['last_id'] <= $model->competitor_scan_marker($leadId)) {
+            continue;
+        }
+        $scanned++;
+        [$ok, $out] = school_ia_ai_generate($system, "Conversation :\n\n" . $convo['text']);
+        if (!$ok) {
+            return ['scanned' => $scanned - 1, 'found' => $found, 'error' => $out];
+        }
+        if (preg_match('/\{.*\}/s', $out, $m)) {
+            $obj = json_decode($m[0], true);
+            if (is_array($obj)) {
+                foreach ((array) ($obj['competitors'] ?? []) as $c) {
+                    $name = trim((string) ($c['name'] ?? ''));
+                    if ($name === '') { continue; }
+                    $ref = 'ai_' . md5($leadId . '|' . mb_strtolower($name));
+                    $model->add_competitor_mention($leadId, $name, (string) ($c['context'] ?? ''), $ref);
+                    $found++;
+                }
+                $formation = trim((string) ($obj['formation'] ?? ''));
+                if ($formation !== '') {
+                    $model->set_formation_if_empty($leadId, $formation);
+                }
+            }
+        }
+        $model->set_competitor_scan_marker($leadId, (int) $convo['last_id']);
+    }
+    return ['scanned' => $scanned, 'found' => $found, 'error' => null];
+}
+
+hooks()->add_action('after_cron_run', 'school_ia_bridge_competitors_cron');
+function school_ia_bridge_competitors_cron()
+{
+    // Analyse automatique désactivable ; activée par défaut si une clé API existe.
+    if (get_option('sia_comp_auto') === '0') {
+        return;
+    }
+    if (trim((string) get_option('sia_ai_api_key')) === '') {
+        return;
+    }
+    school_ia_scan_competitors(false);
+}
+
 // ---- Utilitaires d'envoi partagés (utilisés par le cron des séquences) ----
 
 function school_ia_personalize(string $text, object $lead): string
