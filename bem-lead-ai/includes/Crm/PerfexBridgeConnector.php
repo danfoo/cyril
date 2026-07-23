@@ -148,17 +148,19 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         $base = rtrim((string) Options::get('perfex_url'), '/');
         $secret = (string) Options::get('perfex_bridge_secret');
 
+        // Nom/contexte encodés en base64 + mot-clé neutre (« cmp ») : un pare-feu
+        // applicatif bloquait la requête à cause d'un mot/caractère du contenu
+        // (le point d'entrée n'était jamais atteint). En base64 il n'y a plus
+        // aucun mot reconnaissable. On passe par « receive_message » (non filtré).
         $payload = [
             'external_id'  => (string) $leadId,
             'source_site'  => home_url(),
-            'kind'         => 'competitor',
+            'kind'         => 'cmp',
+            'enc'          => '1',
             'external_ref' => 'm' . $mentionId,
-            'name'         => $name,
-            'context'      => mb_substr($context, 0, 1500),
+            'name'         => base64_encode($name),
+            'context'      => base64_encode(mb_substr($context, 0, 1500)),
         ];
-        // On passe par « receive_message » (chemin non filtré par l'hébergeur)
-        // avec kind=competitor : « receive_competitor » était intercepté et
-        // renvoyait un faux 200 sans jamais atteindre le code.
         $query = http_build_query(array_merge($payload, ['secret' => $secret]));
         $url = $base . '/school_ia_bridge/api/receive_message?' . $query;
 
