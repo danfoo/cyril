@@ -27,6 +27,16 @@ final class ConversationRepository
         return (int) $wpdb->insert_id;
     }
 
+    /** Nombre de messages « user » d'un lead — 1 = conversation qui vient de démarrer. */
+    public function countUserMessages(int $leadId): int
+    {
+        global $wpdb;
+        return (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$this->table} WHERE lead_id = %d AND role = 'user'",
+            $leadId
+        ));
+    }
+
     /** @return object[] Derniers messages, ordre chronologique. */
     public function history(int $leadId, int $limit = 20): array
     {

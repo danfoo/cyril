@@ -35,6 +35,7 @@ final class ActionRunner
             'sync_chat_message' => $this->syncChatMessage($lead, $args),
             'sync_competitor' => $this->syncCompetitor($lead, $args),
             'notify' => $this->notify($lead, $args),
+            'notify_new_conversation' => $this->notifyNewConversation($lead, $args),
             'escalate' => (new HandoffManager())->open($lead, (string) ($args['motif'] ?? __('Escalade automatique', 'bem-lead-ai'))),
             'followup' => $this->followup($lead, (string) ($args['variant_group'] ?? 'relance_desengagement')),
             'financing_offer' => $this->financingOffer($lead),
@@ -125,6 +126,41 @@ final class ActionRunner
                 'body' => wp_json_encode(['text' => $text]),
             ]);
         }
+    }
+
+    /**
+     * Nouvelle conversation : un prospect vient d'engager le chat. On prévient
+     * les conseillers par e-mail (gabarit brandé, couleurs de base) pour une
+     * prise en charge rapide, avec un extrait du premier message et un lien
+     * direct vers l'inbox.
+     */
+    private function notifyNewConversation(object $lead, array $args): void
+    {
+        $inbox    = admin_url('admin.php?page=bem-lead-ai-inbox');
+        $canal    = (string) ($args['canal'] ?? 'web');
+        $first    = trim((string) ($args['message'] ?? ''));
+        $excerpt  = $first !== '' ? wp_html_excerpt($first, 240, '…') : '—';
+        $band     = ScoringEngine::band((float) $lead->score_final);
+
+        $bodyHtml = '<p>' . esc_html__('Un prospect vient de démarrer une conversation. Prenez-la en charge dès que possible.', 'bem-lead-ai') . '</p>'
+            . \BemLeadAi\Notifications\Mailer::detailList([
+                __('Lead', 'bem-lead-ai') => '#' . (int) $lead->id . ($lead->prenom ? ' — ' . $lead->prenom : ''),
+                __('Contact', 'bem-lead-ai') => $lead->email ?: ($lead->phone ?: __('non communiqué', 'bem-lead-ai')),
+                __('Formation d\'intérêt', 'bem-lead-ai') => $lead->formation_interet ?: '—',
+                __('Score', 'bem-lead-ai') => $lead->score_final . '/100 (' . str_replace('_', ' ', $band) . ')',
+                __('Canal', 'bem-lead-ai') => $canal,
+            ])
+            . '<p style="margin:14px 0 4px;color:#8a93a6;font-size:13px;">' . esc_html__('Premier message :', 'bem-lead-ai') . '</p>'
+            . '<blockquote style="margin:0;padding:10px 14px;border-radius:8px;background:#f3f5f9;color:#1f2430;font-size:14px;font-style:italic;">'
+            . esc_html($excerpt) . '</blockquote>';
+
+        \BemLeadAi\Notifications\Mailer::sendEvent(
+            'new_conversation',
+            __('Nouvelle conversation — prise en charge', 'bem-lead-ai'),
+            $bodyHtml,
+            $inbox,
+            __('Prendre en charge dans l\'inbox', 'bem-lead-ai')
+        );
     }
 
     /**
