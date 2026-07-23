@@ -14,20 +14,29 @@
     </div>
 
     <?php
-    // Générateur de carte KPI avec variation vs période précédente.
-    $rkpi = function (string $label, $value, string $color, string $icon, string $delta = '') {
+    // Variation vs période précédente, rendue en pastille blanche lisible sur fond dégradé.
+    $rdelta = function ($cur, $prev): string {
+        $c = (float) $cur; $p = (float) $prev;
+        if ($p == 0.0) {
+            $txt = ($c == 0.0) ? '— vs préc.' : '▲ nouveau vs préc.';
+        } else {
+            $pct = (int) round(($c - $p) / $p * 100);
+            $txt = $pct === 0 ? '→ 0 % vs préc.' : (($pct > 0 ? '▲ +' : '▼ ') . $pct . ' % vs préc.');
+        }
+        return '<span style="display:inline-block;background:rgba(255,255,255,.22);color:#fff;'
+            . 'font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;">' . $txt . '</span>';
+    };
+
+    // Carte KPI en dégradé, même style que le tableau de bord.
+    $rkpi = function (string $label, $value, string $grad, string $icon, string $delta = '') {
         ob_start(); ?>
-        <div class="col-md-3 col-sm-6 sia-stat-col">
-          <div class="panel_s" style="width:100%;"><div class="panel-body">
-            <div style="display:flex;align-items:center;gap:12px;">
-              <div class="sia-kpi-icon" style="color:<?php echo $color; ?>;background:<?php echo $color; ?>1a;"><i class="fa <?php echo $icon; ?>"></i></div>
-              <div>
-                <div class="sia-kpi-value"><?php echo $value; ?></div>
-                <div class="sia-kpi-label"><?php echo $label; ?></div>
-              </div>
-            </div>
-            <?php if ($delta !== '') { ?><div style="margin-top:10px;"><?php echo $delta; ?></div><?php } ?>
-          </div></div>
+        <div class="col-lg-3 col-sm-6 sia-stat-col">
+          <div class="sia-stat-card" style="position:relative;overflow:hidden;border-radius:16px;padding:18px 20px;min-height:104px;color:#fff;display:flex;flex-direction:column;justify-content:center;background:<?php echo $grad; ?>;box-shadow:0 6px 18px rgba(15,23,42,.14);">
+            <div style="position:relative;z-index:1;font-size:26px;font-weight:800;line-height:1.08;letter-spacing:-.02em;"><?php echo $value; ?></div>
+            <div style="position:relative;z-index:1;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.92;margin-top:5px;"><?php echo $label; ?></div>
+            <?php if ($delta !== '') { ?><div style="position:relative;z-index:1;margin-top:8px;"><?php echo $delta; ?></div><?php } ?>
+            <i class="fa <?php echo $icon; ?>" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:54px;opacity:.20;"></i>
+          </div>
         </div>
         <?php return ob_get_clean();
     };
@@ -59,10 +68,10 @@
     <!-- KPIs + comparaison période précédente -->
     <div class="row sia-kpi-grid">
       <?php
-      echo $rkpi('Nouveaux leads', (int) $agg['leads_total'], '#4f46e5', 'fa-users', sia_delta($agg['leads_total'], $prevAgg['leads_total']));
-      echo $rkpi('Inscrits', (int) $agg['inscrits'], '#16a34a', 'fa-graduation-cap', sia_delta($agg['inscrits'], $prevAgg['inscrits']));
-      echo $rkpi('Taux de conversion', $agg['conversion'] . ' %', '#0d9488', 'fa-line-chart', sia_delta($agg['conversion'], $prevAgg['conversion']));
-      echo $rkpi('E-mails envoyés', (int) $agg['email_sent'], '#2563eb', 'fa-envelope', sia_delta($agg['email_sent'], $prevAgg['email_sent']));
+      echo $rkpi('Nouveaux leads', (int) $agg['leads_total'], 'linear-gradient(135deg,#6366f1,#4f46e5)', 'fa-users', $rdelta($agg['leads_total'], $prevAgg['leads_total']));
+      echo $rkpi('Inscrits', (int) $agg['inscrits'], 'linear-gradient(135deg,#34d399,#059669)', 'fa-graduation-cap', $rdelta($agg['inscrits'], $prevAgg['inscrits']));
+      echo $rkpi('Taux de conversion', $agg['conversion'] . ' %', 'linear-gradient(135deg,#2dd4bf,#0d9488)', 'fa-line-chart', $rdelta($agg['conversion'], $prevAgg['conversion']));
+      echo $rkpi('E-mails envoyés', (int) $agg['email_sent'], 'linear-gradient(135deg,#38bdf8,#2563eb)', 'fa-envelope', $rdelta($agg['email_sent'], $prevAgg['email_sent']));
       ?>
     </div>
 
