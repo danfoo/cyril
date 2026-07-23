@@ -194,68 +194,65 @@
     </div>
 
     <!-- Rapport IA -->
+    <?php $reportBase = admin_url('school_ia_bridge/reporting?period=' . urlencode($period) . ($date ? '&date=' . urlencode($date) : '')); ?>
     <div class="panel_s"><div class="panel-body">
-      <div class="clearfix">
+      <div class="clearfix" style="margin-bottom:6px;">
         <h5 class="bold pull-left" style="margin-top:0;">
           <span class="sia-panel-icon" style="background:#8a63d21a;color:#8a63d2;"><i class="fa fa-magic"></i></span>
           Rapport rédigé par l'IA
+          <?php if (!empty($reports)) { ?><span class="label label-default" style="margin-left:4px;"><?php echo count($reports); ?></span><?php } ?>
         </h5>
-        <?php if ($ai_ready) { ?>
-          <?php echo form_open(admin_url('school_ia_bridge/reporting_generate'), ['class' => 'pull-right sia-no-print', 'onsubmit' => "this.querySelector('button').disabled=true;this.querySelector('button').innerHTML='Génération…';"]); ?>
-            <input type="hidden" name="period" value="<?php echo htmlspecialchars($period, ENT_QUOTES); ?>">
-            <input type="hidden" name="date" value="<?php echo htmlspecialchars($date, ENT_QUOTES); ?>">
-            <button type="submit" class="btn btn-primary"><i class="fa fa-magic"></i> <?php echo $report ? 'Régénérer' : 'Générer avec l\'IA'; ?></button>
-          <?php echo form_close(); ?>
-        <?php } ?>
+        <div class="pull-right sia-no-print" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <?php if (!empty($reports)) { ?>
+            <select class="form-control input-sm" style="height:34px;min-width:230px;"
+                    onchange="if(this.value)location.href='<?php echo $reportBase; ?>&report='+this.value;">
+              <option value="">— Choisir un rapport (<?php echo count($reports); ?>) —</option>
+              <?php foreach ($reports as $r) { ?>
+                <option value="<?php echo (int) $r->id; ?>" <?php echo ($report && (int) $report->id === (int) $r->id) ? 'selected' : ''; ?>>
+                  <?php echo htmlspecialchars((string) $r->label . ' · ' . date('d/m/Y H:i', strtotime((string) $r->created_at)), ENT_QUOTES); ?>
+                </option>
+              <?php } ?>
+            </select>
+          <?php } ?>
+          <?php if ($ai_ready) { ?>
+            <?php echo form_open(admin_url('school_ia_bridge/reporting_generate'), ['style' => 'display:inline;', 'onsubmit' => "this.querySelector('button').disabled=true;this.querySelector('button').innerHTML='Génération…';"]); ?>
+              <input type="hidden" name="period" value="<?php echo htmlspecialchars($period, ENT_QUOTES); ?>">
+              <input type="hidden" name="date" value="<?php echo htmlspecialchars($date, ENT_QUOTES); ?>">
+              <button type="submit" class="btn btn-primary"><i class="fa fa-magic"></i> <?php echo $report ? 'Nouveau' : 'Générer avec l\'IA'; ?></button>
+            <?php echo form_close(); ?>
+          <?php } ?>
+        </div>
       </div>
       <?php if (!$ai_ready) { ?>
         <div class="alert alert-warning" style="margin-top:10px;">Configurez d'abord votre clé API Anthropic dans <a href="<?php echo admin_url('school_ia_bridge/settings'); ?>">Réglages → Rapports IA</a>.</div>
       <?php } ?>
 
       <?php if ($report) { ?>
-        <hr>
-        <div class="clearfix" style="margin-bottom:8px;">
-          <strong class="pull-left"><?php echo htmlspecialchars((string) $report->label, ENT_QUOTES); ?></strong>
-          <span class="pull-right text-muted">Généré le <?php echo htmlspecialchars((string) $report->created_at, ENT_QUOTES); ?></span>
+        <div class="clearfix" style="border-top:1px solid var(--sia-border);padding-top:10px;margin-top:4px;margin-bottom:8px;">
+          <span class="pull-left"><strong><?php echo htmlspecialchars((string) $report->label, ENT_QUOTES); ?></strong> <span class="text-muted" style="font-size:12px;">· généré le <?php echo htmlspecialchars(date('d/m/Y à H:i', strtotime((string) $report->created_at)), ENT_QUOTES); ?></span></span>
+          <span class="pull-right sia-no-print">
+            <a href="<?php echo admin_url('school_ia_bridge/reporting_delete/' . (int) $report->id); ?>" class="text-muted" style="font-size:12px;"
+               onclick="return confirm('Supprimer ce rapport ?');"><i class="fa fa-trash"></i> Supprimer</a>
+          </span>
         </div>
-        <div class="sia-report" style="line-height:1.6;">
-          <?php echo $report->content; /* HTML produit par notre appel IA */ ?>
+        <div class="sia-report-box">
+          <div class="sia-report" style="line-height:1.55;">
+            <?php echo $report->content; /* HTML produit par notre appel IA */ ?>
+          </div>
         </div>
-        <hr class="sia-no-print">
-        <div class="sia-no-print">
+        <div class="sia-no-print" style="margin-top:12px;">
           <?php echo form_open(admin_url('school_ia_bridge/reporting_email'), ['class' => 'form-inline']); ?>
             <input type="hidden" name="report_id" value="<?php echo (int) $report->id; ?>">
             <div class="form-group" style="margin-right:6px;">
-              <input type="email" name="email" class="form-control" placeholder="destinataire@exemple.com" style="min-width:260px;" required>
+              <input type="email" name="email" class="form-control input-sm" placeholder="destinataire@exemple.com" style="min-width:240px;" required>
             </div>
-            <button type="submit" class="btn btn-default"><i class="fa fa-paper-plane"></i> Envoyer par e-mail</button>
+            <button type="submit" class="btn btn-default btn-sm"><i class="fa fa-paper-plane"></i> Envoyer par e-mail</button>
           <?php echo form_close(); ?>
         </div>
       <?php } else { ?>
         <p class="text-muted" style="margin-top:10px;">Aucun rapport IA pour cette période. Cliquez « Générer avec l'IA » pour produire une synthèse (points forts, points de vigilance, recommandations).</p>
       <?php } ?>
     </div></div>
-
-    <!-- Historique des rapports -->
-    <?php if (!empty($reports)) { ?>
-      <div class="panel_s sia-no-print"><div class="panel-body">
-        <h5 class="bold" style="margin-top:0;">Rapports précédents</h5>
-        <table class="table">
-          <tbody>
-            <?php foreach ($reports as $r) { ?>
-              <tr>
-                <td><a href="<?php echo admin_url('school_ia_bridge/reporting?report=' . (int) $r->id); ?>"><?php echo htmlspecialchars((string) $r->label, ENT_QUOTES); ?></a></td>
-                <td class="text-muted"><?php echo htmlspecialchars((string) $r->created_at, ENT_QUOTES); ?></td>
-                <td class="text-right">
-                  <a href="<?php echo admin_url('school_ia_bridge/reporting_delete/' . (int) $r->id); ?>" class="text-muted"
-                     onclick="return confirm('Supprimer ce rapport ?');"><i class="fa fa-trash"></i></a>
-                </td>
-              </tr>
-            <?php } ?>
-          </tbody>
-        </table>
-      </div></div>
-    <?php } ?>
 
   </div>
 </div>

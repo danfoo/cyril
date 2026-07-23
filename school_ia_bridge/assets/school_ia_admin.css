@@ -463,10 +463,26 @@
 /* Camembert : anneau de fond adapté au thème (le reste est en styles inline) */
 #wrapper .content .sia-donut-track { stroke: var(--sia-surface-2); }
 
+/* ---- Rapport IA : conteneur borné avec défilement (évite d'occuper toute la page) ---- */
+#wrapper .content .sia-report-box {
+  max-height: 460px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  background: var(--sia-surface-2);
+  border: 1px solid var(--sia-border);
+  border-radius: var(--sia-radius-sm);
+}
+#wrapper .content .sia-report-box .sia-report > *:first-child { margin-top: 0; }
+#wrapper .content .sia-report h4 { margin: 14px 0 6px; }
+#wrapper .content .sia-report h5 { margin: 12px 0 5px; }
+#wrapper .content .sia-report p  { margin: 0 0 8px; }
+
 /* ---- Impression / export PDF (Reporting) ---- */
 @media print {
   .sia-no-print { display: none !important; }
   #wrapper .content .panel_s { box-shadow: none !important; border: 1px solid #e6e9f0 !important; break-inside: avoid; }
   #wrapper .content { background: #fff !important; }
+  /* Le rapport est déplié en entier pour l'impression / PDF */
+  #wrapper .content .sia-report-box { max-height: none !important; overflow: visible !important; border: none !important; background: transparent !important; padding: 0 !important; }
   a[href]:after { content: ""; } /* n'imprime pas les URL entre parenthèses */
 }
