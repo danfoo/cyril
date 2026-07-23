@@ -835,16 +835,16 @@ function school_ia_bridge_admin_menu()
         'icon'     => 'sia-mi sia-mi-campaign',
         'position' => 34,
     ]);
-    if ($canManage) {
-        $CI->app_menu->add_sidebar_children_item('sia_campaign', [
-            'slug' => 'sia_sequences', 'name' => 'Les campagnes',
-            'href' => admin_url('school_ia_bridge/sequences'), 'position' => 1,
-        ]);
-    }
     if ($canSend) {
         $CI->app_menu->add_sidebar_children_item('sia_campaign', [
             'slug' => 'sia_bulk', 'name' => 'Nouvelle campagne',
-            'href' => admin_url('school_ia_bridge/bulk'), 'position' => 2,
+            'href' => admin_url('school_ia_bridge/bulk'), 'position' => 1,
+        ]);
+    }
+    if ($canManage) {
+        $CI->app_menu->add_sidebar_children_item('sia_campaign', [
+            'slug' => 'sia_sequences', 'name' => 'Séquences de relance',
+            'href' => admin_url('school_ia_bridge/sequences'), 'position' => 2,
         ]);
     }
     $CI->app_menu->add_sidebar_children_item('sia_campaign', [
