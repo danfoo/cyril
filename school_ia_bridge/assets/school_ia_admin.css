@@ -361,17 +361,19 @@
 @media (max-width: 991px) { #wrapper .content .sia-quote-list { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 600px)  { #wrapper .content .sia-quote-list { grid-template-columns: 1fr; } }
 #wrapper .content .sia-quote-card {
-  background: var(--sia-surface-2);
+  background: var(--sia-surface);
+  border: 1px solid var(--sia-border);
   border-radius: var(--sia-radius-sm);
-  border-left: 3px solid #8a63d2;
+  box-shadow: var(--sia-shadow);
   padding: 12px 14px;
-  transition: opacity .2s ease;
+  transition: opacity .2s ease, box-shadow .2s ease, transform .2s ease;
   display: flex;
   flex-direction: column;
   height: 100%;
 }
+#wrapper .content .sia-quote-card:hover { box-shadow: var(--sia-shadow-hover); transform: translateY(-1px); }
 #wrapper .content .sia-quote-card .sia-quote-text { flex: 1 1 auto; }
-#wrapper .content .sia-quote-card.sia-quote-done { border-left-color: var(--sia-success); opacity: .72; }
+#wrapper .content .sia-quote-card.sia-quote-done { opacity: .72; }
 #wrapper .content .sia-quote-pager { text-align: center; margin-top: 14px; }
 #wrapper .content .sia-quote-pager button { margin: 0 3px; min-width: 34px; }
 #wrapper .content .sia-tip { cursor: help; font-size: 15px; line-height: 1; text-decoration: none; }

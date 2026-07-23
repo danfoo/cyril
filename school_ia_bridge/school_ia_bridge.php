@@ -772,7 +772,8 @@ function school_ia_bridge_admin_init()
             'view'            => _l('Accéder au CRM School IA'),
             'manage_leads'    => _l('Gérer les leads (ajout, import, étapes, tâches, notes)'),
             'send'            => _l('Envoyer e-mails / SMS (individuels et groupés)'),
-            'manage_settings' => _l('Configurer (réglages, modèles, documents, séquences)'),
+            'manage_settings' => _l('Configurer (modèles, documents, séquences)'),
+            'manage_config'   => _l('Réglages & diagnostic (connexion, clé IA, SMS, objectifs)'),
         ],
     ], _l('School IA CRM'));
 
@@ -791,6 +792,7 @@ function school_ia_bridge_admin_menu()
 
     $canSend   = staff_can('send', 'school_ia_bridge');
     $canManage = staff_can('manage_settings', 'school_ia_bridge');
+    $canConfig = staff_can('manage_config', 'school_ia_bridge');
 
     // 1. Tableau de bord (onglet de premier plan)
     $CI->app_menu->add_sidebar_menu_item('sia_dashboard', [
@@ -881,7 +883,9 @@ function school_ia_bridge_admin_menu()
             'icon'     => 'sia-mi sia-mi-documents',
             'position' => 37,
         ]);
-        // 9. Configuration (groupe) : Réglages + Diagnostic
+    }
+    // 9. Configuration (groupe) : Réglages + Diagnostic — permission dédiée et restreinte
+    if ($canConfig) {
         $CI->app_menu->add_sidebar_menu_item('sia_config', [
             'name'     => 'Configuration',
             'icon'     => 'sia-mi sia-mi-config',

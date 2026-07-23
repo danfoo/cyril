@@ -472,7 +472,7 @@ class School_ia_bridge extends AdminController
     /** Page de diagnostic : état des tables, dernier appel concurrent, test d'écriture. */
     public function debug()
     {
-        $this->need('manage_settings');
+        $this->need('manage_config');
         $data['title']      = 'School IA — Diagnostic';
         $data['tables']     = $this->school_ia_bridge_model->diag_counts();
         $data['writeTest']  = $this->school_ia_bridge_model->diag_write_test();
@@ -485,7 +485,7 @@ class School_ia_bridge extends AdminController
     /** Supprime les faux messages de chat créés par d'anciennes tentatives de veille. */
     public function debug_purge_noise()
     {
-        $this->need('manage_settings');
+        $this->need('manage_config');
         $n = $this->school_ia_bridge_model->purge_competitor_chat_noise();
         set_alert('success', $n . ' faux message(s) de veille supprimé(s).');
         redirect(admin_url('school_ia_bridge/debug'));
@@ -494,7 +494,7 @@ class School_ia_bridge extends AdminController
     /** Réglages : point d'entrée + secret + identifiants SMS LAfricaMobile. */
     public function settings()
     {
-        $this->need('manage_settings');
+        $this->need('manage_config');
         $data['title']       = 'School IA — Réglages';
         $data['secret']      = get_option('school_ia_bridge_secret');
         $data['endpoint']    = site_url('school_ia_bridge/api/receive');
@@ -513,7 +513,7 @@ class School_ia_bridge extends AdminController
     /** Enregistre les identifiants SMS (form Perfex → CSRF). */
     public function save_settings()
     {
-        $this->need('manage_settings');
+        $this->need('manage_config');
         // On ne met à jour que les champs réellement présents (formulaires
         // distincts : SMS d'un côté, Programmes de l'autre).
         if ($this->input->post('sms_accountid') !== null) {
@@ -948,7 +948,7 @@ class School_ia_bridge extends AdminController
     /** Envoie un SMS de test et affiche la réponse BRUTE de LAfricaMobile. */
     public function test_sms()
     {
-        $this->need('manage_settings');
+        $this->need('manage_config');
         $num = trim((string) $this->input->post('test_number'));
         if ($num === '') {
             set_alert('warning', 'Indiquez un numéro de test.');
@@ -963,7 +963,7 @@ class School_ia_bridge extends AdminController
     /** Régénère le secret partagé (à recopier ensuite dans le plugin). */
     public function regenerate_secret()
     {
-        $this->need('manage_settings');
+        $this->need('manage_config');
         update_option('school_ia_bridge_secret', bin2hex(random_bytes(16)));
         set_alert('warning', 'Nouveau secret généré. Recopiez-le dans le plugin School IA (Réglages → CRM), sinon les leads n\'arriveront plus.');
         redirect(admin_url('school_ia_bridge/settings'));
