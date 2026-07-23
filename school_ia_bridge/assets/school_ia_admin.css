@@ -405,3 +405,14 @@
 
 /* ---- Cellule date compacte (aperçus de leads) ---- */
 #wrapper .content .sia-date { font-size: 11.5px; white-space: nowrap; }
+
+/* ---- Titres de zone (hiérarchie du tableau de bord) ---- */
+#wrapper .content .sia-section-title {
+  font-family: var(--sia-font);
+  font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--sia-muted);
+  margin: 22px 2px 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--sia-border);
+}
+#wrapper .content .sia-section-title:first-of-type { margin-top: 8px; }

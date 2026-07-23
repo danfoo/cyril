@@ -49,6 +49,7 @@ class School_ia_bridge extends AdminController
         $data['finance']   = $this->school_ia_bridge_model->finance_summary($filters);
         $data['target']    = (int) get_option('sia_target_inscrits');
         $data['dueTasks']  = $this->school_ia_bridge_model->pending_tasks(8);
+        $data['recentActivities'] = $this->school_ia_bridge_model->global_activities(null, 8);
         $data['model']     = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/dashboard', $data);
     }
