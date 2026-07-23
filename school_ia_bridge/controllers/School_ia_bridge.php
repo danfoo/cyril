@@ -49,7 +49,7 @@ class School_ia_bridge extends AdminController
         $data['finance']   = $this->school_ia_bridge_model->finance_summary($filters);
         $data['target']    = (int) get_option('sia_target_inscrits');
         $data['dueTasks']  = $this->school_ia_bridge_model->pending_tasks(8);
-        $data['recentActivities'] = $this->school_ia_bridge_model->global_activities(null, 8);
+        $data['recentActivities'] = $this->school_ia_bridge_model->global_activities([], 8);
         $data['model']     = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/dashboard', $data);
     }
@@ -326,10 +326,40 @@ class School_ia_bridge extends AdminController
     /** Journal d'activité global. */
     public function activity()
     {
-        $type = $this->input->get('type') ?: null;
-        $data['title']      = 'School IA — Journal d\'activité';
-        $data['type']       = $type;
-        $data['activities'] = $this->school_ia_bridge_model->global_activities($type);
+        $type    = $this->input->get('type') ?: null;
+        $staffId = (int) $this->input->get('staff');
+        $from    = (string) $this->input->get('from');
+        $to      = (string) $this->input->get('to');
+
+        // Raccourci de période : ?range=today|7|30 renseigne from/to.
+        $range = (string) $this->input->get('range');
+        if ($range === 'today') {
+            $from = $to = date('Y-m-d');
+        } elseif ($range === '7') {
+            $from = date('Y-m-d', strtotime('-6 days'));
+            $to   = date('Y-m-d');
+        } elseif ($range === '30') {
+            $from = date('Y-m-d', strtotime('-29 days'));
+            $to   = date('Y-m-d');
+        }
+
+        $filters = ['type' => $type, 'staff_id' => $staffId, 'from' => $from, 'to' => $to];
+
+        $data['title']       = 'School IA — Journal d\'activité';
+        $data['type']        = $type;
+        $data['staffId']     = $staffId;
+        $data['from']        = $from;
+        $data['to']          = $to;
+        $data['range']       = $range;
+        $data['activities']  = $this->school_ia_bridge_model->global_activities($filters);
+        $data['staff']       = $this->db->where('active', 1)->order_by('firstname')->get(db_prefix() . 'staff')->result();
+        // Classement des plus actifs : par défaut sur aujourd'hui si aucune période choisie.
+        $lbFrom = $from ?: date('Y-m-d');
+        $lbTo   = $to ?: date('Y-m-d');
+        $data['leaderboard'] = $this->school_ia_bridge_model->activity_leaderboard($lbFrom, $lbTo);
+        $data['lbLabel']     = ($from || $to)
+            ? 'sur la période sélectionnée'
+            : "aujourd'hui";
         $this->load->view('school_ia_bridge/activity', $data);
     }
 
@@ -1337,7 +1367,11 @@ class School_ia_bridge extends AdminController
         if ($task) {
             $this->school_ia_bridge_model->toggle_task((int) $taskId);
         }
-        if ($this->input->get('back') === 'tasks' || !$task || (int) $task->lead_id === 0) {
+        $back = (string) $this->input->get('back');
+        if ($back === 'activity') {
+            redirect(admin_url('school_ia_bridge/activity' . ($this->input->get('qs') ? '?' . $this->input->get('qs') : '')));
+        }
+        if ($back === 'tasks' || !$task || (int) $task->lead_id === 0) {
             redirect(admin_url('school_ia_bridge/tasks'));
         }
         redirect(admin_url('school_ia_bridge/lead/' . (int) $task->lead_id));
@@ -1367,11 +1401,13 @@ class School_ia_bridge extends AdminController
         $lead = $this->school_ia_bridge_model->get_lead($id);
         $done = false;
         if ($lead && $stage) {
+            $fromLabel = $this->school_ia_bridge_model->stageLabel($lead->stage ?? 'nouveau');
+            $toLabel   = $this->school_ia_bridge_model->stageLabel($stage);
             $this->school_ia_bridge_model->set_stage($id, $stage);
             $this->school_ia_bridge_model->add_activity(
                 $id,
                 'stage_change',
-                'Étape → ' . $this->school_ia_bridge_model->stageLabel($stage),
+                'Étape : ' . $fromLabel . ' → ' . $toLabel,
                 get_staff_user_id()
             );
             $done = true;

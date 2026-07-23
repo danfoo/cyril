@@ -196,8 +196,11 @@ function sia_help(string $key): string
         'activity' => ['Journal d\'activité',
             '<p>Le flux central de <strong>tout ce qui se passe</strong> sur l\'ensemble des leads : notes, changements d\'étape, tâches, e-mails, SMS, assignations.</p>
              <ul>
-               <li>Filtrez par <strong>type</strong> d\'activité avec les boutons du haut.</li>
-               <li>Chaque ligne indique <strong>qui</strong> a fait l\'action et <strong>quand</strong>, avec un lien vers le lead.</li>
+               <li><strong>Filtres</strong> : par <strong>conseiller</strong>, par <strong>plage de dates</strong> (ou raccourcis Aujourd\'hui / 7 / 30 jours) et par <strong>type</strong> d\'activité.</li>
+               <li><strong>Conseillers les plus actifs</strong> : le classement du haut montre qui a le plus agi sur la période ; cliquez un nom pour filtrer sur lui.</li>
+               <li><strong>Changement d\'étape</strong> : l\'étape d\'origine et de destination sont affichées (ex. Nouveau → Qualifié).</li>
+               <li><strong>Action rapide</strong> : « Terminer » coche une tâche directement depuis le journal, sans ouvrir la fiche.</li>
+               <li>Chaque ligne indique <strong>qui</strong> a agi et <strong>quand</strong>, avec un lien vers le lead.</li>
              </ul>
              <p><em>Droits :</em> l\'accès aux fonctions du CRM se règle par rôle dans <strong>Setup → Rôles → School IA CRM</strong>.</p>'],
         'inbox' => ['Contacts',

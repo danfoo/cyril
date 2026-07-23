@@ -229,6 +229,12 @@ class School_ia_bridge_model extends App_Model
                 KEY `lead_id` (`lead_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
+        // Référence optionnelle vers un objet lié (ex. id de tâche) pour les
+        // actions rapides depuis le journal.
+        if ($this->db->table_exists($this->activityTable())
+            && !$this->db->field_exists('ref_id', $this->activityTable())) {
+            $this->db->query('ALTER TABLE `' . $this->activityTable() . '` ADD `ref_id` INT NULL DEFAULT NULL');
+        }
         if (!$this->db->table_exists($this->chatTable())) {
             $this->db->query('CREATE TABLE `' . $this->chatTable() . "` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -1024,26 +1030,56 @@ class School_ia_bridge_model extends App_Model
     }
 
     /** Journal global : toutes les activités, avec le nom du lead (filtrable). */
-    public function global_activities(?string $type = null, int $limit = 300): array
+    /**
+     * Journal global, filtrable par type, conseiller et plage de dates.
+     * Joint la tâche liée (ref_id) pour connaître son statut « fait » et
+     * permettre l'action rapide « Terminer » depuis le journal.
+     */
+    public function global_activities(array $filters = [], int $limit = 400): array
     {
-        $this->db->select('a.*, l.name AS lead_name')
+        $this->db->select('a.*, l.name AS lead_name, t.done AS task_done, t.id AS task_id')
             ->from($this->activityTable() . ' a')
             ->join($this->table() . ' l', 'l.id = a.lead_id', 'left')
+            ->join($this->tasksTable() . ' t', "t.id = a.ref_id AND a.type = 'task'", 'left')
             ->order_by('a.created_at', 'desc')
             ->limit($limit);
-        if ($type) {
-            $this->db->where('a.type', $type);
+        if (!empty($filters['type'])) {
+            $this->db->where('a.type', $filters['type']);
+        }
+        if (!empty($filters['staff_id'])) {
+            $this->db->where('a.staff_id', (int) $filters['staff_id']);
+        }
+        if (!empty($filters['from'])) {
+            $this->db->where('a.created_at >=', $filters['from'] . ' 00:00:00');
+        }
+        if (!empty($filters['to'])) {
+            $this->db->where('a.created_at <=', $filters['to'] . ' 23:59:59');
         }
         return $this->db->get()->result();
     }
 
-    public function add_activity(int $leadId, string $type, string $content, ?int $staffId = null): void
+    /** Classement des conseillers les plus actifs sur une plage de dates. */
+    public function activity_leaderboard(?string $from = null, ?string $to = null, int $limit = 8): array
+    {
+        $this->db->select('a.staff_id, COUNT(*) AS n')
+            ->from($this->activityTable() . ' a')
+            ->where('a.staff_id IS NOT NULL', null, false)
+            ->group_by('a.staff_id')
+            ->order_by('n', 'desc')
+            ->limit($limit);
+        if ($from) { $this->db->where('a.created_at >=', $from . ' 00:00:00'); }
+        if ($to)   { $this->db->where('a.created_at <=', $to . ' 23:59:59'); }
+        return $this->db->get()->result();
+    }
+
+    public function add_activity(int $leadId, string $type, string $content, ?int $staffId = null, ?int $refId = null): void
     {
         $this->db->insert($this->activityTable(), [
             'lead_id'    => $leadId,
             'type'       => $type,
             'content'    => $content,
             'staff_id'   => $staffId,
+            'ref_id'     => $refId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
     }
@@ -1309,10 +1345,12 @@ class School_ia_bridge_model extends App_Model
             'staff_id'   => $staffId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
+        $taskId = (int) $this->db->insert_id();
         // Journalise sur la fiche uniquement si la tâche est rattachée à un lead.
+        // ref_id = id de la tâche → action rapide « Terminer » depuis le journal.
         if ($leadId > 0) {
             $label = $dueAt ? ' (échéance ' . date('d/m/Y H:i', strtotime($dueAt)) . ')' : '';
-            $this->add_activity($leadId, 'task', 'Tâche : ' . $title . $label, $staffId);
+            $this->add_activity($leadId, 'task', 'Tâche : ' . $title . $label, $staffId, $taskId);
         }
     }
 
