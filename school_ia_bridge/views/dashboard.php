@@ -139,7 +139,7 @@
                 </h5>
                 <span class="pull-right bold" style="font-size:15px;"><?php echo (int) $stats['inscrits']; ?> / <?php echo (int) $target; ?> <span class="text-muted">(<?php echo $pct; ?> %)</span></span>
               </div>
-              <div class="sia-progress"><div class="sia-progress-bar" style="width:<?php echo $pct; ?>%; background:<?php echo $pct >= 100 ? 'linear-gradient(90deg,#16a34a,#0a8f5b)' : 'linear-gradient(90deg,#6366f1,#4f46e5)'; ?>;"></div></div>
+              <div class="sia-progress"><div class="sia-progress-bar" style="width:<?php echo $pct; ?>%; background:<?php echo $pct >= 100 ? 'linear-gradient(90deg,#16a34a,#0a8f5b)' : 'linear-gradient(90deg,#e8447a,#d11349)'; ?>;"></div></div>
               <p class="text-muted" style="margin:10px 0 0; font-size:12.5px;">
                 <?php echo max(0, (int) $target - (int) $stats['inscrits']); ?> inscription(s) restante(s) pour atteindre l'objectif.
               </p>

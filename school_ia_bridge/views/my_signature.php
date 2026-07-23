@@ -48,7 +48,7 @@
           <h5 class="bold" style="margin-top:0;"><i class="fa fa-eye"></i> Aperçu</h5>
           <div style="background:#f1f5f9;padding:18px;border-radius:12px;">
             <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.08);">
-              <div style="background:#4f46e5;padding:16px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#fff;">
+              <div style="background:#d11349;padding:16px 24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;color:#fff;">
                 <?php echo htmlspecialchars((string) (get_option('companyname') ?: 'School IA'), ENT_QUOTES); ?>
               </div>
               <div style="padding:20px 24px 6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.6;color:#1e293b;">
@@ -106,7 +106,7 @@
       var tpl = '<strong>' + (fullName || 'Votre nom') + '</strong><br>'
               + 'Conseiller·ère admissions — ' + company + '<br>'
               + '<span style="color:#64748b;">Tél. : +221 XX XXX XX XX · '
-              + '<a href="mailto:vous@ecole.com" style="color:#4f46e5;">vous@ecole.com</a></span>';
+              + '<a href="mailto:vous@ecole.com" style="color:#d11349;">vous@ecole.com</a></span>';
       editor.innerHTML = tpl;
       sync();
     });

@@ -91,7 +91,7 @@
         <!-- Synthèse rapide (sur le résultat filtré) -->
         <div class="panel_s"><div class="panel-body" style="padding:12px 16px;">
           <div class="sia-chip-strip">
-            <span class="sia-chip"><span class="sia-chip-dot" style="background:#4f46e5;"></span><strong><?php echo (int) $summary['total']; ?></strong> au total</span>
+            <span class="sia-chip"><span class="sia-chip-dot" style="background:#d11349;"></span><strong><?php echo (int) $summary['total']; ?></strong> au total</span>
             <a class="sia-chip" href="<?php echo $mk(['min_score' => 60]); ?>"><span class="sia-chip-dot" style="background:#dc2626;"></span><strong><?php echo (int) $summary['hot']; ?></strong> chauds (≥ 60)</a>
             <span class="sia-chip"><span class="sia-chip-dot" style="background:#d97706;"></span><strong><?php echo (int) $summary['warm']; ?></strong> tièdes</span>
             <span class="sia-chip"><span class="sia-chip-dot" style="background:#2563eb;"></span><strong><?php echo (int) $summary['cold']; ?></strong> froids</span>

@@ -5,9 +5,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --sia-primary:        #4f46e5;
-  --sia-primary-600:    #4338ca;
-  --sia-primary-soft:   rgba(79, 70, 229, .10);
+  --sia-primary:        #d11349;
+  --sia-primary-600:    #a80f3a;
+  --sia-primary-soft:   rgba(209, 19, 73, .10);
 
   --sia-bg:             #f7f8fc;
   --sia-surface:        #ffffff;
@@ -36,7 +36,7 @@
     --sia-border:    #29344a;
     --sia-text:      #e6ebf5;
     --sia-muted:     #94a3b8;
-    --sia-primary-soft: rgba(99,102,241,.16);
+    --sia-primary-soft: rgba(209,19,73,.22);
     --sia-shadow:       0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
     --sia-shadow-hover: 0 8px 30px rgba(0,0,0,.5);
   }
@@ -94,8 +94,8 @@
   padding: 7px 14px;
 }
 #wrapper .content .btn-sm, #wrapper .content .btn-xs { border-radius: 8px; }
-#wrapper .content .btn-primary { background: var(--sia-primary); border-color: var(--sia-primary); color: #fff; box-shadow: 0 1px 2px rgba(79,70,229,.35); }
-#wrapper .content .btn-primary:hover, #wrapper .content .btn-primary:focus { background: var(--sia-primary-600); border-color: var(--sia-primary-600); color:#fff; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,70,229,.30); }
+#wrapper .content .btn-primary { background: var(--sia-primary); border-color: var(--sia-primary); color: #fff; box-shadow: 0 1px 2px rgba(209,19,73,.35); }
+#wrapper .content .btn-primary:hover, #wrapper .content .btn-primary:focus { background: var(--sia-primary-600); border-color: var(--sia-primary-600); color:#fff; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(209,19,73,.30); }
 #wrapper .content .btn-default {
   background: var(--sia-surface); color: var(--sia-text);
   border: 1px solid var(--sia-border);

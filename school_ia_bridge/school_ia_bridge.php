@@ -331,7 +331,7 @@ function sia_bar_chart(array $series, int $height = 160): string
     $labelEvery = (int) max(1, ceil($n / 16));
 
     $svg  = '<svg viewBox="0 0 ' . $w . ' ' . $height . '" width="100%" height="' . $height . '" preserveAspectRatio="xMinYMid meet" style="display:block;min-width:' . $w . 'px;">';
-    $svg .= '<defs><linearGradient id="siaBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#4f46e5"/></linearGradient></defs>';
+    $svg .= '<defs><linearGradient id="siaBarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8447a"/><stop offset="1" stop-color="#d11349"/></linearGradient></defs>';
     foreach ($series as $i => $s) {
         $val = (int) $s['value'];
         $h   = $val > 0 ? (int) max(3, round($val / $max * $chartH)) : 0;
@@ -584,7 +584,7 @@ function school_ia_email_wrap(string $contentHtml, string $signatureHtml = ''): 
     $brand   = trim((string) get_option('companyname')) ?: 'School IA';
     $brandEsc = htmlspecialchars($brand, ENT_QUOTES);
     $year    = date('Y');
-    $primary = '#4f46e5';
+    $primary = '#d11349';
 
     $sigBlock = '';
     if (trim($signatureHtml) !== '') {
@@ -923,6 +923,13 @@ function school_ia_bridge_admin_menu()
         'slug' => 'sia_stats', 'name' => 'Statistiques',
         'href' => admin_url('school_ia_bridge/campaigns'), 'position' => 4,
     ]);
+    if ($canSend) {
+        // Signature e-mail personnelle (réglage propre à chaque expéditeur).
+        $CI->app_menu->add_sidebar_children_item('sia_campaign', [
+            'slug' => 'sia_signature', 'name' => 'Ma signature',
+            'href' => admin_url('school_ia_bridge/my_signature'), 'position' => 5,
+        ]);
+    }
 
     // 6. Veille
     $CI->app_menu->add_sidebar_menu_item('sia_veille', [
@@ -962,16 +969,6 @@ function school_ia_bridge_admin_menu()
         $CI->app_menu->add_sidebar_children_item('sia_config', [
             'slug' => 'sia_debug', 'name' => 'Diagnostic',
             'href' => admin_url('school_ia_bridge/debug'), 'position' => 2,
-        ]);
-    }
-
-    // 10. Ma signature e-mail (réglage personnel, accessible à tout expéditeur)
-    if ($canSend) {
-        $CI->app_menu->add_sidebar_menu_item('sia_signature', [
-            'name'     => 'Ma signature',
-            'href'     => admin_url('school_ia_bridge/my_signature'),
-            'icon'     => 'fa fa-pencil-square-o',
-            'position' => 39,
         ]);
     }
 }

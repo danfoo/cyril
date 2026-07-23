@@ -183,7 +183,7 @@
               <?php
               $interTotal = array_sum($activityBreakdown);
               ?>
-              <div class="sia-stat-value" style="color:#4f46e5;"><?php echo (int) $interTotal; ?></div>
+              <div class="sia-stat-value" style="color:#d11349;"><?php echo (int) $interTotal; ?></div>
               <div class="sia-stat-label">Interactions</div>
             </div>
           </div>
