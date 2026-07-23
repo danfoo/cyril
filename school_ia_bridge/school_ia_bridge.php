@@ -184,13 +184,15 @@ function sia_help(string $key): string
              </ul>
              <p><em>Note :</em> certains logiciels de messagerie bloquent les images ; le taux d\'ouverture réel peut être légèrement supérieur à l\'affiché. La période (haut de page) filtre les statistiques.</p>'],
         'competitors' => ['Veille concurrentielle',
-            '<p>Les écoles concurrentes citées spontanément par les prospects dans leurs conversations avec le chatbot du site.</p>
+            '<p>Un outil d\'aide à la vente : les écoles concurrentes citées spontanément par les prospects, et vos arguments pour les contrer.</p>
              <ul>
-               <li><strong>Classement</strong> : quels établissements reviennent le plus souvent dans les échanges.</li>
-               <li><strong>Prospects concernés</strong> : combien de leads distincts ont mentionné chaque concurrent.</li>
-               <li><strong>Extraits</strong> : le passage exact de la conversation, avec un lien vers le lead.</li>
+               <li><strong>Filtres</strong> : affinez par période, programme visé et statut du lead (gagné / perdu).</li>
+               <li><strong>Tendance</strong> : sous « Mentions totales », la variation vs le mois précédent signale un concurrent de plus en plus agressif.</li>
+               <li><strong>Classement analytique</strong> : mentions, prospects, programme le plus ciblé et <strong>taux de perte</strong> face à chaque école.</li>
+               <li><strong>Argumentaire (battle card)</strong> : pastille verte « Prêt » / rouge « À rédiger ». Cliquez « Ajouter/Modifier » pour saisir vos arguments — ils s\'affichent ensuite dans l\'infobulle 💡 à côté de chaque citation.</li>
+               <li><strong>Extraits orientés action</strong> : le score du prospect pour prioriser, et un badge <strong>À traiter / Objection contrée</strong> (cliquable) pour suivre le traitement de chaque objection.</li>
              </ul>
-             <p><em>Analyse par l\'IA :</em> cliquez « Analyser les conversations avec l\'IA » — Perfex lit les conversations déjà stockées et en extrait les concurrents cités, directement (sans dépendre de WordPress). Nécessite la clé API Claude (Réglages → Rapports IA). Relancer l\'analyse ne traite que les conversations nouvelles.</p>'],
+             <p><em>Analyse par l\'IA :</em> « Analyser les conversations » lit les échanges stockés et en extrait les concurrents cités. Nécessite la clé API Claude (Réglages → Rapports IA). Relancer ne traite que les conversations nouvelles.</p>'],
         'activity' => ['Journal d\'activité',
             '<p>Le flux central de <strong>tout ce qui se passe</strong> sur l\'ensemble des leads : notes, changements d\'étape, tâches, e-mails, SMS, assignations.</p>
              <ul>

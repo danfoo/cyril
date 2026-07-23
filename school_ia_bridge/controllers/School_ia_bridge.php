@@ -336,12 +336,51 @@ class School_ia_bridge extends AdminController
     /** Veille concurrentielle : écoles concurrentes citées par les prospects. */
     public function competitors()
     {
+        $period  = (string) ($this->input->get('period') ?: 'all');
+        $program = (string) $this->input->get('program');
+        $status  = (string) $this->input->get('status');
+
+        // Traduit la période en date de début.
+        $from = null;
+        if ($period === 'month')   { $from = date('Y-m-01 00:00:00'); }
+        elseif ($period === 'quarter') { $from = date('Y-m-01 00:00:00', strtotime('-2 months')); }
+        elseif ($period === 'year')    { $from = date('Y-01-01 00:00:00'); }
+        $filters = ['from' => $from, 'program' => $program, 'status' => $status];
+
         $data['title']    = 'School IA — Veille concurrentielle';
-        $data['ranking']  = $this->school_ia_bridge_model->competitor_ranking();
-        $data['recent']   = $this->school_ia_bridge_model->recent_competitor_mentions();
-        $data['totals']   = $this->school_ia_bridge_model->competitor_totals();
+        $data['period']   = $period;
+        $data['program']  = $program;
+        $data['status']   = $status;
+        $data['programs'] = $this->school_ia_bridge_model->programs();
+        $data['ranking']  = $this->school_ia_bridge_model->competitor_ranking($filters);
+        $data['recent']   = $this->school_ia_bridge_model->recent_competitor_mentions($filters);
+        $data['totals']   = $this->school_ia_bridge_model->competitor_totals($filters);
+        $data['trend']    = $this->school_ia_bridge_model->competitor_trend(['program' => $program, 'status' => $status]);
+        $data['cards']    = $this->school_ia_bridge_model->battlecards();
+        $data['model']    = $this->school_ia_bridge_model;
         $data['ai_ready'] = trim((string) get_option('sia_ai_api_key')) !== '';
         $this->load->view('school_ia_bridge/competitors', $data);
+    }
+
+    /** Bascule l'état « traité » d'une mention de concurrent (lien GET). */
+    public function competitor_toggle($id = 0)
+    {
+        $this->need('view');
+        $this->school_ia_bridge_model->toggle_mention_handled((int) $id);
+        redirect($this->input->get('return') ?: admin_url('school_ia_bridge/competitors'));
+    }
+
+    /** Enregistre l'argumentaire de contre (« battle card ») d'un concurrent. */
+    public function competitor_card_save()
+    {
+        $this->need('manage_settings');
+        $name = trim((string) $this->input->post('name'));
+        $arg  = trim((string) $this->input->post('argument'));
+        if ($name !== '') {
+            $this->school_ia_bridge_model->save_battlecard($name, $arg, get_staff_user_id());
+            set_alert('success', 'Argumentaire enregistré pour « ' . $name .' ».');
+        }
+        redirect($this->input->post('return') ?: admin_url('school_ia_bridge/competitors'));
     }
 
     /**

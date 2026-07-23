@@ -24,6 +24,11 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_competitors';
     }
 
+    private function battlecardTable(): string
+    {
+        return db_prefix() . 'school_ia_battlecards';
+    }
+
     /** Normalise une URL de site (schéma + slash final) pour comparer http/https sans faux négatif. */
     private function normalizeSite(string $url): string
     {
@@ -247,6 +252,23 @@ class School_ia_bridge_model extends App_Model
                 `created_at` datetime DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 KEY `lead_id` (`lead_id`),
+                KEY `name` (`name`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+        // État de traitement d'une mention de concurrent (à traiter / contré).
+        if ($this->db->table_exists($this->competitorTable())
+            && !$this->db->field_exists('handled', $this->competitorTable())) {
+            $this->db->query('ALTER TABLE `' . $this->competitorTable() . '` ADD `handled` TINYINT(1) NOT NULL DEFAULT 0');
+        }
+        // Argumentaires de contre (« battle cards ») par concurrent.
+        if (!$this->db->table_exists($this->battlecardTable())) {
+            $this->db->query('CREATE TABLE `' . $this->battlecardTable() . "` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `name` varchar(191) NOT NULL,
+                `argument` text DEFAULT NULL,
+                `staff_id` int(11) DEFAULT NULL,
+                `updated_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
                 KEY `name` (`name`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
@@ -1704,26 +1726,138 @@ class School_ia_bridge_model extends App_Model
         ]);
     }
 
-    /** Classement des concurrents : mentions + nombre de prospects concernés. */
-    public function competitor_ranking(int $limit = 50): array
+    /** Clause WHERE + params communs aux requêtes de veille (période, programme, statut). */
+    private function competitorWhere(array $f): array
     {
+        $w = ' WHERE 1=1';
+        $p = [];
+        if (!empty($f['from'])) { $w .= ' AND c.created_at >= ?'; $p[] = $f['from']; }
+        if (!empty($f['to']))   { $w .= ' AND c.created_at <= ?'; $p[] = $f['to']; }
+        if (!empty($f['program'])) { $w .= ' AND l.formation LIKE ?'; $p[] = '%' . $f['program'] . '%'; }
+        if (!empty($f['status']))  { $w .= ' AND l.stage = ?'; $p[] = $f['status']; }
+        return [$w, $p];
+    }
+
+    /**
+     * Classement analytique des concurrents (avec filtres) : mentions, prospects,
+     * taux de perte face à l'école et programme le plus ciblé.
+     */
+    public function competitor_ranking(array $f = [], int $limit = 50): array
+    {
+        $this->ensure_schema();
+        [$where, $params] = $this->competitorWhere($f);
+        $rows = $this->db->query(
+            'SELECT c.name,
+                    COUNT(*) AS mentions,
+                    COUNT(DISTINCT c.lead_id) AS leads,
+                    COUNT(DISTINCT CASE WHEN l.stage = "perdu" THEN c.lead_id END) AS lost_leads,
+                    MAX(c.created_at) AS derniere
+             FROM `' . $this->competitorTable() . '` c
+             LEFT JOIN `' . $this->table() . '` l ON l.id = c.lead_id'
+             . $where .
+            ' GROUP BY c.name ORDER BY mentions DESC LIMIT ' . (int) $limit,
+            $params
+        )->result();
+
+        // Programme le plus ciblé par concurrent (2ᵉ requête, agrégée en PHP).
+        $topByName = [];
+        foreach ($this->db->query(
+            'SELECT c.name, l.formation, COUNT(*) AS n
+             FROM `' . $this->competitorTable() . '` c
+             JOIN `' . $this->table() . '` l ON l.id = c.lead_id'
+             . $where . ' AND l.formation IS NOT NULL AND l.formation <> ""'
+             . ' GROUP BY c.name, l.formation ORDER BY n DESC',
+            $params
+        )->result() as $r) {
+            if (!isset($topByName[$r->name])) { $topByName[$r->name] = (string) $r->formation; }
+        }
+
+        foreach ($rows as $row) {
+            $row->loss_rate = $row->leads > 0 ? round($row->lost_leads * 100 / $row->leads) : 0;
+            $row->top_program = $topByName[$row->name] ?? '';
+        }
+        return $rows;
+    }
+
+    /** Derniers extraits (filtres) avec score/étape du prospect et état de traitement. */
+    public function recent_competitor_mentions(array $f = [], int $limit = 40): array
+    {
+        $this->ensure_schema();
+        [$where, $params] = $this->competitorWhere($f);
         return $this->db->query(
-            'SELECT name, COUNT(*) AS mentions, COUNT(DISTINCT lead_id) AS leads, MAX(created_at) AS derniere
-             FROM `' . $this->competitorTable() . '`
-             GROUP BY name ORDER BY mentions DESC LIMIT ' . (int) $limit
+            'SELECT c.id, c.name, c.context, c.lead_id, c.created_at, c.handled,
+                    l.name AS lead_name, l.score AS lead_score, l.stage AS lead_stage
+             FROM `' . $this->competitorTable() . '` c
+             LEFT JOIN `' . $this->table() . '` l ON l.id = c.lead_id'
+             . $where . ' AND c.context IS NOT NULL AND c.context <> ""'
+             . ' ORDER BY c.created_at DESC LIMIT ' . (int) $limit,
+            $params
         )->result();
     }
 
-    /** Derniers extraits de contexte (avec le nom du lead pour le lien). */
-    public function recent_competitor_mentions(int $limit = 30): array
+    /** Tendance des mentions : mois en cours vs mois précédent (avec filtres non temporels). */
+    public function competitor_trend(array $f = []): array
     {
-        return $this->db->query(
-            'SELECT c.name, c.context, c.lead_id, c.created_at, l.name AS lead_name
-             FROM `' . $this->competitorTable() . '` c
-             LEFT JOIN `' . $this->table() . "` l ON l.id = c.lead_id
-             WHERE c.context IS NOT NULL AND c.context <> ''
-             ORDER BY c.created_at DESC LIMIT " . (int) $limit
-        )->result();
+        $this->ensure_schema();
+        $thisFrom = date('Y-m-01 00:00:00');
+        $lastFrom = date('Y-m-01 00:00:00', strtotime('first day of last month'));
+        $count = function ($from, $to) use ($f) {
+            $ff = $f; $ff['from'] = $from; $ff['to'] = $to;
+            [$where, $params] = $this->competitorWhere($ff);
+            return (int) $this->db->query(
+                'SELECT COUNT(*) AS n FROM `' . $this->competitorTable() . '` c
+                 LEFT JOIN `' . $this->table() . '` l ON l.id = c.lead_id' . $where,
+                $params
+            )->row()->n;
+        };
+        $current  = $count($thisFrom, date('Y-m-d H:i:s'));
+        $previous = $count($lastFrom, $thisFrom);
+        $pct = $previous > 0 ? (int) round(($current - $previous) * 100 / $previous) : ($current > 0 ? null : 0);
+        return ['current' => $current, 'previous' => $previous, 'pct' => $pct];
+    }
+
+    /** Bascule l'état « traité » d'une mention de concurrent. */
+    public function toggle_mention_handled(int $id): void
+    {
+        $row = $this->db->where('id', $id)->get($this->competitorTable())->row();
+        if ($row) {
+            $this->db->where('id', $id)->update($this->competitorTable(), ['handled' => $row->handled ? 0 : 1]);
+        }
+    }
+
+    /** Argumentaires de contre indexés par nom de concurrent (minuscule). */
+    public function battlecards(): array
+    {
+        $this->ensure_schema();
+        $out = [];
+        foreach ($this->db->get($this->battlecardTable())->result() as $r) {
+            $out[mb_strtolower(trim((string) $r->name))] = $r;
+        }
+        return $out;
+    }
+
+    public function get_battlecard(string $name)
+    {
+        return $this->db->where('name', $name)->get($this->battlecardTable())->row();
+    }
+
+    /** Crée ou met à jour l'argumentaire de contre d'un concurrent. */
+    public function save_battlecard(string $name, string $argument, ?int $staffId = null): void
+    {
+        $name = trim($name);
+        if ($name === '') { return; }
+        $existing = $this->db->where('name', $name)->get($this->battlecardTable())->row();
+        $data = [
+            'name'       => substr($name, 0, 191),
+            'argument'   => $argument,
+            'staff_id'   => $staffId,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+        if ($existing) {
+            $this->db->where('id', $existing->id)->update($this->battlecardTable(), $data);
+        } else {
+            $this->db->insert($this->battlecardTable(), $data);
+        }
     }
 
     /** Concurrents cités par un lead précis. */
@@ -1790,12 +1924,16 @@ class School_ia_bridge_model extends App_Model
             ->update($this->table(), ['formation' => substr($formation, 0, 191)]);
     }
 
-    /** Totaux pour les indicateurs de la page veille. */
-    public function competitor_totals(): array
+    /** Totaux pour les indicateurs de la page veille (avec filtres). */
+    public function competitor_totals(array $f = []): array
     {
+        $this->ensure_schema();
+        [$where, $params] = $this->competitorWhere($f);
         $row = $this->db->query(
-            'SELECT COUNT(*) AS mentions, COUNT(DISTINCT name) AS concurrents, COUNT(DISTINCT lead_id) AS leads
-             FROM `' . $this->competitorTable() . '`'
+            'SELECT COUNT(*) AS mentions, COUNT(DISTINCT c.name) AS concurrents, COUNT(DISTINCT c.lead_id) AS leads
+             FROM `' . $this->competitorTable() . '` c
+             LEFT JOIN `' . $this->table() . '` l ON l.id = c.lead_id' . $where,
+            $params
         )->row();
         return [
             'mentions'    => (int) ($row->mentions ?? 0),

@@ -363,7 +363,12 @@
   border-radius: var(--sia-radius-sm);
   border-left: 3px solid #8a63d2;
   padding: 10px 12px;
+  transition: opacity .2s ease;
 }
+#wrapper .content .sia-quote-card.sia-quote-done { border-left-color: var(--sia-success); opacity: .72; }
+#wrapper .content .sia-tip { cursor: help; font-size: 15px; line-height: 1; text-decoration: none; }
+#wrapper .content .sia-tip-empty { filter: grayscale(1); opacity: .55; cursor: pointer; }
+#wrapper .content .sia-tip-empty:hover { filter: none; opacity: 1; }
 
 /* ---- Inputs de type date/datetime cohérents ---- */
 #wrapper .content input[type="date"].form-control,
