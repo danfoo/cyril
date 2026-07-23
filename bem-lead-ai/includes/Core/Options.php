@@ -12,6 +12,18 @@ final class Options
 {
     private const OPTION = 'bem_lead_ai_settings';
 
+    /** Clés dont la valeur est un identifiant de modèle Claude. */
+    private const MODEL_KEYS = ['chat_model', 'classifier_model'];
+
+    /**
+     * Identifiants de modèle obsolètes → identifiant canonique actuel.
+     * Corrige à la lecture les valeurs déjà enregistrées en base (ex. l'ID
+     * daté d'Haiku 4.5) sans imposer un ré-enregistrement des réglages.
+     */
+    private const MODEL_ALIASES = [
+        'claude-haiku-4-5-20251001' => 'claude-haiku-4-5',
+    ];
+
     /** Clés considérées comme secrètes → chiffrées au stockage. */
     public const SECRET_KEYS = [
         'anthropic_api_key',
@@ -32,14 +44,14 @@ final class Options
         return [
             'claude-sonnet-5' => 'Claude Sonnet 5 — équilibré (recommandé)',
             'claude-opus-4-8' => 'Claude Opus 4.8 — le plus capable',
-            'claude-haiku-4-5-20251001' => 'Claude Haiku 4.5 — le plus rapide/économique',
+            'claude-haiku-4-5' => 'Claude Haiku 4.5 — le plus rapide/économique',
         ];
     }
 
     public static function classifierModels(): array
     {
         return [
-            'claude-haiku-4-5-20251001' => 'Claude Haiku 4.5 — rapide/économique (recommandé)',
+            'claude-haiku-4-5' => 'Claude Haiku 4.5 — rapide/économique (recommandé)',
             'claude-sonnet-5' => 'Claude Sonnet 5 — plus fin',
         ];
     }
@@ -60,7 +72,7 @@ final class Options
             // IA
             'anthropic_api_key' => '',
             'chat_model' => 'claude-sonnet-5',
-            'classifier_model' => 'claude-haiku-4-5-20251001',
+            'classifier_model' => 'claude-haiku-4-5',
             // Capture des leads depuis les formulaires (Gravity Forms, CF7, WPForms…)
             'capture_forms' => 1,
             // Base de connaissance (catalogue en contexte, mis en cache LLM)
@@ -147,7 +159,14 @@ final class Options
 
     public static function all(): array
     {
-        return array_merge(self::defaults(), self::decodeStored(get_option(self::OPTION, null)));
+        $merged = array_merge(self::defaults(), self::decodeStored(get_option(self::OPTION, null)));
+        // Normalise les identifiants de modèle obsolètes stockés en base.
+        foreach (self::MODEL_KEYS as $mk) {
+            if (isset($merged[$mk], self::MODEL_ALIASES[$merged[$mk]])) {
+                $merged[$mk] = self::MODEL_ALIASES[$merged[$mk]];
+            }
+        }
+        return $merged;
     }
 
     /** Lecture DIRECTE en base (cache contourné) pour vérifier la persistance. */
