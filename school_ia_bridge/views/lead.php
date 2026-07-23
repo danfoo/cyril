@@ -51,6 +51,7 @@
                 <span><i class="fa fa-star"></i> score <?php echo htmlspecialchars((string) $lead->score, ENT_QUOTES); ?><?php echo $lead->band ? ' · ' . htmlspecialchars(str_replace('_', ' ', (string) $lead->band), ENT_QUOTES) : ''; ?></span>
               <?php } ?>
               <?php if ($lead->source_site) { ?><span><i class="fa fa-globe"></i> <?php echo htmlspecialchars((string) $lead->source_site, ENT_QUOTES); ?></span><?php } ?>
+              <?php if (!empty($lead->source_form)) { ?><span title="Formulaire d'origine"><i class="fa fa-wpforms"></i> <?php echo htmlspecialchars((string) $lead->source_form, ENT_QUOTES); ?></span><?php } ?>
               <?php if (!empty($lead->rentree)) { ?><span><i class="fa fa-calendar"></i> rentrée <?php echo htmlspecialchars((string) $lead->rentree, ENT_QUOTES); ?></span><?php } ?>
             </div>
           </div>

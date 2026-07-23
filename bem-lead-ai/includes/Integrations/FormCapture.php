@@ -50,7 +50,7 @@ final class FormCapture
             } elseif ($type === 'name') {
                 $first = trim((string) ($entry[$id . '.3'] ?? ''));
                 $name = $first !== '' ? $first : ($val !== '' ? $val : $name);
-            } elseif ($val !== '' && $formation === null && preg_match('/formation|programme|fili|cursus/', $label)) {
+            } elseif ($val !== '' && $formation === null && $this->looksLikeFormation($label)) {
                 // Champ liste/bouton radio : la valeur stockée est souvent un code
                 // court (« MAGE », « Master ») ; on récupère le LIBELLÉ complet de
                 // l'option choisie plutôt que sa valeur brute.
@@ -97,7 +97,7 @@ final class FormCapture
                 $phone = $val;
             } elseif ($type === 'name') {
                 $name = $val;
-            } elseif ($formation === null && preg_match('/formation|programme|fili|cursus/', $label)) {
+            } elseif ($formation === null && $this->looksLikeFormation($label)) {
                 $formation = $val;
             } else {
                 [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
@@ -159,6 +159,20 @@ final class FormCapture
         $leads->update((int) $lead->id, $updates);
 
         (new EventRepository())->record((int) $lead->id, 'form_submitted', ['source' => $source, 'form' => $formTitle], 'form');
+    }
+
+    /**
+     * Un libellé désigne-t-il le PROGRAMME/la formation visée, et non son TYPE
+     * ou sa modalité ? On capte « Formation souhaitée », « Programme », « Filière »,
+     * mais on écarte « Type de formation », « Régime », « Modalité », « Rythme »
+     * (ex. « Formation continue (cours du soir) ») qui polluaient la donnée.
+     */
+    private function looksLikeFormation(string $label): bool
+    {
+        return (bool) (
+            preg_match('/formation|programme|fili[eè]re|cursus|parcours|sp[eé]cialit|dipl[oô]me/', $label)
+            && !preg_match('/type|r[eé]gime|modalit|rythme|niveau|statut|cycle|temps/', $label)
+        );
     }
 
     /**
@@ -229,7 +243,7 @@ final class FormCapture
                 $email = $val;
             } elseif ($phone === null && preg_match('/t[eé]l|phone|whatsapp|mobile|num[eé]ro/', $k)) {
                 $phone = $val;
-            } elseif ($formation === null && preg_match('/formation|programme|fili|cursus/', $k)) {
+            } elseif ($formation === null && $this->looksLikeFormation($k)) {
                 $formation = $val;
             } elseif ($name === null && preg_match('/nom|name|pr[eé]nom/', $k)) {
                 $name = $val;

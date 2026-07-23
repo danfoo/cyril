@@ -96,6 +96,10 @@ class School_ia_bridge_model extends App_Model
         if (!$this->db->field_exists('conseiller_notified', $this->table())) {
             $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `conseiller_notified` TINYINT(1) NOT NULL DEFAULT 0');
         }
+        // Nom du formulaire d'origine (pour le suivi : d'où vient le lead).
+        if (!$this->db->field_exists('source_form', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `source_form` VARCHAR(191) NULL DEFAULT NULL');
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_tasks')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_tasks` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -1816,6 +1820,7 @@ class School_ia_bridge_model extends App_Model
         if (array_key_exists('email', $p))       { $data['email']       = ($v = substr((string) $p['email'], 0, 191)) !== '' ? $v : null; }
         if (array_key_exists('phone', $p))       { $data['phone']       = ($v = substr((string) $p['phone'], 0, 64)) !== '' ? $v : null; }
         if (array_key_exists('formation', $p))   { $data['formation']   = ($v = substr((string) $p['formation'], 0, 191)) !== '' ? $v : null; }
+        if (array_key_exists('source_form', $p)) { $data['source_form'] = ($v = substr((string) $p['source_form'], 0, 191)) !== '' ? $v : null; }
         if (array_key_exists('score', $p))       { $data['score']       = (float) $p['score']; }
         if (array_key_exists('band', $p))        { $data['band']        = ($v = substr((string) $p['band'], 0, 32)) !== '' ? $v : null; }
         if (array_key_exists('source_site', $p)) { $data['source_site'] = ($v = substr((string) $p['source_site'], 0, 191)) !== '' ? $v : null; }
