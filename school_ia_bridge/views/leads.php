@@ -5,13 +5,26 @@
     <div class="row">
       <div class="col-md-12">
 
+        <?php
+        $qs = http_build_query(array_filter([
+            'q' => $filters['q'] ?? '', 'stage' => $filters['stage'] ?? '', 'min_score' => $filters['min_score'] ?? '',
+            'rentree' => $filters['rentree'] ?? '', 'unassigned' => $filters['unassigned'] ?? '',
+        ]));
+        $returnUrl = admin_url('school_ia_bridge') . ($qs ? '?' . $qs : '');
+        // Construit une URL en modifiant un sous-ensemble des filtres courants.
+        $mk = function (array $over) use ($filters) {
+            $q = array_filter([
+                'q' => $filters['q'] ?? '', 'stage' => $filters['stage'] ?? '', 'min_score' => $filters['min_score'] ?? '',
+                'rentree' => $filters['rentree'] ?? '', 'unassigned' => $filters['unassigned'] ?? '',
+            ]);
+            foreach ($over as $k => $v) { if ($v === null) { unset($q[$k]); } else { $q[$k] = $v; } }
+            return admin_url('school_ia_bridge') . ($q ? '?' . http_build_query($q) : '');
+        };
+        ?>
+
         <div class="panel_s">
           <div class="panel-body">
             <div class="clearfix">
-              <?php $qs = http_build_query(array_filter([
-                  'q' => $filters['q'] ?? '', 'stage' => $filters['stage'] ?? '', 'min_score' => $filters['min_score'] ?? '',
-                  'rentree' => $filters['rentree'] ?? '', 'unassigned' => $filters['unassigned'] ?? '',
-              ])); ?>
               <h4 class="no-margin pull-left"><i class="fa fa-graduation-cap"></i> School IA — Contacts <?php echo sia_help('inbox'); ?></h4>
               <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
                 <i class="fa fa-user-plus"></i> Ajouter un lead
@@ -75,11 +88,62 @@
           </div>
         </div>
 
+        <!-- Synthèse rapide (sur le résultat filtré) -->
+        <div class="panel_s"><div class="panel-body" style="padding:12px 16px;">
+          <div class="sia-chip-strip">
+            <span class="sia-chip"><span class="sia-chip-dot" style="background:#4f46e5;"></span><strong><?php echo (int) $summary['total']; ?></strong> au total</span>
+            <a class="sia-chip" href="<?php echo $mk(['min_score' => 60]); ?>"><span class="sia-chip-dot" style="background:#dc2626;"></span><strong><?php echo (int) $summary['hot']; ?></strong> chauds (≥ 60)</a>
+            <span class="sia-chip"><span class="sia-chip-dot" style="background:#d97706;"></span><strong><?php echo (int) $summary['warm']; ?></strong> tièdes</span>
+            <span class="sia-chip"><span class="sia-chip-dot" style="background:#2563eb;"></span><strong><?php echo (int) $summary['cold']; ?></strong> froids</span>
+            <a class="sia-chip" href="<?php echo $mk(['unassigned' => 1]); ?>"><span class="sia-chip-dot" style="background:#ea580c;"></span><strong><?php echo (int) $summary['unassigned']; ?></strong> non assignés</a>
+            <?php
+            $topForm = array_slice($summary['by_formation'], 0, 3, true);
+            foreach ($topForm as $fname => $fn) { ?>
+              <span class="sia-chip sia-chip-muted"><i class="fa fa-graduation-cap"></i> <?php echo htmlspecialchars((string) $fname, ENT_QUOTES); ?> · <strong><?php echo (int) $fn; ?></strong></span>
+            <?php } ?>
+            <?php if ($qs) { ?>
+              <a class="sia-chip sia-chip-muted" href="<?php echo admin_url('school_ia_bridge'); ?>"><i class="fa fa-times"></i> Réinitialiser</a>
+            <?php } ?>
+          </div>
+        </div></div>
+
+        <?php echo form_open(admin_url('school_ia_bridge/leads_bulk'), ['id' => 'sia-leads-form']); ?>
+        <input type="hidden" name="return" value="<?php echo htmlspecialchars($returnUrl, ENT_QUOTES); ?>">
+
+        <!-- Barre d'actions groupées -->
+        <div class="panel_s sia-no-print"><div class="panel-body" style="padding:12px 16px;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span class="text-muted" style="font-size:12.5px;"><i class="fa fa-hand-o-up"></i> Sélection :</span>
+            <span style="display:inline-flex;gap:4px;align-items:center;">
+              <select name="assign_staff" class="form-control input-sm" style="height:30px;width:160px;">
+                <option value="0">— Conseiller —</option>
+                <?php foreach ($staff as $s) { ?>
+                  <option value="<?php echo (int) $s->staffid; ?>"><?php echo htmlspecialchars($s->firstname . ' ' . $s->lastname, ENT_QUOTES); ?></option>
+                <?php } ?>
+              </select>
+              <button type="submit" name="do" value="assign" class="btn btn-sm btn-default"><i class="fa fa-user"></i> Assigner</button>
+            </span>
+            <span style="display:inline-flex;gap:4px;align-items:center;">
+              <select name="stage" class="form-control input-sm" style="height:30px;width:150px;">
+                <option value="">— Étape —</option>
+                <?php foreach ($model->stages() as $s => $conf) { ?>
+                  <option value="<?php echo $s; ?>"><?php echo htmlspecialchars($conf[0], ENT_QUOTES); ?></option>
+                <?php } ?>
+              </select>
+              <button type="submit" name="do" value="stage" class="btn btn-sm btn-default"><i class="fa fa-random"></i> Changer d'étape</button>
+            </span>
+            <button type="submit" name="do" value="delete" class="btn btn-sm btn-default" onclick="return confirm('Supprimer définitivement les leads sélectionnés et tout leur historique ?');"><i class="fa fa-trash text-danger"></i> Supprimer</button>
+            <a href="<?php echo admin_url('school_ia_bridge/bulk'); ?>" class="btn btn-sm btn-default" style="margin-left:auto;"><i class="fa fa-paper-plane"></i> Campagne e-mail / SMS →</a>
+          </div>
+          <p class="text-muted" style="margin:8px 0 0;font-size:11.5px;">Cochez des leads puis choisissez une action. L'envoi de campagne ciblée par filtres se fait sur la page <strong>Envoi groupé</strong>.</p>
+        </div></div>
+
         <div class="panel_s">
           <div class="panel-body">
             <table class="table dt-table">
               <thead>
                 <tr>
+                  <th style="width:26px;" data-orderable="false"><input type="checkbox" onclick="var b=this.checked;document.querySelectorAll('#sia-leads-form input[name=\'ids[]\']').forEach(function(c){c.checked=b;});"></th>
                   <th>#</th>
                   <th>Reçu le</th>
                   <th>Nom</th>
@@ -88,14 +152,15 @@
                   <th>Formation</th>
                   <th>Score</th>
                   <th>Étape</th>
+                  <th>Conseiller</th>
                   <th>Rentrée</th>
-                  <th></th>
+                  <th data-orderable="false"></th>
                 </tr>
               </thead>
               <tbody>
               <?php if (empty($leads)) { ?>
                 <tr>
-                  <td colspan="10" class="text-center text-muted" style="padding:30px;">
+                  <td colspan="12" class="text-center text-muted" style="padding:30px;">
                     Aucun lead reçu pour l'instant.
                   </td>
                 </tr>
@@ -103,6 +168,7 @@
                   foreach ($leads as $lead) {
                       $stage = $lead->stage ?? 'nouveau'; ?>
                 <tr>
+                  <td><input type="checkbox" name="ids[]" value="<?php echo (int) $lead->id; ?>"></td>
                   <td><?php echo (int) $lead->id; ?></td>
                   <td><?php echo htmlspecialchars((string) $lead->received_at, ENT_QUOTES); ?></td>
                   <td>
@@ -119,6 +185,14 @@
                       <?php echo htmlspecialchars($model->stageLabel($stage), ENT_QUOTES); ?>
                     </span>
                   </td>
+                  <td>
+                    <?php $owner = trim((string) ($lead->owner_name ?? ''));
+                    if ($owner !== '') { ?>
+                      <span class="label label-success"><?php echo htmlspecialchars($owner, ENT_QUOTES); ?></span>
+                    <?php } else { ?>
+                      <span class="text-muted">—</span>
+                    <?php } ?>
+                  </td>
                   <td><?php echo htmlspecialchars((string) ($lead->rentree ?? ''), ENT_QUOTES); ?></td>
                   <td class="text-right">
                     <a href="<?php echo admin_url('school_ia_bridge/lead_delete/' . (int) $lead->id); ?>" class="text-muted"
@@ -133,6 +207,7 @@
             </table>
           </div>
         </div>
+        <?php echo form_close(); ?>
 
       </div>
     </div>

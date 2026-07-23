@@ -262,33 +262,38 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
-    /** Recherche + filtres (boîte de réception). */
+    /** Recherche + filtres (boîte de réception), avec le conseiller assigné. */
     public function search(array $f, int $limit = 300): array
     {
         $this->ensure_schema();
+        $this->db
+            ->select('l.*, CONCAT(s.firstname, " ", s.lastname) AS owner_name')
+            ->from($this->table() . ' l')
+            ->join(db_prefix() . 'staff s', 's.staffid = l.owner_id', 'left');
+
         $q = trim((string) ($f['q'] ?? ''));
         if ($q !== '') {
             $this->db->group_start()
-                ->like('name', $q)->or_like('email', $q)
-                ->or_like('formation', $q)->or_like('phone', $q)
+                ->like('l.name', $q)->or_like('l.email', $q)
+                ->or_like('l.formation', $q)->or_like('l.phone', $q)
                 ->group_end();
         }
         if (!empty($f['stage'])) {
-            $this->db->where('stage', $f['stage']);
+            $this->db->where('l.stage', $f['stage']);
         }
         if (isset($f['min_score']) && $f['min_score'] !== '') {
-            $this->db->where('score >=', (float) $f['min_score']);
+            $this->db->where('l.score >=', (float) $f['min_score']);
         }
         if (!empty($f['rentree'])) {
-            $this->db->where('rentree', $f['rentree']);
+            $this->db->where('l.rentree', $f['rentree']);
         }
         if (!empty($f['unassigned'])) {
-            $this->db->where('owner_id IS NULL', null, false);
+            $this->db->where('l.owner_id IS NULL', null, false);
         }
         return $this->db
-            ->order_by('received_at', 'desc')
+            ->order_by('l.received_at', 'desc')
             ->limit($limit)
-            ->get($this->table())
+            ->get()
             ->result();
     }
 

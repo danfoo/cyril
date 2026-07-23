@@ -64,12 +64,74 @@ class School_ia_bridge extends AdminController
             'rentree'     => $this->input->get('rentree'),
             'unassigned'  => $this->input->get('unassigned'),
         ];
+        $leads = $this->school_ia_bridge_model->search($filters);
+
+        // Synthèse contextuelle (sur le résultat filtré affiché).
+        $summary = ['total' => count($leads), 'hot' => 0, 'warm' => 0, 'cold' => 0, 'unassigned' => 0, 'by_formation' => []];
+        foreach ($leads as $l) {
+            $sc = (float) $l->score;
+            if ($sc >= 60) { $summary['hot']++; } elseif ($sc >= 40) { $summary['warm']++; } else { $summary['cold']++; }
+            if (empty($l->owner_id)) { $summary['unassigned']++; }
+            $key = trim((string) $l->formation) !== '' ? (string) $l->formation : '—';
+            $summary['by_formation'][$key] = ($summary['by_formation'][$key] ?? 0) + 1;
+        }
+        arsort($summary['by_formation']);
+
         $data['title']    = 'School IA — Leads';
-        $data['leads']    = $this->school_ia_bridge_model->search($filters);
+        $data['leads']    = $leads;
+        $data['summary']  = $summary;
         $data['filters']  = $filters;
         $data['rentrees'] = $this->school_ia_bridge_model->rentrees();
+        $data['staff']    = $this->db->where('active', 1)->get(db_prefix() . 'staff')->result();
         $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/leads', $data);
+    }
+
+    /** Actions groupées sur les leads (assigner / changer d'étape / supprimer). */
+    public function leads_bulk()
+    {
+        $this->need('manage_leads');
+        $ids    = array_values(array_filter(array_map('intval', (array) $this->input->post('ids'))));
+        $action = (string) $this->input->post('do');
+        $return = $this->input->post('return') ?: admin_url('school_ia_bridge');
+
+        if (empty($ids)) {
+            set_alert('warning', 'Sélectionnez au moins un lead.');
+            redirect($return);
+        }
+
+        $staffId = (int) $this->input->post('assign_staff');
+        $stage   = (string) $this->input->post('stage');
+        $me      = get_staff_user_id();
+        $n = 0;
+
+        foreach ($ids as $id) {
+            if (!$this->school_ia_bridge_model->get_lead($id)) {
+                continue;
+            }
+            if ($action === 'assign') {
+                $this->school_ia_bridge_model->set_owner($id, $staffId);
+                $this->school_ia_bridge_model->add_activity($id, 'assignment',
+                    'Responsable : ' . ($staffId ? get_staff_full_name($staffId) : '—') . ' (action groupée)', $me);
+                $n++;
+            } elseif ($action === 'stage' && $stage !== '') {
+                $this->school_ia_bridge_model->set_stage($id, $stage);
+                $this->school_ia_bridge_model->add_activity($id, 'stage_change',
+                    'Étape → ' . $this->school_ia_bridge_model->stageLabel($stage) . ' (action groupée)', $me);
+                $n++;
+            } elseif ($action === 'delete') {
+                $this->school_ia_bridge_model->delete_lead($id);
+                $n++;
+            }
+        }
+
+        $msg = [
+            'assign' => $n . ' lead(s) réassigné(s).',
+            'stage'  => $n . ' lead(s) déplacé(s) d\'étape.',
+            'delete' => $n . ' lead(s) supprimé(s).',
+        ][$action] ?? ($n . ' lead(s) mis à jour.');
+        set_alert('success', $msg);
+        redirect($return);
     }
 
     /** Statistiques des campagnes (ouvertures/clics e-mail, SMS). */
@@ -616,7 +678,7 @@ class School_ia_bridge extends AdminController
         ];
         $leads = $this->school_ia_bridge_model->search($filters, 100000);
 
-        $rows = [['ID', 'Nom', 'E-mail', 'Téléphone', 'Formation', 'Score', 'Étape', 'Rentrée', 'Source', 'Reçu le']];
+        $rows = [['ID', 'Nom', 'E-mail', 'Téléphone', 'Formation', 'Score', 'Étape', 'Conseiller', 'Rentrée', 'Source', 'Reçu le']];
         foreach ($leads as $l) {
             $rows[] = [
                 (int) $l->id,
@@ -626,6 +688,7 @@ class School_ia_bridge extends AdminController
                 (string) $l->formation,
                 (string) $l->score,
                 $this->school_ia_bridge_model->stageLabel($l->stage ?? 'nouveau'),
+                (string) trim((string) ($l->owner_name ?? '')),
                 (string) ($l->rentree ?? ''),
                 (string) $l->source_site,
                 (string) $l->received_at,

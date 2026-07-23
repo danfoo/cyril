@@ -198,12 +198,14 @@ function sia_help(string $key): string
              </ul>
              <p><em>Droits :</em> l\'accès aux fonctions du CRM se règle par rôle dans <strong>Setup → Rôles → School IA CRM</strong>.</p>'],
         'inbox' => ['Contacts',
-            '<p>La liste de tous les leads reçus.</p>
+            '<p>La liste de tous les leads reçus, avec gestion en masse.</p>
              <ul>
-               <li><strong>Rechercher / filtrer</strong> par nom, e-mail, étape ou score.</li>
-               <li><strong>Ajouter un lead</strong> manuellement, ou <strong>Importer</strong> depuis un fichier CSV/Excel.</li>
-               <li><strong>Exporter</strong> la liste filtrée en CSV ou Excel.</li>
-               <li>Cliquez un lead pour ouvrir sa fiche.</li>
+               <li><strong>Synthèse rapide</strong> (bandeau de chips) : chauds / tièdes / froids, non assignés et top formations — cliquez « chauds » ou « non assignés » pour filtrer d\'un coup.</li>
+               <li><strong>Rechercher / filtrer</strong> par nom, e-mail, étape, rentrée, score ou non-assignés.</li>
+               <li><strong>Colonne Conseiller</strong> : voyez d\'un coup d\'œil qui est responsable de chaque lead.</li>
+               <li><strong>Sélection multiple</strong> (cases à cocher) puis <strong>actions groupées</strong> : assigner à un conseiller, changer d\'étape, ou supprimer plusieurs leads en un clic.</li>
+               <li><strong>Ajouter</strong> un lead, <strong>Importer</strong> (CSV/Excel), <strong>Exporter</strong> la liste filtrée.</li>
+               <li>Pour une <strong>campagne e-mail/SMS</strong> ciblée par filtres, utilisez la page <strong>Envoi groupé</strong>.</li>
              </ul>'],
         'new_lead' => ['Ajouter un lead',
             '<p>Saisie manuelle d\'un lead (salon, appel, recommandation…).</p>

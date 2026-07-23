@@ -477,6 +477,23 @@
 #wrapper .content .sia-report h5 { margin: 12px 0 5px; }
 #wrapper .content .sia-report p  { margin: 0 0 8px; }
 
+/* ---- Bandeau de synthèse (chips) : liste Contacts ---- */
+#wrapper .content .sia-chip-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#wrapper .content .sia-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--sia-surface-2);
+  border: 1px solid var(--sia-border);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-size: 13px; font-weight: 500; color: var(--sia-text);
+  transition: background .15s ease, border-color .15s ease, transform .15s ease;
+  white-space: nowrap;
+}
+#wrapper .content a.sia-chip:hover { background: var(--sia-primary-soft); border-color: var(--sia-primary); color: var(--sia-primary); transform: translateY(-1px); }
+#wrapper .content .sia-chip strong { font-weight: 800; }
+#wrapper .content .sia-chip-muted { color: var(--sia-muted); }
+#wrapper .content .sia-chip-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+
 /* ---- Impression / export PDF (Reporting) ---- */
 @media print {
   .sia-no-print { display: none !important; }
