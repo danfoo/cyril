@@ -24,19 +24,17 @@
             : number_format($avgFirstContact / 24, 1, ',', ' ') . ' j';
     }
 
-    // Rendu d'une carte KPI (icône teintée + valeur + libellé).
-    $kpi = function (string $label, $value, string $color, string $icon) {
+    // Rendu d'une carte KPI premium (dégradé + grande icône estompée).
+    // Styles structurants en inline : rendu correct dès le premier affichage,
+    // même si la feuille de style du module est momentanément en cache.
+    $kpi = function (string $label, $value, string $grad, string $icon) {
         ob_start(); ?>
-        <div class="col-lg-3 col-sm-6">
-          <div class="panel_s sia-kpi"><div class="panel-body">
-            <div class="sia-kpi-icon" style="color:<?php echo $color; ?>;background:<?php echo $color; ?>1a;">
-              <i class="fa <?php echo $icon; ?>"></i>
-            </div>
-            <div class="sia-kpi-meta">
-              <div class="sia-kpi-value"><?php echo $value; ?></div>
-              <div class="sia-kpi-label"><?php echo $label; ?></div>
-            </div>
-          </div></div>
+        <div class="col-lg-3 col-sm-6 sia-stat-col">
+          <div class="sia-stat-card" style="position:relative;overflow:hidden;border-radius:16px;padding:18px 20px;min-height:94px;color:#fff;display:flex;flex-direction:column;justify-content:center;background:<?php echo $grad; ?>;box-shadow:0 6px 18px rgba(15,23,42,.14);">
+            <div style="position:relative;z-index:1;font-size:26px;font-weight:800;line-height:1.08;letter-spacing:-.02em;"><?php echo $value; ?></div>
+            <div style="position:relative;z-index:1;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.92;margin-top:5px;"><?php echo $label; ?></div>
+            <i class="fa <?php echo $icon; ?>" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:54px;opacity:.20;"></i>
+          </div>
         </div>
         <?php return ob_get_clean();
     };
@@ -86,14 +84,14 @@
 
     <div class="row sia-kpi-grid">
       <?php
-      echo $kpi('Leads au total',        (int) $stats['total'],    '#4f46e5', 'fa-users');
-      echo $kpi('Leads chauds (≥ 60)',   (int) $sd['chaud'],       '#dc2626', 'fa-fire');
-      echo $kpi('Leads tièdes (40-59)',  (int) $sd['tiede'],       '#d97706', 'fa-thermometer-half');
-      echo $kpi('Leads froids (< 40)',   (int) $sd['froid'],       '#2563eb', 'fa-snowflake-o');
-      echo $kpi('Inscrits',              (int) $stats['inscrits'], '#16a34a', 'fa-graduation-cap');
-      echo $kpi('Taux de conversion',    $stats['conversion'] . ' %', '#d6a63a', 'fa-line-chart');
-      echo $kpi('Délai moyen 1ᵉʳ contact', $delayLabel,           '#0891b2', 'fa-hourglass-half');
-      echo $kpi('Leads non assignés',    (int) $unassignedCount,   $unassignedCount > 0 ? '#d97706' : '#16a34a', 'fa-user-times');
+      echo $kpi('Leads au total',        (int) $stats['total'],    'linear-gradient(135deg,#6366f1,#4f46e5)', 'fa-users');
+      echo $kpi('Leads chauds (≥ 60)',   (int) $sd['chaud'],       'linear-gradient(135deg,#fb7185,#e11d48)', 'fa-fire');
+      echo $kpi('Leads tièdes (40-59)',  (int) $sd['tiede'],       'linear-gradient(135deg,#fbbf24,#d97706)', 'fa-thermometer-half');
+      echo $kpi('Leads froids (< 40)',   (int) $sd['froid'],       'linear-gradient(135deg,#38bdf8,#2563eb)', 'fa-snowflake-o');
+      echo $kpi('Inscrits',              (int) $stats['inscrits'], 'linear-gradient(135deg,#34d399,#059669)', 'fa-graduation-cap');
+      echo $kpi('Taux de conversion',    $stats['conversion'] . ' %', 'linear-gradient(135deg,#2dd4bf,#0d9488)', 'fa-line-chart');
+      echo $kpi('Délai moyen 1ᵉʳ contact', $delayLabel,           'linear-gradient(135deg,#64748b,#334155)', 'fa-hourglass-half');
+      echo $kpi('Leads non assignés',    (int) $unassignedCount,   $unassignedCount > 0 ? 'linear-gradient(135deg,#fb923c,#ea580c)' : 'linear-gradient(135deg,#334155,#0f172a)', 'fa-user-times');
       ?>
     </div>
 
