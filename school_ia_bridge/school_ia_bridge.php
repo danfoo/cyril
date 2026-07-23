@@ -584,7 +584,7 @@ function school_ia_email_wrap(string $contentHtml, string $signatureHtml = ''): 
     $brand   = trim((string) get_option('companyname')) ?: 'School IA';
     $brandEsc = htmlspecialchars($brand, ENT_QUOTES);
     $year    = date('Y');
-    $primary = '#d11349';
+    $primary = school_ia_brand_color();
 
     $sigBlock = '';
     if (trim($signatureHtml) !== '') {
@@ -780,6 +780,32 @@ function school_ia_bridge_sequences_cron()
  * Feuille de style premium — chargée UNIQUEMENT sur les pages du module
  * (aucun impact sur le reste de Perfex).
  */
+/** Couleur de base (marque) configurable dans les Réglages. Défaut : crimson BEM. */
+function school_ia_brand_color(): string
+{
+    $c = trim((string) get_option('sia_brand_color'));
+    return preg_match('/^#[0-9a-fA-F]{6}$/', $c) ? $c : '#d11349';
+}
+
+/** Assombrit une couleur hex de $pct % (pour la teinte « survol »). */
+function school_ia_hex_darken(string $hex, int $pct): string
+{
+    $hex = ltrim($hex, '#');
+    if (strlen($hex) !== 6) { return '#' . $hex; }
+    $f = max(0, 100 - $pct) / 100;
+    $r = (int) round(hexdec(substr($hex, 0, 2)) * $f);
+    $g = (int) round(hexdec(substr($hex, 2, 2)) * $f);
+    $b = (int) round(hexdec(substr($hex, 4, 2)) * $f);
+    return sprintf('#%02x%02x%02x', $r, $g, $b);
+}
+
+/** Composantes "r,g,b" d'un hex, pour rgba(). */
+function school_ia_hex_rgb(string $hex): string
+{
+    $hex = ltrim($hex, '#');
+    return hexdec(substr($hex, 0, 2)) . ',' . hexdec(substr($hex, 2, 2)) . ',' . hexdec(substr($hex, 4, 2));
+}
+
 hooks()->add_action('app_admin_head', 'school_ia_bridge_head_css');
 function school_ia_bridge_head_css()
 {
@@ -790,6 +816,14 @@ function school_ia_bridge_head_css()
     // invalidé automatiquement à chaque mise à jour du CSS (plus de ?v=xx figé).
     $ver = @filemtime(module_dir_path(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css')) ?: time();
     echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=' . $ver . '">';
+
+    // Couleur de base personnalisable : surcharge les variables du thème.
+    $brand = school_ia_brand_color();
+    echo '<style>:root{'
+        . '--sia-primary:' . $brand . ';'
+        . '--sia-primary-600:' . school_ia_hex_darken($brand, 18) . ';'
+        . '--sia-primary-soft:rgba(' . school_ia_hex_rgb($brand) . ',.12);'
+        . '}</style>';
 }
 
 /**

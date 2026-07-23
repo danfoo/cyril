@@ -523,6 +523,7 @@ class School_ia_bridge extends AdminController
         $data['ai_model']    = get_option('sia_ai_model') ?: 'claude-opus-4-8';
         $data['program_fees'] = get_option('sia_program_fees');
         $data['target_inscrits'] = (int) get_option('sia_target_inscrits');
+        $data['brand_color'] = school_ia_brand_color();
         $this->load->view('school_ia_bridge/settings', $data);
     }
 
@@ -562,6 +563,11 @@ class School_ia_bridge extends AdminController
         }
         if ($this->input->post('reminders_form') !== null) {
             update_option('sia_reminders_enabled', $this->input->post('reminders_enabled') ? '1' : '0');
+        }
+        if ($this->input->post('appearance_form') !== null) {
+            $color = trim((string) $this->input->post('brand_color'));
+            // On n'accepte qu'un hex #RRGGBB valide ; sinon on retombe sur le défaut.
+            update_option('sia_brand_color', preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? strtolower($color) : '#d11349');
         }
         if ($this->input->post('ai_form') !== null) {
             $aiKey = (string) $this->input->post('ai_api_key');

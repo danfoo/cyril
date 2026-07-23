@@ -35,6 +35,42 @@
 
         <div class="panel_s">
           <div class="panel-body">
+            <h4 class="no-margin"><i class="fa fa-paint-brush"></i> Apparence — Couleur de base</h4>
+            <hr class="hr-panel-heading" />
+            <p class="text-muted">Couleur principale de la marque (boutons, liens, en-tête des e-mails…). Par défaut : <code>#d11349</code> (BEM).</p>
+            <?php echo form_open(admin_url('school_ia_bridge/save_settings')); ?>
+              <input type="hidden" name="appearance_form" value="1">
+              <div class="form-group">
+                <label class="control-label">Couleur de base</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <input type="color" id="sia-brand-color" value="<?php echo htmlspecialchars((string) $brand_color, ENT_QUOTES); ?>"
+                         style="width:48px;height:38px;padding:2px;border:1px solid #e6e9f0;border-radius:8px;cursor:pointer;">
+                  <input type="text" name="brand_color" id="sia-brand-hex" class="form-control" maxlength="7"
+                         value="<?php echo htmlspecialchars((string) $brand_color, ENT_QUOTES); ?>"
+                         placeholder="#d11349" style="max-width:140px;font-family:monospace;">
+                  <span class="sia-brand-preview" id="sia-brand-preview"
+                        style="display:inline-block;padding:6px 14px;border-radius:8px;color:#fff;font-weight:600;background:<?php echo htmlspecialchars((string) $brand_color, ENT_QUOTES); ?>;">Aperçu</span>
+                </div>
+                <p class="text-muted" style="font-size:12px;margin-top:6px;">Format hexadécimal <code>#RRGGBB</code>.</p>
+              </div>
+              <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <?php echo form_close(); ?>
+            <script>
+            (function () {
+              var picker = document.getElementById('sia-brand-color');
+              var hex    = document.getElementById('sia-brand-hex');
+              var prev   = document.getElementById('sia-brand-preview');
+              if (!picker || !hex) { return; }
+              function apply(v) { if (/^#[0-9a-fA-F]{6}$/.test(v)) { picker.value = v; if (prev) { prev.style.background = v; } } }
+              picker.addEventListener('input', function () { hex.value = picker.value; if (prev) { prev.style.background = picker.value; } });
+              hex.addEventListener('input', function () { apply(hex.value.trim()); });
+            })();
+            </script>
+          </div>
+        </div>
+
+        <div class="panel_s">
+          <div class="panel-body">
             <h4 class="no-margin"><i class="fa fa-bell"></i> Rappels automatiques</h4>
             <hr class="hr-panel-heading" />
             <p class="text-muted">Envoie un e-mail au responsable pour chaque tâche arrivée à échéance. Nécessite que le <strong>cron de Perfex</strong> soit configuré.</p>
