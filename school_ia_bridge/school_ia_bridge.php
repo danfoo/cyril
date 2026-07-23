@@ -727,6 +727,32 @@ function school_ia_bridge_head_css()
 }
 
 /**
+ * Icônes Google Material pour les onglets du menu. Chargé sur TOUTES les pages
+ * admin (la barre latérale est globale). Perfex rend l'icône comme
+ * <i class="{classe}"></i> sans texte : on injecte donc le glyphe via ::before.
+ */
+hooks()->add_action('app_admin_head', 'school_ia_bridge_menu_icons');
+function school_ia_bridge_menu_icons()
+{
+    echo '<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">';
+    echo '<style>'
+        . '.sia-mi{font-family:"Material Icons";font-weight:normal;font-style:normal;font-size:19px;'
+        . 'line-height:1;display:inline-block;vertical-align:middle;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}'
+        . '#sidebar .menu li a .sia-mi,#sidebar .sia-mi{width:22px;text-align:center;}'
+        . '.sia-mi::before{display:inline-block;}'
+        . '.sia-mi-dashboard::before{content:"\e871";}'
+        . '.sia-mi-contacts::before{content:"\e7ef";}'
+        . '.sia-mi-tasks::before{content:"\e862";}'
+        . '.sia-mi-reports::before{content:"\e85c";}'
+        . '.sia-mi-campaign::before{content:"\ef49";}'
+        . '.sia-mi-veille::before{content:"\e8f4";}'
+        . '.sia-mi-templates::before{content:"\e873";}'
+        . '.sia-mi-documents::before{content:"\e2c7";}'
+        . '.sia-mi-config::before{content:"\e8b8";}'
+        . '</style>';
+}
+
+/**
  * Enregistre les permissions du module (Setup → Rôles) et construit le menu
  * en fonction des droits du membre connecté.
  */
@@ -763,7 +789,7 @@ function school_ia_bridge_admin_menu()
     $CI->app_menu->add_sidebar_menu_item('sia_dashboard', [
         'name'     => 'Tableau de bord',
         'href'     => admin_url('school_ia_bridge/dashboard'),
-        'icon'     => 'fa fa-graduation-cap',
+        'icon'     => 'sia-mi sia-mi-dashboard',
         'position' => 30,
     ]);
 
@@ -771,7 +797,7 @@ function school_ia_bridge_admin_menu()
     $CI->app_menu->add_sidebar_menu_item('sia_contacts', [
         'name'     => 'Contact',
         'href'     => admin_url('school_ia_bridge'),
-        'icon'     => 'fa fa-users',
+        'icon'     => 'sia-mi sia-mi-contacts',
         'position' => 31,
     ]);
 
@@ -779,14 +805,14 @@ function school_ia_bridge_admin_menu()
     $CI->app_menu->add_sidebar_menu_item('sia_tasks', [
         'name'     => 'Tâches',
         'href'     => admin_url('school_ia_bridge/tasks'),
-        'icon'     => 'fa fa-check-square-o',
+        'icon'     => 'sia-mi sia-mi-tasks',
         'position' => 32,
     ]);
 
     // 4. Rapports (groupe) : Reporting + Journal
     $CI->app_menu->add_sidebar_menu_item('sia_reports', [
         'name'     => 'Rapports',
-        'icon'     => 'fa fa-file-text-o',
+        'icon'     => 'sia-mi sia-mi-reports',
         'position' => 33,
     ]);
     $CI->app_menu->add_sidebar_children_item('sia_reports', [
@@ -801,7 +827,7 @@ function school_ia_bridge_admin_menu()
     // 5. Campagne (groupe) : Les campagnes (séquences) + Nouvelle campagne (envoi groupé) + Statistiques
     $CI->app_menu->add_sidebar_menu_item('sia_campaign', [
         'name'     => 'Campagne',
-        'icon'     => 'fa fa-bullhorn',
+        'icon'     => 'sia-mi sia-mi-campaign',
         'position' => 34,
     ]);
     if ($canManage) {
@@ -825,7 +851,7 @@ function school_ia_bridge_admin_menu()
     $CI->app_menu->add_sidebar_menu_item('sia_veille', [
         'name'     => 'Veille',
         'href'     => admin_url('school_ia_bridge/competitors'),
-        'icon'     => 'fa fa-binoculars',
+        'icon'     => 'sia-mi sia-mi-veille',
         'position' => 35,
     ]);
 
@@ -834,20 +860,20 @@ function school_ia_bridge_admin_menu()
         $CI->app_menu->add_sidebar_menu_item('sia_templates', [
             'name'     => 'Modèles',
             'href'     => admin_url('school_ia_bridge/templates'),
-            'icon'     => 'fa fa-file-o',
+            'icon'     => 'sia-mi sia-mi-templates',
             'position' => 36,
         ]);
         // 8. Documents
         $CI->app_menu->add_sidebar_menu_item('sia_documents', [
             'name'     => 'Documents',
             'href'     => admin_url('school_ia_bridge/documents'),
-            'icon'     => 'fa fa-folder-open-o',
+            'icon'     => 'sia-mi sia-mi-documents',
             'position' => 37,
         ]);
         // 9. Configuration (groupe) : Réglages + Diagnostic
         $CI->app_menu->add_sidebar_menu_item('sia_config', [
             'name'     => 'Configuration',
-            'icon'     => 'fa fa-cog',
+            'icon'     => 'sia-mi sia-mi-config',
             'position' => 38,
         ]);
         $CI->app_menu->add_sidebar_children_item('sia_config', [
