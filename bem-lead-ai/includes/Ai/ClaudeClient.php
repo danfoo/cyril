@@ -43,34 +43,67 @@ final class ClaudeClient
             'messages' => $messages,
         ];
 
-        $response = wp_remote_post(self::ENDPOINT, [
-            'timeout' => 60,
-            'headers' => [
-                'x-api-key' => $apiKey,
-                'anthropic-version' => self::API_VERSION,
-                'content-type' => 'application/json',
-            ],
-            'body' => wp_json_encode($payload),
-        ]);
-
-        if (is_wp_error($response)) {
-            return new WP_Error('bem_claude_network', 'Connexion à l\'API Claude impossible : ' . $response->get_error_message());
-        }
-        $code = wp_remote_retrieve_response_code($response);
-        $rawBody = wp_remote_retrieve_body($response);
-        $body = json_decode($rawBody, true);
-        if ($code !== 200 || !is_array($body)) {
-            $detail = is_array($body) && isset($body['error']['message']) ? $body['error']['message'] : $rawBody;
-            return new WP_Error('bem_claude_error', sprintf('Claude API HTTP %d — %s', $code, $detail));
+        // JSON_INVALID_UTF8_SUBSTITUTE : un message collé par le prospect peut
+        // contenir des octets UTF-8 invalides ; sans ce drapeau, wp_json_encode
+        // renvoie false → corps vide → 400 (le fameux « souci technique » sur
+        // certains messages). Le drapeau remplace les octets fautifs par U+FFFD.
+        $encoded = wp_json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE);
+        if ($encoded === false) {
+            return new WP_Error('bem_claude_encode', 'Impossible d\'encoder la requête (contenu invalide).');
         }
 
-        $text = '';
-        foreach ($body['content'] ?? [] as $block) {
-            if (($block['type'] ?? '') === 'text') {
-                $text .= $block['text'];
+        // Codes transitoires : on retente (surcharge/limitation côté API).
+        $retryable = [429, 500, 502, 503, 504, 529];
+        $maxAttempts = 3;
+        $lastError = null;
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $response = wp_remote_post(self::ENDPOINT, [
+                'timeout' => 45,
+                'headers' => [
+                    'x-api-key' => $apiKey,
+                    'anthropic-version' => self::API_VERSION,
+                    'content-type' => 'application/json',
+                ],
+                'body' => $encoded,
+            ]);
+
+            if (is_wp_error($response)) {
+                // Erreur réseau/timeout : un seul nouvel essai rapide (évite
+                // d'empiler des attentes de 45 s dans un chat en direct).
+                $lastError = new WP_Error('bem_claude_network', 'Connexion à l\'API Claude impossible : ' . $response->get_error_message());
+                if ($attempt < $maxAttempts) { usleep(400000); continue; }
+                return $lastError;
             }
+
+            $code = wp_remote_retrieve_response_code($response);
+            $rawBody = wp_remote_retrieve_body($response);
+            $body = json_decode($rawBody, true);
+
+            if ($code === 200 && is_array($body)) {
+                $text = '';
+                foreach ($body['content'] ?? [] as $block) {
+                    if (($block['type'] ?? '') === 'text') {
+                        $text .= $block['text'];
+                    }
+                }
+                return $text;
+            }
+
+            $detail = is_array($body) && isset($body['error']['message']) ? $body['error']['message'] : $rawBody;
+            $lastError = new WP_Error('bem_claude_error', sprintf('Claude API HTTP %d — %s', $code, $detail));
+
+            if (in_array($code, $retryable, true) && $attempt < $maxAttempts) {
+                // Respecte Retry-After si présent, sinon backoff exponentiel court.
+                $retryAfter = (float) wp_remote_retrieve_header($response, 'retry-after');
+                $wait = $retryAfter > 0 ? min($retryAfter, 5.0) : (0.5 * $attempt);
+                usleep((int) round($wait * 1000000));
+                continue;
+            }
+            return $lastError; // 4xx non transitoire (clé, modèle, requête) : inutile de retenter.
         }
-        return $text;
+
+        return $lastError ?: new WP_Error('bem_claude_error', 'Échec inconnu de l\'API Claude.');
     }
 
     /**
