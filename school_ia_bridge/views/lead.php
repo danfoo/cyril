@@ -105,10 +105,17 @@
           <div class="col-md-8">
 
             <div class="panel_s"><div class="panel-body">
-              <h5 class="bold" style="margin-top:0;">
-                <span class="sia-panel-icon sia-ic-warning"><i class="fa fa-paper-plane"></i></span>
-                Contacter le lead
-              </h5>
+              <div class="clearfix">
+                <h5 class="bold pull-left" style="margin-top:0;">
+                  <span class="sia-panel-icon sia-ic-warning"><i class="fa fa-paper-plane"></i></span>
+                  Contacter le lead
+                </h5>
+                <?php if ($lead->phone) {
+                    $waNum = preg_replace('/\D+/', '', (string) $lead->phone); ?>
+                  <a href="https://wa.me/<?php echo $waNum; ?>?text=<?php echo rawurlencode($smsBody); ?>" target="_blank" rel="noopener"
+                     class="btn btn-sm pull-right sia-btn-wa"><i class="fa fa-whatsapp"></i> WhatsApp</a>
+                <?php } ?>
+              </div>
               <ul class="nav nav-tabs" role="tablist">
                 <li role="presentation" class="active"><a href="#sia-email" data-toggle="tab"><i class="fa fa-envelope"></i> E-mail</a></li>
                 <li role="presentation"><a href="#sia-sms" data-toggle="tab"><i class="fa fa-mobile"></i> SMS</a></li>
@@ -118,23 +125,44 @@
                   <?php if (!$lead->email) { ?>
                     <p class="text-muted">Pas d'adresse e-mail pour ce lead.</p>
                   <?php } else { ?>
-                    <?php echo form_open(admin_url('school_ia_bridge/send_email/' . (int) $lead->id)); ?>
+                    <?php echo form_open(admin_url('school_ia_bridge/send_email/' . (int) $lead->id), ['id' => 'sia-email-form']); ?>
                       <?php if (!empty($emailTpls)) { ?>
-                        <select class="form-control" id="sia-email-tpl" style="margin-bottom:6px;">
-                          <option value="">— Choisir un modèle —</option>
-                          <?php foreach ($emailTpls as $tpl) {
-                              $subj = strtr((string) $tpl->subject, ['{prenom}' => $prenom, '{formation}' => $formation]);
-                              $bod  = strtr((string) $tpl->body, ['{prenom}' => $prenom, '{formation}' => $formation]); ?>
-                            <option value="" data-subject="<?php echo htmlspecialchars($subj, ENT_QUOTES); ?>"
-                                    data-body="<?php echo htmlspecialchars($bod, ENT_QUOTES); ?>">
-                              <?php echo htmlspecialchars((string) $tpl->name, ENT_QUOTES); ?>
-                            </option>
-                          <?php } ?>
-                        </select>
+                        <div class="sia-field-icon">
+                          <i class="fa fa-file-text-o"></i>
+                          <select class="form-control" id="sia-email-tpl">
+                            <option value="">— Choisir un modèle —</option>
+                            <?php foreach ($emailTpls as $tpl) {
+                                $subj = strtr((string) $tpl->subject, ['{prenom}' => $prenom, '{formation}' => $formation]);
+                                $bod  = strtr((string) $tpl->body, ['{prenom}' => $prenom, '{formation}' => $formation]); ?>
+                              <option value="" data-subject="<?php echo htmlspecialchars($subj, ENT_QUOTES); ?>"
+                                      data-body="<?php echo htmlspecialchars($bod, ENT_QUOTES); ?>">
+                                <?php echo htmlspecialchars((string) $tpl->name, ENT_QUOTES); ?>
+                              </option>
+                            <?php } ?>
+                          </select>
+                        </div>
                       <?php } ?>
-                      <input type="text" name="subject" id="sia-email-subject" class="form-control" style="margin-bottom:6px;"
-                             value="À propos de <?php echo htmlspecialchars($formation, ENT_QUOTES); ?>">
-                      <textarea name="message" id="sia-email-message" class="form-control" rows="5"><?php echo htmlspecialchars($mailBody, ENT_QUOTES); ?></textarea>
+                      <div class="sia-field-icon">
+                        <i class="fa fa-pencil"></i>
+                        <input type="text" name="subject" id="sia-email-subject" class="form-control"
+                               value="À propos de <?php echo htmlspecialchars($formation, ENT_QUOTES); ?>">
+                      </div>
+
+                      <div class="sia-rte">
+                        <div class="sia-rte-toolbar">
+                          <button type="button" data-cmd="bold" title="Gras"><i class="fa fa-bold"></i></button>
+                          <button type="button" data-cmd="italic" title="Italique"><i class="fa fa-italic"></i></button>
+                          <button type="button" data-cmd="underline" title="Souligné"><i class="fa fa-underline"></i></button>
+                          <span class="sep"></span>
+                          <button type="button" data-cmd="insertUnorderedList" title="Liste à puces"><i class="fa fa-list-ul"></i></button>
+                          <button type="button" data-cmd="insertOrderedList" title="Liste numérotée"><i class="fa fa-list-ol"></i></button>
+                          <button type="button" data-cmd="createLink" title="Insérer un lien"><i class="fa fa-link"></i></button>
+                          <span class="sep"></span>
+                          <button type="button" data-cmd="removeFormat" title="Effacer la mise en forme"><i class="fa fa-eraser"></i></button>
+                        </div>
+                        <div class="sia-rte-area" id="sia-email-editor" contenteditable="true"><?php echo nl2br(htmlspecialchars($mailBody, ENT_QUOTES)); ?></div>
+                      </div>
+                      <textarea name="message" id="sia-email-message" style="display:none;"><?php echo htmlspecialchars($mailBody, ENT_QUOTES); ?></textarea>
 
                       <?php if (!empty($documents)) { ?>
                         <div style="margin-top:8px;">
@@ -270,7 +298,7 @@
               </h5>
               <?php echo form_open(admin_url('school_ia_bridge/assign/' . (int) $lead->id)); ?>
                 <div class="input-group">
-                  <select name="owner_id" class="form-control selectpicker" data-width="100%">
+                  <select name="owner_id" class="form-control">
                     <option value="0">— Aucun —</option>
                     <?php foreach ($staff as $st) { ?>
                       <option value="<?php echo (int) $st->staffid; ?>" <?php echo ((int) $lead->owner_id === (int) $st->staffid) ? 'selected' : ''; ?>>
@@ -496,12 +524,40 @@
   } catch (e) {}
 
   function opt(sel) { return sel && sel.options[sel.selectedIndex]; }
+
+  // Éditeur de texte enrichi (e-mail) : synchronise vers un textarea caché.
+  var editor = document.getElementById('sia-email-editor');
+  var hidden = document.getElementById('sia-email-message');
+  function syncEditor() { if (editor && hidden) { hidden.value = editor.innerHTML; } }
+  if (editor && hidden) {
+    editor.addEventListener('input', syncEditor);
+    syncEditor();
+    document.querySelectorAll('.sia-rte-toolbar [data-cmd]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var cmd = b.getAttribute('data-cmd');
+        editor.focus();
+        if (cmd === 'createLink') {
+          var url = prompt('Adresse du lien :', 'https://');
+          if (url) { document.execCommand('createLink', false, url); }
+        } else {
+          document.execCommand(cmd, false, null);
+        }
+        syncEditor();
+      });
+    });
+    var emailForm = document.getElementById('sia-email-form');
+    if (emailForm) { emailForm.addEventListener('submit', syncEditor); }
+  }
+
   var et = document.getElementById('sia-email-tpl');
   if (et) {
     et.addEventListener('change', function () {
       var o = opt(et); if (!o) return;
       if (o.getAttribute('data-subject') !== null) { document.getElementById('sia-email-subject').value = o.getAttribute('data-subject') || ''; }
-      if (o.getAttribute('data-body') !== null) { document.getElementById('sia-email-message').value = o.getAttribute('data-body') || ''; }
+      if (o.getAttribute('data-body') !== null && editor) {
+        editor.innerHTML = (o.getAttribute('data-body') || '').replace(/\n/g, '<br>');
+        syncEditor();
+      }
     });
   }
   var st = document.getElementById('sia-sms-tpl');

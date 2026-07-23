@@ -500,10 +500,58 @@
 #wrapper .content .sia-lead-tabs > li > a .label { margin-left: 5px; }
 #wrapper .content .sia-lead-tabcontent { padding-top: 2px; }
 
-/* Concurrents cités : alerte visuelle (bord rouge) */
-#wrapper .content .sia-competitor-alert {
-  border-left: 3px solid var(--sia-danger);
-  background: linear-gradient(180deg, rgba(220,38,38,.05), transparent 60%);
+/* Champs avec icône à gauche (formulaire e-mail) */
+#wrapper .content .sia-field-icon { position: relative; margin-bottom: 6px; }
+#wrapper .content .sia-field-icon > i {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--sia-muted); font-size: 13px; pointer-events: none; z-index: 2;
+}
+#wrapper .content .sia-field-icon > .form-control { padding-left: 34px; }
+
+/* Éditeur de texte enrichi (e-mail) */
+#wrapper .content .sia-rte {
+  border: 1px solid var(--sia-border);
+  border-radius: var(--sia-radius-sm);
+  overflow: hidden;
+  background: var(--sia-surface);
+}
+#wrapper .content .sia-rte-toolbar {
+  display: flex; flex-wrap: wrap; gap: 2px; padding: 6px;
+  border-bottom: 1px solid var(--sia-border); background: var(--sia-surface-2);
+}
+#wrapper .content .sia-rte-toolbar button {
+  border: none; background: transparent; width: 30px; height: 28px;
+  border-radius: 6px; color: var(--sia-text); cursor: pointer; font-size: 13px;
+}
+#wrapper .content .sia-rte-toolbar button:hover { background: var(--sia-primary-soft); color: var(--sia-primary); }
+#wrapper .content .sia-rte-toolbar .sep { width: 1px; background: var(--sia-border); margin: 2px 4px; }
+#wrapper .content .sia-rte-area {
+  min-height: 150px; max-height: 340px; overflow-y: auto;
+  padding: 12px 14px; outline: none; font-size: 14px; line-height: 1.55; color: var(--sia-text);
+}
+#wrapper .content .sia-rte-area:focus { box-shadow: inset 0 0 0 2px var(--sia-primary-soft); }
+#wrapper .content .sia-rte-area p { margin: 0 0 8px; }
+#wrapper .content .sia-rte-area:empty:before { content: attr(data-placeholder); color: var(--sia-muted); }
+
+/* Bouton WhatsApp */
+#wrapper .content .sia-btn-wa { background: #25D366; border-color: #25D366; color: #fff; }
+#wrapper .content .sia-btn-wa:hover, #wrapper .content .sia-btn-wa:focus { background: #1ebe5b; border-color: #1ebe5b; color: #fff; }
+
+/* Concurrents cités : alerte discrète (icône + libellés rouges, sans bord latéral) */
+
+/* Listes déroulantes « selectpicker » (bootstrap-select) : une seule bordure */
+#wrapper .content .bootstrap-select > .dropdown-toggle,
+#wrapper .content .bootstrap-select > .btn {
+  background: var(--sia-surface);
+  border: 1px solid var(--sia-border) !important;
+  border-radius: var(--sia-radius-sm);
+  color: var(--sia-text);
+  height: 40px;
+  box-shadow: none;
+}
+#wrapper .content .bootstrap-select.btn-group { box-shadow: none; }
+#wrapper .content .input-group .bootstrap-select > .btn {
+  border-radius: var(--sia-radius-sm) 0 0 var(--sia-radius-sm) !important;
 }
 
 /* ---- Bandeau de synthèse (chips) : liste Contacts ---- */

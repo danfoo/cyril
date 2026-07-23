@@ -573,7 +573,9 @@ function school_ia_send_tracked_email(object $lead, string $subject, string $bod
         'staff_id' => function_exists('get_staff_user_id') ? (get_staff_user_id() ?: null) : null,
     ]);
 
-    $html = nl2br($bodyText);
+    // Corps déjà en HTML (éditeur enrichi) → tel quel ; sinon on convertit les
+    // sauts de ligne du texte brut en <br>.
+    $html = (strip_tags($bodyText) !== $bodyText) ? $bodyText : nl2br($bodyText);
     // Réécrit les liens <a href="http..."> vers le traceur de clics.
     $click = site_url('school_ia_bridge/api/track_click/' . $token);
     $html = preg_replace_callback('/href="(https?:\/\/[^"]+)"/i', function ($m) use ($click) {
