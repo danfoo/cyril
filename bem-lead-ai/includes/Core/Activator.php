@@ -142,6 +142,7 @@ final class Activator
             phone VARCHAR(40) NULL,
             prenom VARCHAR(100) NULL,
             formation_interet VARCHAR(190) NULL,
+            source_form VARCHAR(190) NULL,
             score_comportemental FLOAT NOT NULL DEFAULT 0,
             score_intention FLOAT NOT NULL DEFAULT 0,
             score_final FLOAT NOT NULL DEFAULT 0,

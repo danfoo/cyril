@@ -51,12 +51,15 @@ final class FormCapture
                 $first = trim((string) ($entry[$id . '.3'] ?? ''));
                 $name = $first !== '' ? $first : ($val !== '' ? $val : $name);
             } elseif ($val !== '' && $formation === null && preg_match('/formation|programme|fili|cursus/', $label)) {
-                $formation = $val;
+                // Champ liste/bouton radio : la valeur stockée est souvent un code
+                // court (« MAGE », « Master ») ; on récupère le LIBELLÉ complet de
+                // l'option choisie plutôt que sa valeur brute.
+                $formation = $this->gfChoiceLabel($field, $val);
             } elseif ($val !== '') {
                 [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
             }
         }
-        $this->ingest($email, $phone, $name, $formation, 'gravityforms');
+        $this->ingest($email, $phone, $name, $formation, 'gravityforms', (string) $this->prop($form, 'title'));
     }
 
     /* ---------------- Contact Form 7 ---------------- */
@@ -71,7 +74,8 @@ final class FormCapture
             return;
         }
         [$email, $phone, $name, $formation] = $this->scanAssoc((array) $submission->get_posted_data());
-        $this->ingest($email, $phone, $name, $formation, 'contactform7');
+        $title = (is_object($contactForm) && method_exists($contactForm, 'title')) ? (string) $contactForm->title() : '';
+        $this->ingest($email, $phone, $name, $formation, 'contactform7', $title);
     }
 
     /* ---------------- WPForms ---------------- */
@@ -99,7 +103,8 @@ final class FormCapture
                 [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
             }
         }
-        $this->ingest($email, $phone, $name, $formation, 'wpforms');
+        $title = (string) ($formData['settings']['form_title'] ?? ($formData['title'] ?? ''));
+        $this->ingest($email, $phone, $name, $formation, 'wpforms', $title);
     }
 
     /* ---------------- Ninja Forms ---------------- */
@@ -113,18 +118,21 @@ final class FormCapture
             $assoc[$key] = $f['value'] ?? '';
         }
         [$email, $phone, $name, $formation] = $this->scanAssoc($assoc);
-        $this->ingest($email, $phone, $name, $formation, 'ninjaforms');
+        $title = (string) ($data['settings']['title'] ?? '');
+        $this->ingest($email, $phone, $name, $formation, 'ninjaforms', $title);
     }
 
     /* ---------------- Cœur : création / complétion du lead ---------------- */
 
-    private function ingest(?string $email, ?string $phone, ?string $name, ?string $formation, string $source): void
+    private function ingest(?string $email, ?string $phone, ?string $name, ?string $formation, string $source, string $formTitle = ''): void
     {
         $email = $email && is_email($email) ? sanitize_email($email) : null;
         $phone = $phone ? sanitize_text_field($phone) : null;
         if (!$email && !$phone) {
             return; // sans coordonnée, pas de lead exploitable
         }
+
+        $formTitle = trim($formTitle);
 
         $leads = new LeadRepository();
         $lead = $email ? $leads->findByEmail($email) : null;
@@ -143,9 +151,35 @@ final class FormCapture
         if ($formation) {
             $updates['formation_interet'] = sanitize_text_field($formation);
         }
+        // Nom du formulaire d'origine (ex. « Candidature Master ») pour tracer d'où
+        // vient le lead — visible dans le CRM.
+        if ($formTitle !== '') {
+            $updates['source_form'] = sanitize_text_field(mb_substr($formTitle, 0, 190));
+        }
         $leads->update((int) $lead->id, $updates);
 
-        (new EventRepository())->record((int) $lead->id, 'form_submitted', ['source' => $source], 'form');
+        (new EventRepository())->record((int) $lead->id, 'form_submitted', ['source' => $source, 'form' => $formTitle], 'form');
+    }
+
+    /**
+     * Libellé complet de l'option choisie dans un champ liste/radio Gravity Forms.
+     * GF stocke la VALEUR de l'option dans l'entrée (souvent un code court) ; on
+     * remonte le TEXTE affiché correspondant depuis les choix du champ.
+     */
+    private function gfChoiceLabel($field, string $val): string
+    {
+        $choices = $this->prop($field, 'choices');
+        if (is_array($choices)) {
+            foreach ($choices as $c) {
+                $cVal = (string) ($c['value'] ?? '');
+                $cTxt = (string) ($c['text'] ?? '');
+                // Si l'option n'a pas de valeur distincte, GF utilise le texte comme valeur.
+                if (($cVal !== '' && $cVal === $val) || ($cVal === '' && $cTxt === $val)) {
+                    return $cTxt !== '' ? $cTxt : $val;
+                }
+            }
+        }
+        return $val;
     }
 
     /* ---------------- Utilitaires ---------------- */

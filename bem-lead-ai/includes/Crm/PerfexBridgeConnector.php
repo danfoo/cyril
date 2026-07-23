@@ -51,10 +51,11 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
             'received_at' => (string) ($lead->first_seen ?? ''),
             'last_activity' => (string) ($lead->last_seen ?? ''),
             'description' => sprintf(
-                "Score: %s/100 (%s)\nFormation d'intérêt: %s\nCanaux: %s\nDernière activité: %s\nProvenance: %s",
+                "Score: %s/100 (%s)\nFormation d'intérêt: %s\nFormulaire d'origine: %s\nCanaux: %s\nDernière activité: %s\nProvenance: %s",
                 $lead->score_final,
                 str_replace('_', ' ', $band),
                 $lead->formation_interet ?: '—',
+                trim((string) ($lead->source_form ?? '')) !== '' ? $lead->source_form : '—',
                 $lead->channels,
                 $lead->last_seen,
                 defined('BEM_LEAD_AI_BRAND') ? BEM_LEAD_AI_BRAND : 'School IA'
