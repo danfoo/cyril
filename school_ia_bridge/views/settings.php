@@ -131,10 +131,13 @@
                        value="<?php echo htmlspecialchars((string) $sms_sender, ENT_QUOTES); ?>" placeholder="Ex. SchoolIA">
               </div>
               <div class="form-group">
-                <label class="control-label">URL de l'API (endpoint)</label>
-                <input type="text" name="sms_endpoint" class="form-control"
-                       value="<?php echo htmlspecialchars((string) $sms_endpoint, ENT_QUOTES); ?>">
-                <p class="text-muted" style="font-size:12px;">Par défaut : <code>https://lamsms.lafricamobile.com/apiSend</code> (endpoint « Send via JSON » de LAfricaMobile). À adapter si votre compte utilise une autre URL.</p>
+                <label class="control-label">Chemin de l'API (endpoint)</label>
+                <div class="input-group">
+                  <span class="input-group-addon">https://lamsms.lafricamobile.com</span>
+                  <input type="text" name="sms_endpoint" class="form-control"
+                         value="<?php echo htmlspecialchars((string) $sms_endpoint, ENT_QUOTES); ?>" placeholder="/apiSend">
+                </div>
+                <p class="text-muted" style="font-size:12px;">Saisissez uniquement le <strong>chemin</strong> (ex. <code>/apiSend</code>) — pas l'URL complète. Défaut : <code>/apiSend</code> (endpoint « Send via JSON » de LAfricaMobile).</p>
               </div>
               <button type="submit" class="btn btn-primary">Enregistrer</button>
             <?php echo form_close(); ?>

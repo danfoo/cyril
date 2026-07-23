@@ -501,7 +501,7 @@ class School_ia_bridge extends AdminController
         $data['sms_account'] = get_option('sia_sms_accountid');
         $data['sms_sender']  = get_option('sia_sms_sender');
         $data['sms_has_pwd'] = get_option('sia_sms_password') !== '';
-        $data['sms_endpoint'] = trim((string) get_option('sia_sms_endpoint')) ?: 'https://lamsms.lafricamobile.com/apiSend';
+        $data['sms_endpoint'] = trim((string) get_option('sia_sms_endpoint')) ?: '/apiSend';
         $data['ai_has_key']  = trim((string) get_option('sia_ai_api_key')) !== '';
         $data['ai_model']    = get_option('sia_ai_model') ?: 'claude-opus-4-8';
         $data['program_fees'] = get_option('sia_program_fees');
@@ -522,7 +522,13 @@ class School_ia_bridge extends AdminController
             update_option('sia_sms_sender', trim((string) $this->input->post('sms_sender')));
         }
         if ($this->input->post('sms_endpoint') !== null) {
-            update_option('sia_sms_endpoint', trim((string) $this->input->post('sms_endpoint')));
+            // On ne conserve que le chemin (ex. /apiSend) : évite d'exposer une
+            // URL dans les futurs POST (pare-feu) et normalise l'entrée.
+            $ep = trim((string) $this->input->post('sms_endpoint'));
+            if ($ep !== '' && preg_match('#^https?://#i', $ep)) {
+                $ep = (string) parse_url($ep, PHP_URL_PATH);
+            }
+            update_option('sia_sms_endpoint', $ep ?: '/apiSend');
         }
         $pwd = (string) $this->input->post('sms_password');
         if ($pwd !== '') { // ne pas écraser si laissé vide
@@ -860,8 +866,16 @@ class School_ia_bridge extends AdminController
         $password  = (string) get_option('sia_sms_password');
         $sender    = (string) (get_option('sia_sms_sender') ?: 'SchoolIA');
         // Endpoint documenté LAfricaMobile : « Send via JSON » → /apiSend.
-        // Surchargable dans les réglages si votre compte utilise une autre URL.
-        $endpoint  = trim((string) get_option('sia_sms_endpoint')) ?: 'https://lamsms.lafricamobile.com/apiSend';
+        // On stocke un simple CHEMIN (ex. /apiSend) pour éviter qu'un pare-feu
+        // (ModSecurity) ne bloque un POST contenant une URL ; on reconstruit
+        // l'URL complète ici. Une URL complète reste acceptée si déjà stockée.
+        $endpoint = trim((string) get_option('sia_sms_endpoint'));
+        if ($endpoint === '') {
+            $endpoint = '/apiSend';
+        }
+        if (!preg_match('#^https?://#i', $endpoint)) {
+            $endpoint = 'https://lamsms.lafricamobile.com/' . ltrim($endpoint, '/');
+        }
 
         if ($accountid === '' || $password === '') {
             return [false, 'SMS non configuré (Réglages → SMS).'];
