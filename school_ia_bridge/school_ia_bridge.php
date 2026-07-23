@@ -564,6 +564,60 @@ function school_ia_personalize(string $text, object $lead): string
     ]);
 }
 
+/** Signature e-mail personnelle d'un conseiller (HTML). Vide si non définie. */
+function school_ia_staff_signature(?int $staffId = null): string
+{
+    $staffId = $staffId ?: (function_exists('get_staff_user_id') ? (int) get_staff_user_id() : 0);
+    if (!$staffId) {
+        return '';
+    }
+    return trim((string) get_option('sia_email_signature_' . $staffId));
+}
+
+/**
+ * Habille un contenu HTML dans un gabarit e-mail responsive et stylé
+ * (en-tête de marque, carte blanche, signature, pied de page discret).
+ * Styles en ligne + tableaux pour la compatibilité avec les clients mail.
+ */
+function school_ia_email_wrap(string $contentHtml, string $signatureHtml = ''): string
+{
+    $brand   = trim((string) get_option('companyname')) ?: 'School IA';
+    $brandEsc = htmlspecialchars($brand, ENT_QUOTES);
+    $year    = date('Y');
+    $primary = '#4f46e5';
+
+    $sigBlock = '';
+    if (trim($signatureHtml) !== '') {
+        $sigBlock =
+            '<tr><td style="padding:0 32px;"><hr style="border:none;border-top:1px solid #e6e9f0;margin:22px 0 18px;"></td></tr>'
+            . '<tr><td style="padding:0 32px 6px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.55;color:#475569;">'
+            . $signatureHtml
+            . '</td></tr>';
+    }
+
+    return
+    '<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">'
+    . '<meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+    . '<body style="margin:0;padding:0;background:#f1f5f9;">'
+    . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:24px 12px;">'
+    . '<tr><td align="center">'
+    . '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.08);">'
+    // En-tête de marque
+    . '<tr><td style="background:' . $primary . ';padding:20px 32px;font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#ffffff;letter-spacing:.2px;">' . $brandEsc . '</td></tr>'
+    // Contenu
+    . '<tr><td style="padding:28px 32px 6px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#1e293b;">' . $contentHtml . '</td></tr>'
+    // Signature
+    . $sigBlock
+    . '<tr><td style="height:14px;"></td></tr>'
+    . '</table>'
+    // Pied de page
+    . '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">'
+    . '<tr><td style="padding:14px 32px;font-family:Arial,Helvetica,sans-serif;font-size:11.5px;line-height:1.5;color:#94a3b8;text-align:center;">'
+    . '© ' . $year . ' ' . $brandEsc . '</td></tr>'
+    . '</table>'
+    . '</td></tr></table></body></html>';
+}
+
 /**
  * Envoie un e-mail à un lead AVEC suivi : enregistre le message, insère un
  * pixel d'ouverture invisible et réécrit les liens pour tracer les clics.
@@ -584,7 +638,12 @@ function school_ia_send_tracked_email(object $lead, string $subject, string $bod
 
     // Corps déjà en HTML (éditeur enrichi) → tel quel ; sinon on convertit les
     // sauts de ligne du texte brut en <br>.
-    $html = (strip_tags($bodyText) !== $bodyText) ? $bodyText : nl2br($bodyText);
+    $content = (strip_tags($bodyText) !== $bodyText) ? $bodyText : nl2br($bodyText);
+    // Signature personnelle du conseiller expéditeur, puis habillage stylé.
+    $signature = school_ia_staff_signature(
+        function_exists('get_staff_user_id') ? (int) get_staff_user_id() : null
+    );
+    $html = school_ia_email_wrap($content, $signature);
     // Réécrit les liens <a href="http..."> vers le traceur de clics.
     $click = site_url('school_ia_bridge/api/track_click/' . $token);
     $html = preg_replace_callback('/href="(https?:\/\/[^"]+)"/i', function ($m) use ($click) {
@@ -903,6 +962,16 @@ function school_ia_bridge_admin_menu()
         $CI->app_menu->add_sidebar_children_item('sia_config', [
             'slug' => 'sia_debug', 'name' => 'Diagnostic',
             'href' => admin_url('school_ia_bridge/debug'), 'position' => 2,
+        ]);
+    }
+
+    // 10. Ma signature e-mail (réglage personnel, accessible à tout expéditeur)
+    if ($canSend) {
+        $CI->app_menu->add_sidebar_menu_item('sia_signature', [
+            'name'     => 'Ma signature',
+            'href'     => admin_url('school_ia_bridge/my_signature'),
+            'icon'     => 'fa fa-pencil-square-o',
+            'position' => 39,
         ]);
     }
 }

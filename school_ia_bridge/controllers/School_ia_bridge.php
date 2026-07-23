@@ -579,6 +579,26 @@ class School_ia_bridge extends AdminController
         redirect(admin_url('school_ia_bridge/settings'));
     }
 
+    /** Signature e-mail personnelle du conseiller connecté (édition + aperçu). */
+    public function my_signature()
+    {
+        $this->need('send');
+        $staffId = (int) get_staff_user_id();
+
+        if ($this->input->post('signature_form') !== null) {
+            $raw = (string) $this->input->post('signature');
+            $clean = function_exists('html_purify') ? html_purify($raw) : $raw;
+            update_option('sia_email_signature_' . $staffId, trim($clean));
+            set_alert('success', 'Signature enregistrée.');
+            redirect(admin_url('school_ia_bridge/my_signature'));
+            return;
+        }
+
+        $data['title']     = 'School IA — Ma signature';
+        $data['signature'] = school_ia_staff_signature($staffId);
+        $this->load->view('school_ia_bridge/my_signature', $data);
+    }
+
     /** Envoie un e-mail au lead (moteur d'e-mail de Perfex). */
     public function send_email($id = 0)
     {
