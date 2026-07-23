@@ -137,7 +137,7 @@
                   <input type="text" name="sms_endpoint" class="form-control"
                          value="<?php echo htmlspecialchars((string) $sms_endpoint, ENT_QUOTES); ?>" placeholder="/apiSend">
                 </div>
-                <p class="text-muted" style="font-size:12px;">Saisissez uniquement le <strong>chemin</strong> (ex. <code>/apiSend</code>) — pas l'URL complète. Défaut : <code>/apiSend</code> (endpoint « Send via JSON » de LAfricaMobile).</p>
+                <p class="text-muted" style="font-size:12px;">Saisissez uniquement le <strong>chemin</strong> (ex. <code>/api</code>) — pas l'URL complète. Défaut : <code>/api</code> (endpoint « Send via JSON » de LAfricaMobile).</p>
               </div>
               <button type="submit" class="btn btn-primary">Enregistrer</button>
             <?php echo form_close(); ?>

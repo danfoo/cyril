@@ -501,7 +501,8 @@ class School_ia_bridge extends AdminController
         $data['sms_account'] = get_option('sia_sms_accountid');
         $data['sms_sender']  = get_option('sia_sms_sender');
         $data['sms_has_pwd'] = get_option('sia_sms_password') !== '';
-        $data['sms_endpoint'] = trim((string) get_option('sia_sms_endpoint')) ?: '/apiSend';
+        $ep = trim((string) get_option('sia_sms_endpoint'));
+        $data['sms_endpoint'] = ($ep === '' || stripos($ep, 'apiSend') !== false) ? '/api' : $ep;
         $data['ai_has_key']  = trim((string) get_option('sia_ai_api_key')) !== '';
         $data['ai_model']    = get_option('sia_ai_model') ?: 'claude-opus-4-8';
         $data['program_fees'] = get_option('sia_program_fees');
@@ -865,13 +866,13 @@ class School_ia_bridge extends AdminController
         $accountid = (string) get_option('sia_sms_accountid');
         $password  = (string) get_option('sia_sms_password');
         $sender    = (string) (get_option('sia_sms_sender') ?: 'SchoolIA');
-        // Endpoint documenté LAfricaMobile : « Send via JSON » → /apiSend.
-        // On stocke un simple CHEMIN (ex. /apiSend) pour éviter qu'un pare-feu
-        // (ModSecurity) ne bloque un POST contenant une URL ; on reconstruit
-        // l'URL complète ici. Une URL complète reste acceptée si déjà stockée.
+        // Endpoint officiel LAfricaMobile (« Send via JSON ») : /api sur
+        // lamsms.lafricamobile.com. On stocke un simple CHEMIN pour éviter qu'un
+        // pare-feu (ModSecurity) ne bloque un POST contenant une URL.
         $endpoint = trim((string) get_option('sia_sms_endpoint'));
-        if ($endpoint === '') {
-            $endpoint = '/apiSend';
+        // Auto-correction d'un ancien réglage erroné (/apiSend renvoyait 404).
+        if ($endpoint === '' || stripos($endpoint, 'apiSend') !== false) {
+            $endpoint = '/api';
         }
         if (!preg_match('#^https?://#i', $endpoint)) {
             $endpoint = 'https://lamsms.lafricamobile.com/' . ltrim($endpoint, '/');
@@ -918,10 +919,16 @@ class School_ia_bridge extends AdminController
         if ($resp === false) {
             return [false, 'Connexion échouée : ' . $clean($cerr)];
         }
-        // Ne pas se fier au seul code HTTP : LAM peut répondre 200 avec une erreur
-        // dans le corps. On lit la réponse pour statuer réellement.
+        // Ne pas se fier au seul code HTTP : LAM répond en text/plain et peut
+        // renvoyer 200 avec un message d'erreur. On inspecte la réponse.
         $ok = $code >= 200 && $code < 300;
-        $decoded = json_decode((string) $resp, true);
+        $respStr = (string) $resp;
+        $low = mb_strtolower($respStr);
+        foreach (['error', 'erreur', 'invalid', 'denied', 'forbidden', 'not found', 'unauthor', 'failed', 'echec', 'échec', '<html', '<!doctype'] as $needle) {
+            if (mb_strpos($low, $needle) !== false) { $ok = false; break; }
+        }
+        // Si LAM répond en JSON avec un statut explicite, on le respecte.
+        $decoded = json_decode($respStr, true);
         if (is_array($decoded)) {
             $status = $decoded['code'] ?? $decoded['status'] ?? $decoded['response'] ?? null;
             if ($status !== null) {
@@ -931,7 +938,7 @@ class School_ia_bridge extends AdminController
                 $ok = false;
             }
         }
-        return [$ok, 'HTTP ' . $code . ' — ' . $clean(mb_substr((string) $resp, 0, 300))];
+        return [$ok, 'HTTP ' . $code . ' — ' . $clean(mb_substr($respStr, 0, 300))];
     }
 
     /** Envoie un SMS de test et affiche la réponse BRUTE de LAfricaMobile. */
