@@ -772,6 +772,7 @@ function school_ia_bridge_admin_init()
             'view'            => _l('Accéder au CRM School IA'),
             'manage_leads'    => _l('Gérer les leads (ajout, import, étapes, tâches, notes)'),
             'send'            => _l('Envoyer e-mails / SMS (individuels et groupés)'),
+            'view_reports'    => _l('Consulter les rapports & le journal d\'activité'),
             'manage_settings' => _l('Configurer (modèles, documents, séquences)'),
             'manage_config'   => _l('Réglages & diagnostic (connexion, clé IA, SMS, objectifs)'),
         ],
@@ -791,8 +792,9 @@ function school_ia_bridge_admin_menu()
     }
 
     $canSend   = staff_can('send', 'school_ia_bridge');
-    $canManage = staff_can('manage_settings', 'school_ia_bridge');
-    $canConfig = staff_can('manage_config', 'school_ia_bridge');
+    $canManage  = staff_can('manage_settings', 'school_ia_bridge');
+    $canConfig  = staff_can('manage_config', 'school_ia_bridge');
+    $canReports = staff_can('view_reports', 'school_ia_bridge');
 
     // 1. Tableau de bord (onglet de premier plan)
     $CI->app_menu->add_sidebar_menu_item('sia_dashboard', [
@@ -818,20 +820,22 @@ function school_ia_bridge_admin_menu()
         'position' => 32,
     ]);
 
-    // 4. Rapports (groupe) : Reporting + Journal
-    $CI->app_menu->add_sidebar_menu_item('sia_reports', [
-        'name'     => 'Rapports',
-        'icon'     => 'sia-mi sia-mi-reports',
-        'position' => 33,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('sia_reports', [
-        'slug' => 'sia_reporting', 'name' => 'Reporting',
-        'href' => admin_url('school_ia_bridge/reporting'), 'position' => 1,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('sia_reports', [
-        'slug' => 'sia_journal', 'name' => 'Journal',
-        'href' => admin_url('school_ia_bridge/activity'), 'position' => 2,
-    ]);
+    // 4. Rapports (groupe) : Reporting + Journal — permission dédiée et restreinte
+    if ($canReports) {
+        $CI->app_menu->add_sidebar_menu_item('sia_reports', [
+            'name'     => 'Rapports',
+            'icon'     => 'sia-mi sia-mi-reports',
+            'position' => 33,
+        ]);
+        $CI->app_menu->add_sidebar_children_item('sia_reports', [
+            'slug' => 'sia_reporting', 'name' => 'Reporting',
+            'href' => admin_url('school_ia_bridge/reporting'), 'position' => 1,
+        ]);
+        $CI->app_menu->add_sidebar_children_item('sia_reports', [
+            'slug' => 'sia_journal', 'name' => 'Journal',
+            'href' => admin_url('school_ia_bridge/activity'), 'position' => 2,
+        ]);
+    }
 
     // 5. Campagne (groupe) : Les campagnes (séquences) + Nouvelle campagne (envoi groupé) + Statistiques
     $CI->app_menu->add_sidebar_menu_item('sia_campaign', [

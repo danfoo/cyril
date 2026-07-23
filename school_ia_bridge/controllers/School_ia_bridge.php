@@ -183,6 +183,7 @@ class School_ia_bridge extends AdminController
     /** Reporting : agrégats par période + rapports rédigés par l'IA. */
     public function reporting()
     {
+        $this->need('view_reports');
         $period = $this->input->get('period') ?: 'month';
         $date   = (string) $this->input->get('date');
         [$from, $to, $label] = school_ia_period_range($period, $date);
@@ -216,6 +217,7 @@ class School_ia_bridge extends AdminController
     /** Export CSV de la synthèse de la période (KPIs + ventilations). */
     public function reporting_export()
     {
+        $this->need('view_reports');
         $period = $this->input->get('period') ?: 'month';
         $date   = (string) $this->input->get('date');
         [$from, $to, $label] = school_ia_period_range($period, $date);
@@ -264,6 +266,7 @@ class School_ia_bridge extends AdminController
     /** Envoie un rapport IA enregistré par e-mail (form Perfex → CSRF). */
     public function reporting_email()
     {
+        $this->need('view_reports');
         $reportId = (int) $this->input->post('report_id');
         $to       = trim((string) $this->input->post('email'));
         $report   = $this->school_ia_bridge_model->get_report($reportId);
@@ -300,6 +303,7 @@ class School_ia_bridge extends AdminController
     /** Génère le rapport IA pour la période choisie (form Perfex → CSRF). */
     public function reporting_generate()
     {
+        $this->need('view_reports');
         $period = $this->input->post('period') ?: 'month';
         $date   = (string) $this->input->post('date');
         [$from, $to, $label] = school_ia_period_range($period, $date);
@@ -361,6 +365,7 @@ class School_ia_bridge extends AdminController
     /** Journal d'activité global. */
     public function activity()
     {
+        $this->need('view_reports');
         $type    = $this->input->get('type') ?: null;
         $staffId = (int) $this->input->get('staff');
         $from    = (string) $this->input->get('from');
