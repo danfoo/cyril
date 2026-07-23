@@ -501,6 +501,7 @@ class School_ia_bridge extends AdminController
         $data['sms_account'] = get_option('sia_sms_accountid');
         $data['sms_sender']  = get_option('sia_sms_sender');
         $data['sms_has_pwd'] = get_option('sia_sms_password') !== '';
+        $data['sms_endpoint'] = trim((string) get_option('sia_sms_endpoint')) ?: 'https://lamsms.lafricamobile.com/apiSend';
         $data['ai_has_key']  = trim((string) get_option('sia_ai_api_key')) !== '';
         $data['ai_model']    = get_option('sia_ai_model') ?: 'claude-opus-4-8';
         $data['program_fees'] = get_option('sia_program_fees');
@@ -519,6 +520,9 @@ class School_ia_bridge extends AdminController
         }
         if ($this->input->post('sms_sender') !== null) {
             update_option('sia_sms_sender', trim((string) $this->input->post('sms_sender')));
+        }
+        if ($this->input->post('sms_endpoint') !== null) {
+            update_option('sia_sms_endpoint', trim((string) $this->input->post('sms_endpoint')));
         }
         $pwd = (string) $this->input->post('sms_password');
         if ($pwd !== '') { // ne pas écraser si laissé vide
@@ -855,6 +859,9 @@ class School_ia_bridge extends AdminController
         $accountid = (string) get_option('sia_sms_accountid');
         $password  = (string) get_option('sia_sms_password');
         $sender    = (string) (get_option('sia_sms_sender') ?: 'SchoolIA');
+        // Endpoint documenté LAfricaMobile : « Send via JSON » → /apiSend.
+        // Surchargable dans les réglages si votre compte utilise une autre URL.
+        $endpoint  = trim((string) get_option('sia_sms_endpoint')) ?: 'https://lamsms.lafricamobile.com/apiSend';
 
         if ($accountid === '' || $password === '') {
             return [false, 'SMS non configuré (Réglages → SMS).'];
@@ -868,13 +875,12 @@ class School_ia_bridge extends AdminController
             'accountid' => $accountid,
             'password'  => $password,
             'sender'    => $sender,
-            'ret_id'    => 'sia_' . $leadId . '_' . time(),
             'priority'  => '2',
             'text'      => $text,
             'to'        => [['sia_' . $leadId => $num]],
         ], JSON_UNESCAPED_UNICODE);
 
-        $ch = curl_init('https://lamsms.lafricamobile.com/api');
+        $ch = curl_init($endpoint);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST           => true,
@@ -890,8 +896,35 @@ class School_ia_bridge extends AdminController
         if ($resp === false) {
             return [false, 'Connexion échouée : ' . $cerr];
         }
+        // Ne pas se fier au seul code HTTP : LAM peut répondre 200 avec une erreur
+        // dans le corps. On lit la réponse pour statuer réellement.
         $ok = $code >= 200 && $code < 300;
-        return [$ok, 'HTTP ' . $code . ' — ' . mb_substr((string) $resp, 0, 180)];
+        $decoded = json_decode((string) $resp, true);
+        if (is_array($decoded)) {
+            $status = $decoded['code'] ?? $decoded['status'] ?? $decoded['response'] ?? null;
+            if ($status !== null) {
+                $ok = in_array((string) $status, ['200', '0', 'OK', 'ok', 'success', 'SUCCESS', 'sent', 'SENT', 'ACCEPTED'], true);
+            }
+            if (!empty($decoded['error']) || !empty($decoded['errors'])) {
+                $ok = false;
+            }
+        }
+        return [$ok, 'HTTP ' . $code . ' — ' . mb_substr((string) $resp, 0, 300)];
+    }
+
+    /** Envoie un SMS de test et affiche la réponse BRUTE de LAfricaMobile. */
+    public function test_sms()
+    {
+        $this->need('manage_settings');
+        $num = trim((string) $this->input->post('test_number'));
+        if ($num === '') {
+            set_alert('warning', 'Indiquez un numéro de test.');
+            redirect(admin_url('school_ia_bridge/settings'));
+        }
+        [$ok, $info] = $this->lam_send_sms($num, 'Test SMS School IA — ' . date('H:i:s'), 0);
+        set_alert($ok ? 'success' : 'danger',
+            ($ok ? 'SMS de test accepté par LAM. ' : 'Échec / réponse anormale de LAM. ') . 'Réponse brute : ' . $info);
+        redirect(admin_url('school_ia_bridge/settings'));
     }
 
     /** Régénère le secret partagé (à recopier ensuite dans le plugin). */

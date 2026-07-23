@@ -130,7 +130,23 @@
                 <input type="text" name="sms_sender" class="form-control" maxlength="11"
                        value="<?php echo htmlspecialchars((string) $sms_sender, ENT_QUOTES); ?>" placeholder="Ex. SchoolIA">
               </div>
+              <div class="form-group">
+                <label class="control-label">URL de l'API (endpoint)</label>
+                <input type="text" name="sms_endpoint" class="form-control"
+                       value="<?php echo htmlspecialchars((string) $sms_endpoint, ENT_QUOTES); ?>">
+                <p class="text-muted" style="font-size:12px;">Par défaut : <code>https://lamsms.lafricamobile.com/apiSend</code> (endpoint « Send via JSON » de LAfricaMobile). À adapter si votre compte utilise une autre URL.</p>
+              </div>
               <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <?php echo form_close(); ?>
+
+            <hr>
+            <h5 class="bold">Tester l'envoi</h5>
+            <p class="text-muted" style="font-size:12px;">Envoie un vrai SMS de test et affiche la <strong>réponse brute</strong> de LAfricaMobile — utile pour vérifier que la configuration fonctionne réellement (et pas seulement un « envoyé » optimiste).</p>
+            <?php echo form_open(admin_url('school_ia_bridge/test_sms'), ['class' => 'form-inline']); ?>
+              <div class="form-group" style="margin-right:6px;">
+                <input type="text" name="test_number" class="form-control" placeholder="Ex. 221771234567">
+              </div>
+              <button type="submit" class="btn btn-default"><i class="fa fa-paper-plane"></i> Envoyer un SMS de test</button>
             <?php echo form_close(); ?>
           </div>
         </div>
