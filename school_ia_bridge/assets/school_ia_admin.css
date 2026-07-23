@@ -416,3 +416,38 @@
   border-bottom: 1px solid var(--sia-border);
 }
 #wrapper .content .sia-section-title:first-of-type { margin-top: 8px; }
+
+/* ============================================================
+   Tableau de bord premium — grilles à hauteurs égales & cartes
+   ============================================================ */
+
+/* Grille KPI : toutes les cartes d'une rangée à la même hauteur/largeur */
+#wrapper .content .sia-kpi-grid { display: flex; flex-wrap: wrap; }
+#wrapper .content .sia-kpi-grid > [class*="col-"] { display: flex; }
+#wrapper .content .sia-kpi-grid .sia-kpi { width: 100%; }
+
+/* Carte KPI : icône teintée, valeur imposante, libellé discret */
+#wrapper .content .sia-kpi .panel-body { align-items: center; min-height: 86px; }
+#wrapper .content .sia-kpi-icon {
+  width: 50px; height: 50px; flex: 0 0 50px; border-radius: 15px; font-size: 20px;
+  box-shadow: inset 0 0 0 1px rgba(15,23,42,.03);
+}
+#wrapper .content .sia-kpi-value { font-size: 26px; line-height: 1.05; }
+#wrapper .content .sia-kpi-value small { font-size: 15px; }
+
+/* Panneaux appairés : plancher de hauteur pour un rendu équilibré */
+#wrapper .content .sia-panel-fill { display: flex; }
+#wrapper .content .sia-panel-fill > .panel-body { width: 100%; min-height: 210px; }
+
+/* Carte Finance : deux statistiques côte à côte */
+#wrapper .content .sia-stat-row { display: flex; flex-wrap: wrap; gap: 14px 34px; margin-top: 6px; }
+#wrapper .content .sia-stat { flex: 1 1 120px; }
+#wrapper .content .sia-stat-value { font-size: 27px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+#wrapper .content .sia-stat-label { font-size: 12.5px; color: var(--sia-muted); font-weight: 600; margin-top: 3px; }
+
+/* Barre de progression (objectif) */
+#wrapper .content .sia-progress { height: 14px; background: var(--sia-surface-2); border-radius: 8px; overflow: hidden; }
+#wrapper .content .sia-progress-bar { height: 100%; border-radius: 8px; transition: width .4s ease; }
+
+/* Camembert : anneau de fond adapté au thème (le reste est en styles inline) */
+#wrapper .content .sia-donut-track { stroke: var(--sia-surface-2); }

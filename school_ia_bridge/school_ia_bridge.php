@@ -236,7 +236,7 @@ function sia_help(string $key): string
  * légende. Chaque tranche : ['label' => string, 'value' => number, 'color' => '#rrggbb'].
  * Les tranches nulles sont ignorées ; renvoie un message si tout est à zéro.
  */
-function sia_pie_block(array $slices, int $size = 168): string
+function sia_pie_block(array $slices, int $size = 150): string
 {
     $total = 0.0;
     foreach ($slices as $s) {
@@ -247,12 +247,14 @@ function sia_pie_block(array $slices, int $size = 168): string
         return '<p class="text-muted" style="margin:8px 0 0;">Aucune donnée sur cette période.</p>';
     }
 
-    $thickness = 26;
+    $thickness = 20;
     $r    = ($size - $thickness) / 2;
     $c    = $size / 2;
     $circ = 2 * M_PI * $r;
 
-    $svg  = '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 ' . $size . ' ' . $size . '" role="img" class="sia-donut">';
+    // Styles inline volontaires : le camembert reste correct même si la feuille
+    // de style du module est momentanément en cache côté navigateur.
+    $svg  = '<svg width="' . $size . '" height="' . $size . '" viewBox="0 0 ' . $size . ' ' . $size . '" role="img" style="display:block;">';
     $svg .= '<g transform="rotate(-90 ' . $c . ' ' . $c . ')">';
     $svg .= '<circle class="sia-donut-track" cx="' . $c . '" cy="' . $c . '" r="' . round($r, 2) . '" fill="none" stroke="#eef1f5" stroke-width="' . $thickness . '"/>';
     $offset = 0.0;
@@ -269,10 +271,11 @@ function sia_pie_block(array $slices, int $size = 168): string
         $offset += $len;
     }
     $svg .= '</g>';
-    $svg .= '<text x="' . $c . '" y="' . $c . '" text-anchor="middle" dominant-baseline="central" class="sia-donut-center">' . (int) round($total) . '</text>';
+    $svg .= '<text x="' . $c . '" y="' . $c . '" text-anchor="middle" dominant-baseline="central"'
+        . ' style="font-size:24px;font-weight:800;fill:var(--sia-text,#0f172a);">' . (int) round($total) . '</text>';
     $svg .= '</svg>';
 
-    $legend = '<ul class="sia-legend">';
+    $legend = '<ul style="list-style:none;margin:0;padding:0;flex:1 1 190px;min-width:170px;">';
     foreach ($slices as $s) {
         $val = max(0.0, (float) $s['value']);
         if ($val <= 0) {
@@ -280,15 +283,17 @@ function sia_pie_block(array $slices, int $size = 168): string
         }
         $pct   = round($val * 100 / $total);
         $label = htmlspecialchars((string) $s['label'], ENT_QUOTES);
-        $legend .= '<li>'
-            . '<span class="sia-legend-dot" style="background:' . htmlspecialchars((string) $s['color'], ENT_QUOTES) . ';"></span>'
-            . '<span class="sia-legend-label" title="' . $label . '">' . $label . '</span>'
-            . '<span class="sia-legend-val">' . (int) $val . ' · ' . $pct . '%</span>'
+        $color = htmlspecialchars((string) $s['color'], ENT_QUOTES);
+        $legend .= '<li style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--sia-border,#e6e9f0);font-size:13px;">'
+            . '<span style="width:10px;height:10px;border-radius:3px;flex:0 0 auto;background:' . $color . ';"></span>'
+            . '<span style="flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--sia-text,#0f172a);" title="' . $label . '">' . $label . '</span>'
+            . '<span style="margin-left:auto;padding-left:10px;color:var(--sia-muted,#64748b);font-weight:600;flex:0 0 auto;white-space:nowrap;">' . (int) $val . ' · ' . $pct . ' %</span>'
             . '</li>';
     }
     $legend .= '</ul>';
 
-    return '<div class="sia-pie"><div class="sia-pie-chart">' . $svg . '</div>' . $legend . '</div>';
+    return '<div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-top:6px;">'
+        . '<div style="flex:0 0 auto;">' . $svg . '</div>' . $legend . '</div>';
 }
 
 /** Formate un tableau associatif en "clé: valeur, clé: valeur". */
@@ -631,7 +636,10 @@ function school_ia_bridge_head_css()
     if (strpos((string) ($_SERVER['REQUEST_URI'] ?? ''), 'school_ia_bridge') === false) {
         return;
     }
-    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=10">';
+    // Version = date de modification du fichier : le cache du navigateur est
+    // invalidé automatiquement à chaque mise à jour du CSS (plus de ?v=xx figé).
+    $ver = @filemtime(module_dir_path(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css')) ?: time();
+    echo '<link rel="stylesheet" href="' . module_dir_url(SCHOOL_IA_BRIDGE_MODULE, 'assets/school_ia_admin.css') . '?v=' . $ver . '">';
 }
 
 /**
