@@ -1087,6 +1087,38 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
+    /** Supprime les messages de chat portant une référence externe donnée
+     *  (nettoyage des faux messages créés par d'anciennes tentatives de veille). */
+    public function delete_chat_by_external(string $ref): void
+    {
+        if ($ref === '') {
+            return;
+        }
+        $this->db->where('external_message_id', $ref)->delete($this->chatTable());
+    }
+
+    /** Nettoie tous les faux messages de veille (préfixe SIACMP1: ou ref cN). */
+    public function purge_competitor_chat_noise(): int
+    {
+        $this->db->group_start()
+            ->like('content', 'SIACMP1:', 'after')
+            ->or_like('external_message_id', 'c', 'after')
+            ->group_end()
+            ->delete($this->chatTable());
+        return (int) $this->db->affected_rows();
+    }
+
+    /** Derniers messages de chat, pour le diagnostic (aperçu du contenu). */
+    public function recent_chat(int $limit = 8): array
+    {
+        return $this->db
+            ->select('id, lead_id, canal, external_message_id, LEFT(content, 40) AS preview, created_at')
+            ->order_by('id', 'desc')
+            ->limit($limit)
+            ->get($this->chatTable())
+            ->result();
+    }
+
     /** Supprime un lead et tout ce qui s'y rattache (activités, tâches, messages, inscriptions). */
     public function delete_lead(int $id): void
     {

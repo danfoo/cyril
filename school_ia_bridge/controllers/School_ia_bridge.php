@@ -168,8 +168,17 @@ class School_ia_bridge extends AdminController
         $data['writeTest']  = $this->school_ia_bridge_model->diag_write_test();
         $data['compCalls']  = (int) get_option('sia_competitor_calls');
         $data['lastCall']   = json_decode((string) get_option('sia_last_competitor_call'), true);
-        $data['endpoint']   = site_url('school_ia_bridge/api/receive');
+        $data['recentChat'] = $this->school_ia_bridge_model->recent_chat();
         $this->load->view('school_ia_bridge/debug', $data);
+    }
+
+    /** Supprime les faux messages de chat créés par d'anciennes tentatives de veille. */
+    public function debug_purge_noise()
+    {
+        $this->need('manage_settings');
+        $n = $this->school_ia_bridge_model->purge_competitor_chat_noise();
+        set_alert('success', $n . ' faux message(s) de veille supprimé(s).');
+        redirect(admin_url('school_ia_bridge/debug'));
     }
 
     /** Réglages : point d'entrée + secret + identifiants SMS LAfricaMobile. */

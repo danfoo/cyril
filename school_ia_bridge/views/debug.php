@@ -62,6 +62,38 @@
     </div></div>
 
     <div class="panel_s"><div class="panel-body">
+      <div class="clearfix">
+        <h5 class="bold pull-left" style="margin-top:0;">
+          <span class="sia-panel-icon sia-ic-info"><i class="fa fa-comments"></i></span>
+          Derniers messages reçus
+        </h5>
+        <a href="<?php echo admin_url('school_ia_bridge/debug_purge_noise'); ?>" class="btn btn-default btn-sm pull-right"
+           onclick="return confirm('Supprimer les faux messages de veille (préfixe SIACMP1 / réf cN) ?');">
+          <i class="fa fa-eraser"></i> Nettoyer les faux messages de veille
+        </a>
+      </div>
+      <?php if (empty($recentChat)) { ?>
+        <p class="text-muted">Aucun message.</p>
+      <?php } else { ?>
+        <table class="table">
+          <thead><tr><th>#</th><th>Lead</th><th>Canal</th><th>Réf</th><th>Aperçu contenu</th></tr></thead>
+          <tbody>
+            <?php foreach ($recentChat as $m) { ?>
+              <tr>
+                <td><?php echo (int) $m->id; ?></td>
+                <td><?php echo (int) $m->lead_id; ?></td>
+                <td><?php echo htmlspecialchars((string) $m->canal, ENT_QUOTES); ?></td>
+                <td><?php echo htmlspecialchars((string) $m->external_message_id, ENT_QUOTES); ?></td>
+                <td style="font-family:monospace;font-size:11px;"><?php echo htmlspecialchars((string) $m->preview, ENT_QUOTES); ?></td>
+              </tr>
+            <?php } ?>
+          </tbody>
+        </table>
+        <p class="text-muted" style="font-size:12px;">Un aperçu commençant par <code>SIACMP1:</code> = une mention de veille qui n'a pas été reconnue (ancienne version). Utilisez « Nettoyer ».</p>
+      <?php } ?>
+    </div></div>
+
+    <div class="panel_s"><div class="panel-body">
       <h5 class="bold" style="margin-top:0;">
         <span class="sia-panel-icon sia-ic-primary"><i class="fa fa-info-circle"></i></span>
         Comment lire ce diagnostic

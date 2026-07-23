@@ -154,12 +154,11 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         $base = rtrim((string) Options::get('perfex_url'), '/');
         $secret = (string) Options::get('perfex_bridge_secret');
 
-        // Requête STRICTEMENT identique à un message de chat (qui, lui, passe le
-        // pare-feu) : mêmes paramètres content/role/canal. La mention est cachée
-        // dans « content » (base64url d'un JSON), et « canal=cmp » sert de
-        // marqueur. Plus aucun paramètre name/context/kind que le pare-feu
-        // bloquait.
-        $data = self::b64urlEncode(wp_json_encode([
+        // Requête STRICTEMENT identique à un vrai message de chat (qui passe le
+        // pare-feu) : mêmes paramètres, canal=web. La mention est cachée dans le
+        // contenu derrière un préfixe « SIACMP1: » que Perfex reconnaît. Aucun
+        // paramètre spécial (name/context/kind/canal) que le pare-feu bloquait.
+        $data = 'SIACMP1:' . self::b64urlEncode(wp_json_encode([
             'n' => $name,
             'c' => mb_substr($context, 0, 1500),
         ]));
@@ -167,7 +166,7 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
             'external_id'         => (string) $leadId,
             'source_site'         => home_url(),
             'role'                => 'assistant',
-            'canal'               => 'cmp',
+            'canal'               => 'web',
             'content'             => $data,
             'external_message_id' => 'c' . $mentionId,
         ];

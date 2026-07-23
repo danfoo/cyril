@@ -121,14 +121,14 @@ class Api extends App_Controller
 
         $this->load->model('school_ia_bridge/school_ia_bridge_model');
 
-        // Mention de concurrent déguisée en message de chat (canal=cmp) : la
-        // requête utilise EXACTEMENT les mêmes paramètres qu'un vrai message
-        // (content/role/canal), seule différence : le marqueur canal=cmp et le
-        // contenu encodé. Le pare-feu de l'hébergeur bloquait les requêtes qui
-        // avaient des paramètres name/context/kind ; ici il n'y en a plus.
-        if ($canal === 'cmp') {
+        // Mention de concurrent cachée DANS le contenu d'un message de chat
+        // normal (préfixe « SIACMP1: »). La requête est indiscernable d'un vrai
+        // message (aucun paramètre spécial), donc le pare-feu de l'hébergeur ne
+        // la bloque pas. On garde aussi le marqueur canal=cmp par compatibilité.
+        if (strncmp($content, 'SIACMP1:', 8) === 0 || $canal === 'cmp') {
             update_option('sia_competitor_calls', (int) get_option('sia_competitor_calls') + 1);
-            $decoded = json_decode($this->b64url_decode($content), true);
+            $raw     = strncmp($content, 'SIACMP1:', 8) === 0 ? substr($content, 8) : $content;
+            $decoded = json_decode($this->b64url_decode($raw), true);
             $name    = is_array($decoded) ? trim((string) ($decoded['n'] ?? '')) : '';
             $ctx     = is_array($decoded) ? (string) ($decoded['c'] ?? '') : '';
             if ($externalId === '' || $sourceSite === '' || $name === '') {
@@ -146,6 +146,11 @@ class Api extends App_Controller
                 $ctx,
                 $externalMessageId !== '' ? $externalMessageId : null
             );
+            // Nettoie un éventuel faux message de chat créé par une tentative
+            // précédente (même référence externe).
+            if ($externalMessageId !== '') {
+                $this->school_ia_bridge_model->delete_chat_by_external($externalMessageId);
+            }
             $this->respond(['ok' => true, 'kind' => 'competitor']);
             return;
         }
