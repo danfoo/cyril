@@ -113,6 +113,11 @@ class School_ia_bridge_model extends App_Model
             && !$this->db->field_exists('reminded', db_prefix() . 'school_ia_tasks')) {
             $this->db->query('ALTER TABLE `' . db_prefix() . 'school_ia_tasks` ADD `reminded` TINYINT(1) NOT NULL DEFAULT 0');
         }
+        // Colonne « priorité » (haute / moyenne / basse).
+        if ($this->db->table_exists(db_prefix() . 'school_ia_tasks')
+            && !$this->db->field_exists('priority', db_prefix() . 'school_ia_tasks')) {
+            $this->db->query('ALTER TABLE `' . db_prefix() . "school_ia_tasks` ADD `priority` VARCHAR(10) NOT NULL DEFAULT 'moyenne'");
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_documents')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_documents` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -1166,18 +1171,137 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_tasks';
     }
 
-    public function add_task(int $leadId, string $title, ?string $dueAt, ?int $staffId = null): void
+    private function normPriority(string $p): string
     {
+        return in_array($p, ['haute', 'moyenne', 'basse'], true) ? $p : 'moyenne';
+    }
+
+    public function add_task(int $leadId, string $title, ?string $dueAt, ?int $staffId = null, string $priority = 'moyenne'): void
+    {
+        $this->ensure_schema();
         $this->db->insert($this->tasksTable(), [
             'lead_id'    => $leadId,
             'title'      => substr($title, 0, 255),
             'due_at'     => $dueAt ?: null,
             'done'       => 0,
+            'priority'   => $this->normPriority($priority),
             'staff_id'   => $staffId,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
-        $label = $dueAt ? ' (échéance ' . date('d/m/Y H:i', strtotime($dueAt)) . ')' : '';
-        $this->add_activity($leadId, 'task', 'Tâche : ' . $title . $label, $staffId);
+        // Journalise sur la fiche uniquement si la tâche est rattachée à un lead.
+        if ($leadId > 0) {
+            $label = $dueAt ? ' (échéance ' . date('d/m/Y H:i', strtotime($dueAt)) . ')' : '';
+            $this->add_activity($leadId, 'task', 'Tâche : ' . $title . $label, $staffId);
+        }
+    }
+
+    public function set_task_priority(int $id, string $priority): void
+    {
+        $this->db->where('id', $id)->update($this->tasksTable(), ['priority' => $this->normPriority($priority)]);
+    }
+
+    /**
+     * Liste des tâches pour la page dédiée, filtrée par statut/échéance et priorité.
+     * $filter : todo | overdue | today | upcoming | done. Jointures lead + responsable.
+     */
+    public function task_list(string $filter = 'todo', string $priority = ''): array
+    {
+        $this->ensure_schema();
+        $todayStart = date('Y-m-d 00:00:00');
+        $todayEnd   = date('Y-m-d 23:59:59');
+
+        $this->db
+            ->select('t.*, l.name AS lead_name, CONCAT(s.firstname, " ", s.lastname) AS staff_name')
+            ->from($this->tasksTable() . ' t')
+            ->join($this->table() . ' l', 'l.id = t.lead_id', 'left')
+            ->join(db_prefix() . 'staff s', 's.staffid = t.staff_id', 'left');
+
+        switch ($filter) {
+            case 'overdue':
+                $this->db->where('t.done', 0)->where('t.due_at IS NOT NULL', null, false)->where('t.due_at <', $todayStart);
+                break;
+            case 'today':
+                $this->db->where('t.done', 0)->where('t.due_at >=', $todayStart)->where('t.due_at <=', $todayEnd);
+                break;
+            case 'upcoming':
+                $this->db->where('t.done', 0)->where('t.due_at >', $todayEnd);
+                break;
+            case 'done':
+                $this->db->where('t.done', 1);
+                break;
+            case 'todo':
+            default:
+                $this->db->where('t.done', 0);
+                break;
+        }
+        if (in_array($priority, ['haute', 'moyenne', 'basse'], true)) {
+            $this->db->where('t.priority', $priority);
+        }
+
+        return $this->db
+            ->order_by('t.done', 'asc')
+            ->order_by('t.due_at IS NULL', 'asc', false)
+            ->order_by('t.due_at', 'asc')
+            ->order_by("FIELD(t.priority,'haute','moyenne','basse')", '', false)
+            ->get()
+            ->result();
+    }
+
+    /** Compteurs par statut pour les onglets de la page Tâches. */
+    public function task_counts(): array
+    {
+        $this->ensure_schema();
+        $t = $this->tasksTable();
+        $todayStart = date('Y-m-d 00:00:00');
+        $todayEnd   = date('Y-m-d 23:59:59');
+
+        $this->db->where('done', 0);
+        $todo = (int) $this->db->count_all_results($t);
+
+        $this->db->where('done', 0)->where('due_at IS NOT NULL', null, false)->where('due_at <', $todayStart);
+        $overdue = (int) $this->db->count_all_results($t);
+
+        $this->db->where('done', 0)->where('due_at >=', $todayStart)->where('due_at <=', $todayEnd);
+        $today = (int) $this->db->count_all_results($t);
+
+        $this->db->where('done', 0)->where('due_at >', $todayEnd);
+        $upcoming = (int) $this->db->count_all_results($t);
+
+        $this->db->where('done', 1);
+        $done = (int) $this->db->count_all_results($t);
+
+        return compact('todo', 'overdue', 'today', 'upcoming', 'done');
+    }
+
+    /** Actions groupées : marque terminé / reporte / réassigne les tâches choisies. */
+    public function bulk_tasks(array $ids, string $action, ?int $staffId = null): int
+    {
+        $ids = array_values(array_filter(array_map('intval', $ids)));
+        if (!$ids) {
+            return 0;
+        }
+        switch ($action) {
+            case 'complete':
+                $this->db->where_in('id', $ids)->update($this->tasksTable(), ['done' => 1]);
+                break;
+            case 'reopen':
+                $this->db->where_in('id', $ids)->update($this->tasksTable(), ['done' => 0]);
+                break;
+            case 'postpone':
+                // Reporte de 7 jours (à partir de l'échéance existante ou de maintenant).
+                $this->db->query(
+                    'UPDATE `' . $this->tasksTable() . '` SET due_at = DATE_ADD(COALESCE(due_at, NOW()), INTERVAL 7 DAY), reminded = 0
+                     WHERE id IN (' . implode(',', $ids) . ')'
+                );
+                break;
+            case 'reassign':
+                $this->db->where_in('id', $ids)->update($this->tasksTable(), ['staff_id' => $staffId ?: null]);
+                break;
+            case 'delete':
+                $this->db->where_in('id', $ids)->delete($this->tasksTable());
+                break;
+        }
+        return count($ids);
     }
 
     public function get_task(int $id)

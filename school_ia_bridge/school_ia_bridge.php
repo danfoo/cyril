@@ -116,11 +116,14 @@ function sia_help(string $key): string
              </ul>
              <p><em>Rien ne s\'affiche ?</em> Vérifiez que la version du plugin WordPress installée envoie bien les messages (mise à jour du pont) et que le secret partagé (Réglages) est identique des deux côtés.</p>'],
         'tasks' => ['Tâches & relances',
-            '<p>Vos relances à faire, les plus urgentes en tête.</p>
+            '<p>Votre centre de pilotage des relances.</p>
              <ul>
-               <li>Créez une tâche depuis une <strong>fiche lead</strong> (titre + échéance date/heure).</li>
-               <li>Les échéances <strong>dépassées</strong> apparaissent en rouge.</li>
-               <li>Cochez la case pour marquer une tâche <strong>faite</strong>.</li>
+               <li><strong>Création rapide</strong> (en haut) : intitulé, échéance, priorité, lead et responsable — le lead est facultatif.</li>
+               <li><strong>Onglets</strong> : basculez entre À faire, En retard, Aujourd\'hui, À venir et Terminées (compteurs à jour).</li>
+               <li><strong>Priorité</strong> (Haute / Moyenne / Basse) : filtrez-la et changez-la d\'un clic sur le badge.</li>
+               <li>La vue « À faire » <strong>regroupe</strong> les tâches par échéance (En retard, Aujourd\'hui, Cette semaine, À venir).</li>
+               <li><strong>Actions groupées</strong> : cochez plusieurs tâches puis terminez, reportez de 7 jours, réassignez ou supprimez en un clic.</li>
+               <li>Chaque tâche est reliée à son <strong>lead</strong> et à son <strong>responsable</strong>.</li>
              </ul>
              <p><em>Rappels automatiques :</em> activez-les dans <strong>Réglages</strong>. Un e-mail est alors envoyé au responsable à l\'échéance (nécessite le cron Perfex).</p>'],
         'sequences' => ['Séquences de relance',

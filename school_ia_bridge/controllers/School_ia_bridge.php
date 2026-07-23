@@ -1066,12 +1066,68 @@ class School_ia_bridge extends AdminController
         redirect(admin_url('school_ia_bridge/templates'));
     }
 
-    /** Page Tâches : toutes les relances à faire, échéances en tête. */
+    /** Page Tâches : outil de pilotage (filtres statut/priorité, actions groupées). */
     public function tasks()
     {
-        $data['title'] = 'School IA — Tâches';
-        $data['tasks'] = $this->school_ia_bridge_model->pending_tasks();
+        $filter   = (string) ($this->input->get('filter') ?: 'todo');
+        $priority = (string) $this->input->get('priority');
+        $data['title']    = 'School IA — Tâches';
+        $data['filter']   = $filter;
+        $data['priority'] = $priority;
+        $data['tasks']    = $this->school_ia_bridge_model->task_list($filter, $priority);
+        $data['counts']   = $this->school_ia_bridge_model->task_counts();
+        $data['staff']    = $this->db->where('active', 1)->get(db_prefix() . 'staff')->result();
+        $data['leads']    = $this->school_ia_bridge_model->get_leads(500);
+        $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/tasks', $data);
+    }
+
+    /** Création rapide d'une tâche depuis la page Tâches (lead facultatif). */
+    public function task_quick_add()
+    {
+        $this->need('manage_leads');
+        $title = trim((string) $this->input->post('title'));
+        $due   = trim((string) $this->input->post('due_at'));
+        $dueAt = $due !== '' ? date('Y-m-d H:i:s', strtotime($due)) : null;
+        $leadId = (int) $this->input->post('lead_id');
+        $staffId = (int) $this->input->post('staff_id') ?: get_staff_user_id();
+        $priority = (string) $this->input->post('priority');
+
+        if ($title === '') {
+            set_alert('warning', 'Indiquez au moins un intitulé de tâche.');
+            redirect(admin_url('school_ia_bridge/tasks'));
+        }
+        // Rattache au lead seulement s'il existe réellement.
+        if ($leadId && !$this->school_ia_bridge_model->get_lead($leadId)) {
+            $leadId = 0;
+        }
+        $this->school_ia_bridge_model->add_task($leadId, $title, $dueAt, $staffId ?: null, $priority);
+        set_alert('success', 'Tâche ajoutée.');
+        redirect(admin_url('school_ia_bridge/tasks'));
+    }
+
+    /** Actions groupées sur les tâches (terminer / reporter / réassigner / supprimer). */
+    public function tasks_bulk()
+    {
+        $this->need('manage_leads');
+        $ids    = (array) $this->input->post('ids');
+        $action = (string) $this->input->post('do');
+        $staff  = (int) $this->input->post('reassign_staff');
+        if (empty($ids)) {
+            set_alert('warning', 'Sélectionnez au moins une tâche.');
+            redirect(admin_url('school_ia_bridge/tasks'));
+        }
+        $n = $this->school_ia_bridge_model->bulk_tasks($ids, $action, $staff ?: null);
+        set_alert('success', $n . ' tâche(s) mise(s) à jour.');
+        redirect($this->input->post('return') ?: admin_url('school_ia_bridge/tasks'));
+    }
+
+    /** Change la priorité d'une tâche (lien GET). */
+    public function task_priority($taskId = 0)
+    {
+        $this->need('manage_leads');
+        $this->school_ia_bridge_model->set_task_priority((int) $taskId, (string) $this->input->get('p'));
+        redirect($this->input->get('return') ?: admin_url('school_ia_bridge/tasks'));
     }
 
     /** Ajoute une tâche à un lead (form Perfex → CSRF). */
@@ -1081,10 +1137,11 @@ class School_ia_bridge extends AdminController
         $leadId = (int) $leadId;
         $title = trim((string) $this->input->post('title'));
         $due = trim((string) $this->input->post('due_at'));
+        $priority = (string) $this->input->post('priority');
         // <input type="datetime-local"> renvoie "Y-m-d\TH:i" → format MySQL.
         $dueAt = $due !== '' ? date('Y-m-d H:i:s', strtotime($due)) : null;
         if ($this->school_ia_bridge_model->get_lead($leadId) && $title !== '') {
-            $this->school_ia_bridge_model->add_task($leadId, $title, $dueAt, get_staff_user_id());
+            $this->school_ia_bridge_model->add_task($leadId, $title, $dueAt, get_staff_user_id(), $priority);
             set_alert('success', 'Tâche ajoutée.');
         }
         redirect(admin_url('school_ia_bridge/lead/' . $leadId));
@@ -1098,9 +1155,10 @@ class School_ia_bridge extends AdminController
         if ($task) {
             $this->school_ia_bridge_model->toggle_task((int) $taskId);
         }
-        redirect($this->input->get('back') === 'tasks'
-            ? admin_url('school_ia_bridge/tasks')
-            : admin_url('school_ia_bridge/lead/' . ($task ? (int) $task->lead_id : 0)));
+        if ($this->input->get('back') === 'tasks' || !$task || (int) $task->lead_id === 0) {
+            redirect(admin_url('school_ia_bridge/tasks'));
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . (int) $task->lead_id));
     }
 
     /** Supprime une tâche (lien GET). */
@@ -1111,7 +1169,11 @@ class School_ia_bridge extends AdminController
         if ($task) {
             $this->school_ia_bridge_model->delete_task((int) $taskId);
         }
-        redirect(admin_url('school_ia_bridge/lead/' . ($task ? (int) $task->lead_id : 0)));
+        // Retour à la page Tâches si demandé ou si la tâche n'est rattachée à aucun lead.
+        if ($this->input->get('back') === 'tasks' || !$task || (int) $task->lead_id === 0) {
+            redirect(admin_url('school_ia_bridge/tasks'));
+        }
+        redirect(admin_url('school_ia_bridge/lead/' . (int) $task->lead_id));
     }
 
     /** Change l'étape du pipeline (lien GET → pas de blocage CSRF). */
