@@ -36,7 +36,16 @@ class School_ia_bridge extends AdminController
             'date_to'   => trim((string) $this->input->get('date_to')),
             'rentree'   => trim((string) $this->input->get('rentree')),
         ];
+        // Cadrage : sans la permission « view_global », chaque conseiller ne voit
+        // que ses propres leads/tâches/activités ; les admins et rôles autorisés
+        // conservent la vue globale (tous les conseillers).
+        $scopeOwner = staff_can('view_global', 'school_ia_bridge') ? null : (int) get_staff_user_id();
+        if ($scopeOwner !== null) {
+            $filters['owner_id'] = $scopeOwner;
+        }
+
         $data['title']     = 'School IA — Tableau de bord';
+        $data['isGlobal']  = $scopeOwner === null;
         $data['filters']   = $filters;
         $data['rentrees']  = $this->school_ia_bridge_model->rentrees();
         $data['stats']     = $this->school_ia_bridge_model->stats(60, $filters);
@@ -48,8 +57,10 @@ class School_ia_bridge extends AdminController
         $data['avgFirstContact'] = $this->school_ia_bridge_model->avg_first_contact_hours($filters);
         $data['finance']   = $this->school_ia_bridge_model->finance_summary($filters);
         $data['target']    = (int) get_option('sia_target_inscrits');
-        $data['dueTasks']  = $this->school_ia_bridge_model->pending_tasks(8);
-        $data['recentActivities'] = $this->school_ia_bridge_model->global_activities([], 8);
+        $data['dueTasks']  = $this->school_ia_bridge_model->pending_tasks(8, $scopeOwner);
+        $data['recentActivities'] = $this->school_ia_bridge_model->global_activities(
+            $scopeOwner !== null ? ['staff_id' => $scopeOwner] : [], 8
+        );
         $data['model']     = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/dashboard', $data);
     }

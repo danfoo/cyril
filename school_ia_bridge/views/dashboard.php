@@ -4,7 +4,13 @@
   <div class="content">
 
     <div class="clearfix" style="margin-bottom:15px;">
-      <h4 class="no-margin pull-left"><i class="fa fa-dashboard"></i> Tableau de bord — Admissions <?php echo sia_help("dashboard"); ?></h4>
+      <h4 class="no-margin pull-left"><i class="fa fa-dashboard"></i> Tableau de bord — Admissions <?php echo sia_help("dashboard"); ?>
+        <?php if ($isGlobal) { ?>
+          <span class="label label-primary" style="margin-left:8px;font-weight:600;" title="Vous voyez les données de tous les conseillers"><i class="fa fa-globe"></i> Vue globale</span>
+        <?php } else { ?>
+          <span class="label label-default" style="margin-left:8px;font-weight:600;" title="Vous voyez uniquement vos propres leads"><i class="fa fa-user"></i> Mes données</span>
+        <?php } ?>
+      </h4>
       <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-primary pull-right">
         <i class="fa fa-columns"></i> Pipeline
       </a>
@@ -91,7 +97,10 @@
       echo $kpi('Inscrits',              (int) $stats['inscrits'], 'linear-gradient(135deg,#34d399,#059669)', 'fa-graduation-cap');
       echo $kpi('Taux de conversion',    $stats['conversion'] . ' %', 'linear-gradient(135deg,#2dd4bf,#0d9488)', 'fa-line-chart');
       echo $kpi('Délai moyen 1ᵉʳ contact', $delayLabel,           'linear-gradient(135deg,#64748b,#334155)', 'fa-hourglass-half');
-      echo $kpi('Leads non assignés',    (int) $unassignedCount,   $unassignedCount > 0 ? 'linear-gradient(135deg,#fb923c,#ea580c)' : 'linear-gradient(135deg,#334155,#0f172a)', 'fa-user-times');
+      // « Leads non assignés » est une métrique globale : masquée en vue « Mes données ».
+      if ($isGlobal) {
+          echo $kpi('Leads non assignés',    (int) $unassignedCount,   $unassignedCount > 0 ? 'linear-gradient(135deg,#fb923c,#ea580c)' : 'linear-gradient(135deg,#334155,#0f172a)', 'fa-user-times');
+      }
       ?>
     </div>
 
@@ -159,6 +168,7 @@
     <div class="sia-section-title">Actions prioritaires</div>
 
     <div class="row">
+      <?php if ($isGlobal) { ?>
       <div class="col-md-6">
         <div class="panel_s sia-panel-fill"><div class="panel-body">
           <div class="clearfix">
@@ -190,7 +200,8 @@
           <?php } ?>
         </div></div>
       </div>
-      <div class="col-md-6">
+      <?php } ?>
+      <div class="col-md-<?php echo $isGlobal ? '6' : '12'; ?>">
         <div class="panel_s sia-panel-fill"><div class="panel-body">
           <div class="clearfix">
             <h5 class="bold pull-left" style="margin-top:0;">
@@ -275,7 +286,7 @@
     </div>
 
     <div class="row">
-      <div class="col-md-6">
+      <div class="col-md-<?php echo $isGlobal ? '6' : '12'; ?>">
         <div class="panel_s sia-panel-fill"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;">
             <span class="sia-panel-icon sia-ic-info"><i class="fa fa-filter"></i></span>
@@ -290,6 +301,7 @@
           ?>
         </div></div>
       </div>
+      <?php if ($isGlobal) { ?>
       <div class="col-md-6">
         <div class="panel_s sia-panel-fill"><div class="panel-body">
           <h5 class="bold" style="margin-top:0;">
@@ -316,6 +328,7 @@
           </table>
         </div></div>
       </div>
+      <?php } ?>
     </div>
 
     <!-- =====================================================================

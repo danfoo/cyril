@@ -770,6 +770,7 @@ function school_ia_bridge_admin_init()
     register_staff_capabilities('school_ia_bridge', [
         'capabilities' => [
             'view'            => _l('Accéder au CRM School IA'),
+            'view_global'     => _l('Voir les données globales (tableau de bord : tous les conseillers, sinon seulement les siennes)'),
             'manage_leads'    => _l('Gérer les leads (ajout, import, étapes, tâches, notes)'),
             'send'            => _l('Envoyer e-mails / SMS (individuels et groupés)'),
             'view_reports'    => _l('Consulter les rapports & le journal d\'activité'),

@@ -503,6 +503,10 @@ class School_ia_bridge_model extends App_Model
         if ($from) { $this->db->where($p . 'received_at >=', $from); }
         if ($to)   { $this->db->where($p . 'received_at <=', $to); }
         if (!empty($f['rentree'])) { $this->db->where($p . 'rentree', $f['rentree']); }
+        // Cadrage par conseiller : ne renvoyer que les leads dont il est responsable.
+        if (isset($f['owner_id']) && $f['owner_id'] !== '' && $f['owner_id'] !== null) {
+            $this->db->where($p . 'owner_id', (int) $f['owner_id']);
+        }
     }
 
     /** Valeurs de rentrée déjà utilisées (pour le filtre du dashboard / datalist). */
@@ -639,6 +643,9 @@ class School_ia_bridge_model extends App_Model
         if ($from) { $where .= ' AND l.received_at >= ?'; $params[] = $from; }
         if ($to)   { $where .= ' AND l.received_at <= ?'; $params[] = $to; }
         if (!empty($filters['rentree'])) { $where .= ' AND l.rentree = ?'; $params[] = $filters['rentree']; }
+        if (isset($filters['owner_id']) && $filters['owner_id'] !== '' && $filters['owner_id'] !== null) {
+            $where .= ' AND l.owner_id = ?'; $params[] = (int) $filters['owner_id'];
+        }
 
         $sql = 'SELECT AVG(TIMESTAMPDIFF(MINUTE, l.received_at, fc.first_contact)) AS avg_minutes, COUNT(*) AS n
                 FROM `' . $this->table() . '` l
@@ -1718,13 +1725,18 @@ class School_ia_bridge_model extends App_Model
     }
 
     /** Toutes les tâches à faire, avec le nom du lead (page Tâches / widget). */
-    public function pending_tasks(int $limit = 200): array
+    public function pending_tasks(int $limit = 200, ?int $staffId = null): array
     {
-        return $this->db
+        $this->db
             ->select('t.*, l.name AS lead_name')
             ->from($this->tasksTable() . ' t')
             ->join($this->table() . ' l', 'l.id = t.lead_id', 'left')
-            ->where('t.done', 0)
+            ->where('t.done', 0);
+        // Cadrage par conseiller : uniquement les tâches qui lui sont assignées.
+        if ($staffId !== null) {
+            $this->db->where('t.staff_id', (int) $staffId);
+        }
+        return $this->db
             ->order_by('t.due_at IS NULL', 'asc', false)
             ->order_by('t.due_at', 'asc')
             ->limit($limit)
