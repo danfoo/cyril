@@ -298,10 +298,32 @@ class School_ia_bridge_model extends App_Model
                 `filters` text DEFAULT NULL,
                 `attachments` varchar(255) DEFAULT NULL,
                 `volume` int(11) NOT NULL DEFAULT 0,
+                `status` varchar(12) NOT NULL DEFAULT 'sent',
                 `staff_id` int(11) DEFAULT NULL,
                 `created_at` datetime DEFAULT NULL,
                 PRIMARY KEY (`id`),
                 KEY `channel` (`channel`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+        }
+        // Statut d'envoi de la campagne (queued | sending | sent) — pour l'envoi
+        // en arrière-plan par lots.
+        if ($this->db->table_exists($this->campaignsTable())
+            && !$this->db->field_exists('status', $this->campaignsTable())) {
+            $this->db->query('ALTER TABLE `' . $this->campaignsTable() . "` ADD `status` VARCHAR(12) NOT NULL DEFAULT 'sent'");
+        }
+        // File d'attente des destinataires d'une campagne (envoi par lots via cron).
+        if (!$this->db->table_exists($this->queueTable())) {
+            $this->db->query('CREATE TABLE `' . $this->queueTable() . "` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `campaign_id` int(11) NOT NULL,
+                `lead_id` int(11) NOT NULL,
+                `status` varchar(10) NOT NULL DEFAULT 'pending',
+                `attempts` tinyint(4) NOT NULL DEFAULT 0,
+                `processed_at` datetime DEFAULT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                KEY `campaign_id` (`campaign_id`),
+                KEY `status` (`status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
         // Lien message → campagne nommée.
@@ -1049,10 +1071,76 @@ class School_ia_bridge_model extends App_Model
             'filters'     => json_encode($d['filters'] ?? [], JSON_UNESCAPED_UNICODE),
             'attachments' => !empty($d['attachments']) ? substr(implode(',', array_map('intval', (array) $d['attachments'])), 0, 255) : null,
             'volume'      => (int) ($d['volume'] ?? 0),
+            'status'      => substr((string) ($d['status'] ?? 'sent'), 0, 12),
             'staff_id'    => $d['staff_id'] ?? null,
             'created_at'  => date('Y-m-d H:i:s'),
         ]);
         return (int) $this->db->insert_id();
+    }
+
+    private function queueTable(): string
+    {
+        return db_prefix() . 'school_ia_campaign_queue';
+    }
+
+    /** Met en file les destinataires d'une campagne (envoi par lots). */
+    public function enqueue_campaign(int $campaignId, array $leadIds): void
+    {
+        $now = date('Y-m-d H:i:s');
+        $batch = [];
+        foreach (array_unique(array_map('intval', $leadIds)) as $lid) {
+            if ($lid > 0) {
+                $batch[] = ['campaign_id' => $campaignId, 'lead_id' => $lid, 'status' => 'pending', 'created_at' => $now];
+            }
+        }
+        if ($batch) {
+            $this->db->insert_batch($this->queueTable(), $batch);
+        }
+    }
+
+    /**
+     * Prochain lot à traiter : destinataires « pending », joints au lead et à la
+     * campagne (pour disposer du canal, du contenu et des coordonnées).
+     */
+    public function campaign_queue_batch(int $limit): array
+    {
+        $q = $this->queueTable();
+        $c = $this->campaignsTable();
+        $l = $this->table();
+        return $this->db->query(
+            'SELECT qq.id AS queue_id, qq.campaign_id, qq.lead_id,
+                    c.channel, c.subject, c.body, c.attachments, c.staff_id,
+                    l.name, l.email, l.phone, l.formation
+             FROM `' . $q . '` qq
+             JOIN `' . $c . '` c ON c.id = qq.campaign_id
+             JOIN `' . $l . '` l ON l.id = qq.lead_id
+             WHERE qq.status = "pending"
+             ORDER BY qq.campaign_id ASC, qq.id ASC
+             LIMIT ' . (int) $limit
+        )->result();
+    }
+
+    /** Marque une entrée de la file comme traitée (sent | failed). */
+    public function mark_queue(int $queueId, string $status): void
+    {
+        $this->db->where('id', $queueId)->update($this->queueTable(), [
+            'status'       => in_array($status, ['sent', 'failed'], true) ? $status : 'failed',
+            'attempts'     => 1,
+            'processed_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /** Destinataires encore en attente pour une campagne. */
+    public function campaign_pending_count(int $campaignId): int
+    {
+        return (int) $this->db->where('campaign_id', $campaignId)->where('status', 'pending')
+            ->count_all_results($this->queueTable());
+    }
+
+    public function set_campaign_status(int $id, string $status): void
+    {
+        $this->db->where('id', $id)->update($this->campaignsTable(),
+            ['status' => substr($status, 0, 12)]);
     }
 
     public function get_campaign(int $id)

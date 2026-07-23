@@ -819,6 +819,94 @@ function school_ia_send_sms_raw(string $phone, string $text, int $leadId): bool
     return $resp !== false && $code >= 200 && $code < 300;
 }
 
+/** Résout des IDs de documents (CSV) en chemins de fichiers pour les pièces jointes. */
+function school_ia_resolve_attachments(?string $csv): array
+{
+    if ($csv === null || trim($csv) === '') {
+        return [];
+    }
+    $CI = &get_instance();
+    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+    $dir = FCPATH . 'uploads/school_ia_documents/';
+    $paths = [];
+    foreach (array_filter(array_map('intval', explode(',', $csv))) as $docId) {
+        $doc = $CI->school_ia_bridge_model->get_document($docId);
+        if ($doc && is_file($dir . $doc->stored_name)) {
+            $paths[] = $dir . $doc->stored_name;
+        }
+    }
+    return $paths;
+}
+
+/**
+ * Traite un LOT de la file d'attente des campagnes (envoi en arrière-plan).
+ * Envoie jusqu'à $max destinataires « pending », journalise, met à jour la file
+ * et finalise les campagnes sans reliquat. Appelé par le cron (par lots
+ * successifs) et une fois à la création d'une campagne (feedback immédiat).
+ *
+ * @return int Nombre de destinataires traités durant cet appel.
+ */
+function school_ia_bridge_process_campaign_queue(int $max = 25): int
+{
+    @set_time_limit(0);
+    $CI = &get_instance();
+    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+    $m = $CI->school_ia_bridge_model;
+
+    $rows = $m->campaign_queue_batch($max);
+    if (!$rows) {
+        return 0;
+    }
+
+    $touched = [];
+    foreach ($rows as $r) {
+        $touched[(int) $r->campaign_id] = true;
+        $lead = (object) [
+            'id'        => (int) $r->lead_id,
+            'name'      => $r->name,
+            'email'     => $r->email,
+            'phone'     => $r->phone,
+            'formation' => $r->formation,
+        ];
+        $staffId = $r->staff_id ? (int) $r->staff_id : null;
+        $ok = false;
+
+        if ($r->channel === 'sms') {
+            $text = school_ia_personalize((string) $r->body, $lead);
+            $ok = ($lead->phone !== null && $lead->phone !== '')
+                ? school_ia_send_sms_raw((string) $lead->phone, $text, $lead->id) : false;
+            school_ia_log_sms($lead->id, (bool) $ok, 'bulk', (int) $r->campaign_id);
+            if ($ok) {
+                $m->add_activity($lead->id, 'sms', 'SMS (campagne) : ' . mb_substr($text, 0, 100), $staffId);
+            }
+        } else {
+            $subject = school_ia_personalize((string) $r->subject, $lead);
+            $body    = school_ia_personalize((string) $r->body, $lead);
+            $paths   = school_ia_resolve_attachments($r->attachments);
+            $ok = ($lead->email !== null && $lead->email !== '')
+                ? school_ia_send_tracked_email($lead, $subject, $body, 'bulk', $paths, (int) $r->campaign_id) : false;
+            if ($ok) {
+                $m->add_activity($lead->id, 'email', 'E-mail (campagne) : ' . $subject, $staffId);
+            }
+        }
+
+        $m->mark_queue((int) $r->queue_id, $ok ? 'sent' : 'failed');
+    }
+
+    // Finalise le statut des campagnes touchées.
+    foreach (array_keys($touched) as $cid) {
+        $m->set_campaign_status($cid, $m->campaign_pending_count($cid) === 0 ? 'sent' : 'sending');
+    }
+    return count($rows);
+}
+
+/** Cron : envoie le prochain lot des campagnes en file d'attente. */
+hooks()->add_action('after_cron_run', 'school_ia_bridge_campaigns_cron');
+function school_ia_bridge_campaigns_cron()
+{
+    school_ia_bridge_process_campaign_queue(25);
+}
+
 /**
  * Cron des séquences de relance : envoie les étapes dues et fait avancer
  * chaque inscription. S'arrête si le lead est inscrit ou perdu.

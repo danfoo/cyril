@@ -42,6 +42,20 @@
       <?php if ($campaign->subject) { ?> · Objet : <strong><?php echo htmlspecialchars((string) $campaign->subject, ENT_QUOTES); ?></strong><?php } ?>
     </p>
 
+    <?php if (in_array($campaign->status ?? 'sent', ['queued', 'sending'], true)) {
+        $target = (int) $campaign->volume;
+        $done   = (int) $kpis['sent'];
+        $pct    = $target > 0 ? min(100, (int) round($done * 100 / $target)) : 0; ?>
+      <div class="panel_s"><div class="panel-body" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span class="sia-panel-icon sia-ic-warning"><i class="fa fa-clock-o"></i></span>
+        <div style="flex:1 1 auto;">
+          <strong>Envoi en cours…</strong> <?php echo $done; ?> / <?php echo $target; ?> destinataire(s) traité(s) (<?php echo $pct; ?> %).
+          <span class="text-muted">Le reste part automatiquement par lots via le <strong>cron Perfex</strong> — rechargez la page pour suivre l'avancement.</span>
+          <div class="sia-progress" style="margin-top:8px;"><div class="sia-progress-bar" style="width:<?php echo $pct; ?>%;background:linear-gradient(90deg,#e8447a,#d11349);"></div></div>
+        </div>
+      </div></div>
+    <?php } ?>
+
     <!-- KPIs -->
     <div class="row sia-kpi-grid">
       <?php

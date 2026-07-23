@@ -741,9 +741,12 @@ class School_ia_bridge extends AdminController
         $name       = trim((string) $this->input->post('campaign_name'));
 
         $recipients = $this->school_ia_bridge_model->email_recipients($filters);
+        $leadIds = array_map(static fn($l) => (int) $l->id, $recipients);
 
-        // Persiste la campagne pour le suivi (liste + fiche détail).
-        $this->currentCampaignId = $this->school_ia_bridge_model->create_campaign([
+        // Persiste la campagne + met les destinataires en FILE D'ATTENTE : l'envoi
+        // se fait en arrière-plan par lots (cron), sans bloquer ni risquer le
+        // timeout sur les gros volumes.
+        $campaignId = $this->school_ia_bridge_model->create_campaign([
             'name'        => $name !== '' ? $name : ('E-mail — ' . mb_substr($subjectTpl, 0, 60)),
             'channel'     => 'email',
             'subject'     => $subjectTpl,
@@ -751,26 +754,17 @@ class School_ia_bridge extends AdminController
             'filters'     => $filters,
             'attachments' => $attach,
             'staff_id'    => get_staff_user_id(),
+            'volume'      => count($leadIds),
+            'status'      => 'queued',
         ]);
+        $this->school_ia_bridge_model->enqueue_campaign($campaignId, $leadIds);
 
-        $ok = 0;
-        $fail = 0;
-        foreach ($recipients as $lead) {
-            $subject = $this->personalize($subjectTpl, $lead);
-            $message = $this->personalize($bodyTpl, $lead);
-            [$sent] = $this->deliver_email($lead, $subject, $message, $attach, 'bulk');
-            if ($sent) {
-                $ok++;
-                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'email', 'E-mail (campagne) : ' . $subject, get_staff_user_id());
-            } else {
-                $fail++;
-            }
-        }
-        $this->school_ia_bridge_model->set_campaign_volume((int) $this->currentCampaignId, $ok);
+        // Premier lot immédiat (retour visible tout de suite sur les petites
+        // campagnes) ; le reste part via le cron Perfex.
+        school_ia_bridge_process_campaign_queue(25);
 
-        set_alert($fail > 0 ? 'warning' : 'success',
-            $ok . ' e-mail(s) envoyé(s)' . ($fail > 0 ? ', ' . $fail . ' échec(s).' : '.'));
-        redirect(admin_url('school_ia_bridge/campaign/' . (int) $this->currentCampaignId));
+        set_alert('success', count($leadIds) . ' destinataire(s) programmé(s) — envoi en arrière-plan par lots.');
+        redirect(admin_url('school_ia_bridge/campaign/' . (int) $campaignId));
     }
 
     /** Traite l'envoi groupé de SMS (form Perfex → CSRF). */
@@ -782,6 +776,7 @@ class School_ia_bridge extends AdminController
         $name    = trim((string) $this->input->post('campaign_name'));
 
         $recipients = $this->school_ia_bridge_model->sms_recipients($filters);
+        $leadIds = array_map(static fn($l) => (int) $l->id, $recipients);
 
         $campaignId = $this->school_ia_bridge_model->create_campaign([
             'name'     => $name !== '' ? $name : ('SMS — ' . date('d/m/Y H:i')),
@@ -790,25 +785,15 @@ class School_ia_bridge extends AdminController
             'body'     => $bodyTpl,
             'filters'  => $filters,
             'staff_id' => get_staff_user_id(),
+            'volume'   => count($leadIds),
+            'status'   => 'queued',
         ]);
+        $this->school_ia_bridge_model->enqueue_campaign($campaignId, $leadIds);
 
-        $ok = 0;
-        $fail = 0;
-        foreach ($recipients as $lead) {
-            $text = $this->personalize($bodyTpl, $lead);
-            [$sent] = $this->lam_send_sms((string) $lead->phone, $text, (int) $lead->id);
-            school_ia_log_sms((int) $lead->id, (bool) $sent, 'bulk', $campaignId);
-            if ($sent) {
-                $ok++;
-                $this->school_ia_bridge_model->add_activity((int) $lead->id, 'sms', 'SMS (campagne) : ' . mb_substr($text, 0, 100), get_staff_user_id());
-            } else {
-                $fail++;
-            }
-        }
-        $this->school_ia_bridge_model->set_campaign_volume((int) $campaignId, $ok);
+        // Premier lot immédiat, le reste via le cron Perfex.
+        school_ia_bridge_process_campaign_queue(25);
 
-        set_alert($fail > 0 ? 'warning' : 'success',
-            $ok . ' SMS envoyé(s)' . ($fail > 0 ? ', ' . $fail . ' échec(s).' : '.'));
+        set_alert('success', count($leadIds) . ' destinataire(s) programmé(s) — envoi en arrière-plan par lots.');
         redirect(admin_url('school_ia_bridge/campaign/' . (int) $campaignId));
     }
 
