@@ -907,8 +907,16 @@ class School_ia_bridge extends AdminController
         $cerr = curl_error($ch);
         curl_close($ch);
 
+        // Nettoie un texte destiné à une alerte (Perfex l'injecte dans du JS :
+        // guillemets, retours à la ligne et balises casseraient la page).
+        $clean = static function (string $s): string {
+            $s = strip_tags($s);
+            $s = str_replace(['"', "'", '`', '\\', '<', '>', "\r", "\n", "\t"], ' ', $s);
+            return trim((string) preg_replace('/\s+/', ' ', $s));
+        };
+
         if ($resp === false) {
-            return [false, 'Connexion échouée : ' . $cerr];
+            return [false, 'Connexion échouée : ' . $clean($cerr)];
         }
         // Ne pas se fier au seul code HTTP : LAM peut répondre 200 avec une erreur
         // dans le corps. On lit la réponse pour statuer réellement.
@@ -923,7 +931,7 @@ class School_ia_bridge extends AdminController
                 $ok = false;
             }
         }
-        return [$ok, 'HTTP ' . $code . ' — ' . mb_substr((string) $resp, 0, 300)];
+        return [$ok, 'HTTP ' . $code . ' — ' . $clean(mb_substr((string) $resp, 0, 300))];
     }
 
     /** Envoie un SMS de test et affiche la réponse BRUTE de LAfricaMobile. */
