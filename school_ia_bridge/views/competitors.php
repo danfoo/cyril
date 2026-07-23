@@ -186,7 +186,7 @@
                     <a href="<?php echo admin_url('school_ia_bridge/lead/' . (int) $row->lead_id); ?>"><?php echo htmlspecialchars((string) $leadLabel, ENT_QUOTES); ?></a>
                   </span>
                 </div>
-                <p style="margin:0 0 8px; font-style:italic;">« <?php echo htmlspecialchars((string) $row->context, ENT_QUOTES); ?> »</p>
+                <p class="sia-quote-text" style="margin:0 0 8px; font-style:italic;">« <?php echo htmlspecialchars((string) $row->context, ENT_QUOTES); ?> »</p>
                 <div>
                   <a href="<?php echo admin_url('school_ia_bridge/competitor_toggle/' . (int) $row->id . '?return=' . urlencode($returnUrl)); ?>"
                      class="label <?php echo $row->handled ? 'label-success' : 'label-warning'; ?>" style="cursor:pointer;">
@@ -197,6 +197,31 @@
               </div>
             <?php } ?>
           </div>
+          <div class="sia-quote-pager" id="sia-quote-pager" style="display:none;"></div>
+          <script>
+          (function(){
+            var list=document.querySelector('.sia-quote-list');
+            var pager=document.getElementById('sia-quote-pager');
+            if(!list||!pager){return;}
+            var cards=Array.prototype.slice.call(list.querySelectorAll('.sia-quote-card'));
+            var PAGE=6, pages=Math.ceil(cards.length/PAGE);
+            if(pages<=1){return;}
+            function show(p){
+              cards.forEach(function(c,i){ c.style.display=(i>=p*PAGE && i<(p+1)*PAGE)?'':'none'; });
+              Array.prototype.slice.call(pager.querySelectorAll('button')).forEach(function(b,i){
+                b.className='btn btn-sm '+(i===p?'btn-primary':'btn-default');
+              });
+            }
+            var html='';
+            for(var i=0;i<pages;i++){ html+='<button type="button" class="btn btn-sm btn-default">'+(i+1)+'</button>'; }
+            pager.innerHTML=html;
+            pager.style.display='';
+            Array.prototype.slice.call(pager.querySelectorAll('button')).forEach(function(b,i){
+              b.addEventListener('click',function(){ show(i); });
+            });
+            show(0);
+          })();
+          </script>
         </div></div>
       <?php } ?>
 
