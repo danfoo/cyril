@@ -2,7 +2,7 @@
 <?php init_head(); ?>
 <div id="wrapper">
   <div class="content">
-    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-paper-plane"></i> Envoi groupé <?php echo sia_help('bulk'); ?></h4>
+    <h4 class="no-margin" style="margin-bottom:15px;"><i class="fa fa-paper-plane"></i> Nouvelle campagne <?php echo sia_help('bulk'); ?></h4>
 
     <?php
     // Bloc de filtres de ciblage réutilisé pour l'e-mail et le SMS.

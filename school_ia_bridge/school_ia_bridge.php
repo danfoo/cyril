@@ -756,99 +756,107 @@ function school_ia_bridge_admin_menu()
         return;
     }
 
-    $CI->app_menu->add_sidebar_menu_item('school_ia_bridge', [
-        'name'     => 'School IA CRM',
+    $canSend   = staff_can('send', 'school_ia_bridge');
+    $canManage = staff_can('manage_settings', 'school_ia_bridge');
+
+    // 1. Tableau de bord (onglet de premier plan)
+    $CI->app_menu->add_sidebar_menu_item('sia_dashboard', [
+        'name'     => 'Tableau de bord',
+        'href'     => admin_url('school_ia_bridge/dashboard'),
         'icon'     => 'fa fa-graduation-cap',
         'position' => 30,
     ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_dashboard',
-        'name'     => 'Tableau de bord',
-        'href'     => admin_url('school_ia_bridge/dashboard'),
-        'position' => 1,
+
+    // 2. Contact
+    $CI->app_menu->add_sidebar_menu_item('sia_contacts', [
+        'name'     => 'Contact',
+        'href'     => admin_url('school_ia_bridge'),
+        'icon'     => 'fa fa-users',
+        'position' => 31,
     ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_pipeline',
-        'name'     => 'Pipeline',
-        'href'     => admin_url('school_ia_bridge/pipeline'),
-        'position' => 2,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_tasks',
+
+    // 3. Tâches
+    $CI->app_menu->add_sidebar_menu_item('sia_tasks', [
         'name'     => 'Tâches',
         'href'     => admin_url('school_ia_bridge/tasks'),
-        'position' => 3,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_inbox',
-        'name'     => 'Contacts',
-        'href'     => admin_url('school_ia_bridge'),
-        'position' => 4,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_activity',
-        'name'     => 'Journal',
-        'href'     => admin_url('school_ia_bridge/activity'),
-        'position' => 5,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_campaigns',
-        'name'     => 'Statistiques',
-        'href'     => admin_url('school_ia_bridge/campaigns'),
-        'position' => 6,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_competitors',
-        'name'     => 'Veille concurrentielle',
-        'href'     => admin_url('school_ia_bridge/competitors'),
-        'position' => 7,
-    ]);
-    $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-        'slug'     => 'school_ia_bridge_reporting',
-        'name'     => 'Reporting',
-        'href'     => admin_url('school_ia_bridge/reporting'),
-        'position' => 8,
+        'icon'     => 'fa fa-check-square-o',
+        'position' => 32,
     ]);
 
-    if (staff_can('send', 'school_ia_bridge')) {
-        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-            'slug'     => 'school_ia_bridge_bulk',
-            'name'     => 'Envoi groupé',
-            'href'     => admin_url('school_ia_bridge/bulk'),
-            'position' => 6,
+    // 4. Rapports (groupe) : Reporting + Journal
+    $CI->app_menu->add_sidebar_menu_item('sia_reports', [
+        'name'     => 'Rapports',
+        'icon'     => 'fa fa-file-text-o',
+        'position' => 33,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('sia_reports', [
+        'slug' => 'sia_reporting', 'name' => 'Reporting',
+        'href' => admin_url('school_ia_bridge/reporting'), 'position' => 1,
+    ]);
+    $CI->app_menu->add_sidebar_children_item('sia_reports', [
+        'slug' => 'sia_journal', 'name' => 'Journal',
+        'href' => admin_url('school_ia_bridge/activity'), 'position' => 2,
+    ]);
+
+    // 5. Campagne (groupe) : Les campagnes (séquences) + Nouvelle campagne (envoi groupé) + Statistiques
+    $CI->app_menu->add_sidebar_menu_item('sia_campaign', [
+        'name'     => 'Campagne',
+        'icon'     => 'fa fa-bullhorn',
+        'position' => 34,
+    ]);
+    if ($canManage) {
+        $CI->app_menu->add_sidebar_children_item('sia_campaign', [
+            'slug' => 'sia_sequences', 'name' => 'Les campagnes',
+            'href' => admin_url('school_ia_bridge/sequences'), 'position' => 1,
         ]);
     }
-
-    if (staff_can('manage_settings', 'school_ia_bridge')) {
-        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-            'slug'     => 'school_ia_bridge_sequences',
-            'name'     => 'Séquences',
-            'href'     => admin_url('school_ia_bridge/sequences'),
-            'position' => 7,
+    if ($canSend) {
+        $CI->app_menu->add_sidebar_children_item('sia_campaign', [
+            'slug' => 'sia_bulk', 'name' => 'Nouvelle campagne',
+            'href' => admin_url('school_ia_bridge/bulk'), 'position' => 2,
         ]);
-        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-            'slug'     => 'school_ia_bridge_templates',
+    }
+    $CI->app_menu->add_sidebar_children_item('sia_campaign', [
+        'slug' => 'sia_stats', 'name' => 'Statistiques',
+        'href' => admin_url('school_ia_bridge/campaigns'), 'position' => 3,
+    ]);
+
+    // 6. Veille
+    $CI->app_menu->add_sidebar_menu_item('sia_veille', [
+        'name'     => 'Veille',
+        'href'     => admin_url('school_ia_bridge/competitors'),
+        'icon'     => 'fa fa-binoculars',
+        'position' => 35,
+    ]);
+
+    if ($canManage) {
+        // 7. Modèles
+        $CI->app_menu->add_sidebar_menu_item('sia_templates', [
             'name'     => 'Modèles',
             'href'     => admin_url('school_ia_bridge/templates'),
-            'position' => 8,
+            'icon'     => 'fa fa-file-o',
+            'position' => 36,
         ]);
-        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-            'slug'     => 'school_ia_bridge_documents',
+        // 8. Documents
+        $CI->app_menu->add_sidebar_menu_item('sia_documents', [
             'name'     => 'Documents',
             'href'     => admin_url('school_ia_bridge/documents'),
-            'position' => 9,
+            'icon'     => 'fa fa-folder-open-o',
+            'position' => 37,
         ]);
-        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-            'slug'     => 'school_ia_bridge_settings',
-            'name'     => 'Réglages',
-            'href'     => admin_url('school_ia_bridge/settings'),
-            'position' => 10,
+        // 9. Configuration (groupe) : Réglages + Diagnostic
+        $CI->app_menu->add_sidebar_menu_item('sia_config', [
+            'name'     => 'Configuration',
+            'icon'     => 'fa fa-cog',
+            'position' => 38,
         ]);
-        $CI->app_menu->add_sidebar_children_item('school_ia_bridge', [
-            'slug'     => 'school_ia_bridge_debug',
-            'name'     => 'Diagnostic',
-            'href'     => admin_url('school_ia_bridge/debug'),
-            'position' => 11,
+        $CI->app_menu->add_sidebar_children_item('sia_config', [
+            'slug' => 'sia_settings', 'name' => 'Réglages',
+            'href' => admin_url('school_ia_bridge/settings'), 'position' => 1,
+        ]);
+        $CI->app_menu->add_sidebar_children_item('sia_config', [
+            'slug' => 'sia_debug', 'name' => 'Diagnostic',
+            'href' => admin_url('school_ia_bridge/debug'), 'position' => 2,
         ]);
     }
 }
