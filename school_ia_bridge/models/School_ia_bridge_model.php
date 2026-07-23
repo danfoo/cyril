@@ -1247,6 +1247,48 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
+    /**
+     * Leads ayant une conversation, avec le texte concaténé des messages du
+     * prospect (rôle « user »), pour analyse concurrentielle par l'IA.
+     * On ignore les faux messages de veille (préfixe SIACMP1:).
+     * @return array<int,array{lead_id:int,name:string,text:string,last_id:int}>
+     */
+    public function conversations_for_scan(int $limit = 200): array
+    {
+        $rows = $this->db
+            ->select('c.lead_id, c.id, c.role, c.content, l.name AS lead_name')
+            ->from($this->chatTable() . ' c')
+            ->join($this->table() . ' l', 'l.id = c.lead_id', 'inner')
+            ->where("c.content NOT LIKE 'SIACMP1:%'", null, false)
+            ->order_by('c.lead_id', 'asc')
+            ->order_by('c.id', 'asc')
+            ->get()
+            ->result();
+
+        $convos = [];
+        foreach ($rows as $r) {
+            $lid = (int) $r->lead_id;
+            if (!isset($convos[$lid])) {
+                $convos[$lid] = ['lead_id' => $lid, 'name' => (string) $r->lead_name, 'text' => '', 'last_id' => 0];
+            }
+            $who = $r->role === 'user' ? 'Prospect' : 'Conseiller';
+            $convos[$lid]['text'] .= $who . ' : ' . trim((string) $r->content) . "\n";
+            $convos[$lid]['last_id'] = max($convos[$lid]['last_id'], (int) $r->id);
+        }
+        return array_slice(array_values($convos), 0, $limit);
+    }
+
+    /** Dernier message de chat analysé pour un lead (pour ne pas retraiter). */
+    public function competitor_scan_marker(int $leadId): int
+    {
+        return (int) get_option('sia_comp_scan_' . $leadId);
+    }
+
+    public function set_competitor_scan_marker(int $leadId, int $lastId): void
+    {
+        update_option('sia_comp_scan_' . $leadId, (string) $lastId);
+    }
+
     /** Totaux pour les indicateurs de la page veille. */
     public function competitor_totals(): array
     {

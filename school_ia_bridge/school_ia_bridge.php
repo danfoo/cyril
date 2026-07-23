@@ -181,7 +181,7 @@ function sia_help(string $key): string
                <li><strong>Prospects concernés</strong> : combien de leads distincts ont mentionné chaque concurrent.</li>
                <li><strong>Extraits</strong> : le passage exact de la conversation, avec un lien vers le lead.</li>
              </ul>
-             <p><em>Alimentation automatique :</em> les mentions sont détectées côté site par l\'IA et remontées ici. Rien n\'apparaît tant qu\'aucun prospect n\'a cité de concurrent.</p>'],
+             <p><em>Analyse par l\'IA :</em> cliquez « Analyser les conversations avec l\'IA » — Perfex lit les conversations déjà stockées et en extrait les concurrents cités, directement (sans dépendre de WordPress). Nécessite la clé API Claude (Réglages → Rapports IA). Relancer l\'analyse ne traite que les conversations nouvelles.</p>'],
         'activity' => ['Journal d\'activité',
             '<p>Le flux central de <strong>tout ce qui se passe</strong> sur l\'ensemble des leads : notes, changements d\'étape, tâches, e-mails, SMS, assignations.</p>
              <ul>

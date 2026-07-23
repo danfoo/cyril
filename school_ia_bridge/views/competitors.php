@@ -3,8 +3,19 @@
 <div id="wrapper">
   <div class="content">
 
-    <h4 class="no-margin" style="margin-bottom:6px;"><i class="fa fa-binoculars"></i> Veille concurrentielle <?php echo sia_help('competitors'); ?></h4>
-    <p class="text-muted" style="margin-bottom:16px;">Écoles concurrentes citées spontanément par les prospects dans leurs conversations avec le chatbot.</p>
+    <div class="clearfix" style="margin-bottom:6px;">
+      <?php if ($ai_ready) { ?>
+        <a href="<?php echo admin_url('school_ia_bridge/competitors_scan'); ?>" class="btn btn-primary pull-right"
+           onclick="this.classList.add('disabled');this.innerHTML='<i class=\'fa fa-spinner fa-spin\'></i> Analyse en cours…';">
+          <i class="fa fa-magic"></i> Analyser les conversations avec l'IA
+        </a>
+      <?php } ?>
+      <h4 class="no-margin"><i class="fa fa-binoculars"></i> Veille concurrentielle <?php echo sia_help('competitors'); ?></h4>
+    </div>
+    <p class="text-muted" style="margin-bottom:16px;">Écoles concurrentes citées spontanément par les prospects dans leurs conversations. L'analyse se fait directement dans Perfex à partir des conversations stockées, via l'IA (Claude).</p>
+    <?php if (!$ai_ready) { ?>
+      <div class="alert alert-warning">Pour l'analyse automatique, configurez votre clé API Claude dans <a href="<?php echo admin_url('school_ia_bridge/settings'); ?>">Réglages → Rapports IA</a>.</div>
+    <?php } ?>
 
     <!-- Indicateurs -->
     <div class="row">
