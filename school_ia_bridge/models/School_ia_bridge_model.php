@@ -993,12 +993,23 @@ class School_ia_bridge_model extends App_Model
         $this->mark_open($token);
     }
 
-    /** Agrégats pour la page Statistiques (sur une période optionnelle). */
-    public function message_stats(int $sinceDays = 0): array
+    /** Types de campagne reconnus (tag stocké dans messages.campaign). */
+    private function campaignTypes(string $type): ?array
+    {
+        $map = ['bulk' => ['bulk'], 'sequence' => ['sequence'], 'single' => ['single']];
+        return $map[$type] ?? null;
+    }
+
+    /** Agrégats pour la page Statistiques (période + type de campagne). */
+    public function message_stats(int $sinceDays = 0, string $type = ''): array
     {
         $t = $this->messagesTable();
         $since = $this->since($sinceDays);
-        $w = function () use ($since) { if ($since) { $this->db->where('sent_at >=', $since); } };
+        $tf = $this->campaignTypes($type);
+        $w = function () use ($since, $tf) {
+            if ($since) { $this->db->where('sent_at >=', $since); }
+            if ($tf) { $this->db->where_in('campaign', $tf); }
+        };
 
         $w(); $this->db->where('channel', 'email'); $emailSent = (int) $this->db->count_all_results($t);
         $w(); $this->db->where('channel', 'email')->where('opened_at IS NOT NULL', null, false); $emailOpened = (int) $this->db->count_all_results($t);
@@ -1007,6 +1018,20 @@ class School_ia_bridge_model extends App_Model
         $w(); $this->db->where('channel', 'sms'); $smsTotal = (int) $this->db->count_all_results($t);
         $w(); $this->db->where('channel', 'sms')->where('status', 'sent'); $smsSent = (int) $this->db->count_all_results($t);
         $w(); $this->db->where('channel', 'sms')->where('status', 'failed'); $smsFailed = (int) $this->db->count_all_results($t);
+
+        // Conversion : prospects ayant cliqué et désormais « inscrit ».
+        $params = [];
+        $where = 'm.clicks > 0 AND m.lead_id IS NOT NULL';
+        if ($since) { $where .= ' AND m.sent_at >= ?'; $params[] = $since; }
+        if ($tf) { $where .= ' AND m.campaign IN (' . implode(',', array_fill(0, count($tf), '?')) . ')'; $params = array_merge($params, $tf); }
+        $clickers = (int) $this->db->query(
+            'SELECT COUNT(DISTINCT m.lead_id) AS n FROM `' . $t . '` m WHERE ' . $where, $params
+        )->row()->n;
+        $conversions = (int) $this->db->query(
+            'SELECT COUNT(DISTINCT m.lead_id) AS n FROM `' . $t . '` m
+             JOIN `' . $this->table() . "` l ON l.id = m.lead_id
+             WHERE " . $where . " AND l.stage = 'inscrit'", $params
+        )->row()->n;
 
         return [
             'email_sent'    => $emailSent,
@@ -1017,16 +1042,57 @@ class School_ia_bridge_model extends App_Model
             'sms_total'     => $smsTotal,
             'sms_sent'      => $smsSent,
             'sms_failed'    => $smsFailed,
+            'clickers'      => $clickers,
+            'conversions'   => $conversions,
+            'conv_rate'     => $clickers > 0 ? round($conversions * 100 / $clickers, 1) : 0.0,
         ];
     }
 
-    /** Derniers messages (pour le détail de la page Statistiques). */
-    public function recent_messages(int $limit = 50): array
+    /**
+     * Campagnes agrégées (une ligne = un lot d'envoi), au lieu d'un message par
+     * individu. Groupé par canal + type + objet + jour d'envoi.
+     */
+    public function campaign_groups(int $sinceDays = 0, string $type = '', int $limit = 100): array
     {
-        return $this->db->select('m.*, l.name AS lead_name')
-            ->from($this->messagesTable() . ' m')
-            ->join($this->table() . ' l', 'l.id = m.lead_id', 'left')
-            ->order_by('m.sent_at', 'desc')->limit($limit)->get()->result();
+        $t = $this->messagesTable();
+        $since = $this->since($sinceDays);
+        $tf = $this->campaignTypes($type);
+
+        $params = [];
+        $where = '1=1';
+        if ($since) { $where .= ' AND m.sent_at >= ?'; $params[] = $since; }
+        if ($tf) { $where .= ' AND m.campaign IN (' . implode(',', array_fill(0, count($tf), '?')) . ')'; $params = array_merge($params, $tf); }
+
+        return $this->db->query(
+            'SELECT m.channel, m.campaign, COALESCE(m.subject, "") AS subject, DATE(m.sent_at) AS day,
+                    COUNT(*) AS volume,
+                    SUM(m.opened_at IS NOT NULL) AS opened,
+                    SUM(m.clicks > 0) AS clicked,
+                    COUNT(DISTINCT CASE WHEN m.clicks > 0 AND l.stage = "inscrit" THEN m.lead_id END) AS conversions,
+                    MIN(m.sent_at) AS first_sent
+             FROM `' . $t . '` m
+             LEFT JOIN `' . $this->table() . '` l ON l.id = m.lead_id
+             WHERE ' . $where . '
+             GROUP BY m.channel, m.campaign, DATE(m.sent_at), COALESCE(m.subject, "")
+             ORDER BY first_sent DESC
+             LIMIT ' . (int) $limit,
+            $params
+        )->result();
+    }
+
+    /** Destinataires détaillés d'un lot de campagne (sous-vue « qui a cliqué »). */
+    public function campaign_recipients(string $channel, string $campaign, string $subject, string $day, int $limit = 500): array
+    {
+        return $this->db->query(
+            'SELECT m.lead_id, l.name AS lead_name, l.stage AS lead_stage, l.score AS lead_score,
+                    m.opened_at, m.clicks, m.status, m.sent_at
+             FROM `' . $this->messagesTable() . '` m
+             LEFT JOIN `' . $this->table() . '` l ON l.id = m.lead_id
+             WHERE m.channel = ? AND m.campaign = ? AND COALESCE(m.subject, "") = ? AND DATE(m.sent_at) = ?
+             ORDER BY (m.clicks > 0) DESC, (m.opened_at IS NOT NULL) DESC, m.sent_at DESC
+             LIMIT ' . (int) $limit,
+            [$channel, $campaign, $subject, $day]
+        )->result();
     }
 
     /** Journal global : toutes les activités, avec le nom du lead (filtrable). */

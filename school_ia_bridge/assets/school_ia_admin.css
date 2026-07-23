@@ -505,6 +505,10 @@
 #wrapper .content .sia-lead-tabs > li > a .label { margin-left: 5px; }
 #wrapper .content .sia-lead-tabcontent { padding-top: 2px; }
 
+/* Tableau des campagnes : lignes dépliables */
+#wrapper .content .sia-campaign-row:hover { background: var(--sia-surface-2); }
+#wrapper .content .sia-campaign-caret { color: var(--sia-muted); width: 12px; }
+
 /* Pastille dynamique de destinataires (Envoi groupé) */
 #wrapper .content .sia-recipient-badge {
   display: inline-flex; align-items: center; gap: 7px;

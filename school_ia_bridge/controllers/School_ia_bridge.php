@@ -134,15 +134,50 @@ class School_ia_bridge extends AdminController
         redirect($return);
     }
 
-    /** Statistiques des campagnes (ouvertures/clics e-mail, SMS). */
+    /** Statistiques des campagnes (ouvertures/clics/conversion, par type). */
     public function campaigns()
     {
         $period = (int) $this->input->get('period');
+        $type   = (string) $this->input->get('type'); // '' | bulk | sequence | single
+        if (!in_array($type, ['', 'bulk', 'sequence', 'single'], true)) { $type = ''; }
+
         $data['title']    = 'School IA — Statistiques des campagnes';
         $data['period']   = $period;
-        $data['stats']    = $this->school_ia_bridge_model->message_stats($period);
-        $data['messages'] = $this->school_ia_bridge_model->recent_messages(50);
+        $data['type']     = $type;
+        $data['stats']    = $this->school_ia_bridge_model->message_stats($period, $type);
+        $data['groups']   = $this->school_ia_bridge_model->campaign_groups($period, $type);
+        $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/campaigns', $data);
+    }
+
+    /** Sous-vue AJAX : destinataires d'un lot de campagne (qui a ouvert / cliqué). */
+    public function campaign_detail()
+    {
+        $channel  = (string) $this->input->get('channel');
+        $campaign = (string) $this->input->get('campaign');
+        $subject  = (string) $this->input->get('subject');
+        $day      = (string) $this->input->get('day');
+        $recipients = $this->school_ia_bridge_model->campaign_recipients($channel, $campaign, $subject, $day);
+
+        $rows = '';
+        foreach ($recipients as $r) {
+            $name = $r->lead_name ?: ('Lead #' . (int) $r->lead_id);
+            $link = admin_url('school_ia_bridge/lead/' . (int) $r->lead_id);
+            $opened = $r->opened_at ? '<span class="label label-success">Ouvert</span>' : '<span class="label label-default">—</span>';
+            $clicked = ((int) $r->clicks > 0) ? '<span class="label label-info">' . (int) $r->clicks . ' clic(s)</span>' : '<span class="text-muted">—</span>';
+            $inscrit = ($r->lead_stage === 'inscrit') ? ' <span class="label label-success"><i class="fa fa-graduation-cap"></i> Inscrit</span>' : '';
+            $rows .= '<tr>'
+                . '<td><a href="' . $link . '">' . htmlspecialchars($name, ENT_QUOTES) . '</a>' . $inscrit . '</td>'
+                . '<td>' . $opened . '</td>'
+                . '<td>' . $clicked . '</td>'
+                . '<td class="text-muted">' . htmlspecialchars((string) $r->sent_at, ENT_QUOTES) . '</td>'
+                . '</tr>';
+        }
+        if ($rows === '') {
+            $rows = '<tr><td colspan="4" class="text-muted">Aucun destinataire.</td></tr>';
+        }
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<table class="table no-margin"><thead><tr><th>Lead</th><th>Ouverture</th><th>Clics</th><th>Envoyé</th></tr></thead><tbody>' . $rows . '</tbody></table>';
     }
 
     /** Reporting : agrégats par période + rapports rédigés par l'IA. */

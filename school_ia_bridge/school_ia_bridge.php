@@ -178,11 +178,13 @@ function sia_help(string $key): string
         'campaigns' => ['Statistiques des campagnes',
             '<p>Mesurez l\'efficacité de vos envois.</p>
              <ul>
-               <li><strong>Taux d\'ouverture</strong> (e-mail) : un pixel invisible détecte l\'ouverture du message par le destinataire.</li>
-               <li><strong>Taux de clic</strong> (e-mail) : les liens <em>cliquables (HTML)</em> de vos messages sont tracés.</li>
+               <li><strong>Vue par type</strong> : basculez entre <em>Campagnes massives</em> (envois de masse) et <em>Séquences automatisées</em> (relances individuelles) pour ne pas fausser les taux — une campagne de masse ouvre naturellement moins qu\'une relance déclenchée.</li>
+               <li><strong>Taux d\'ouverture / de clic</strong> (e-mail) : pixel invisible + liens tracés.</li>
+               <li><strong>Conversions</strong> : combien de prospects <em>ayant cliqué</em> sont passés à l\'étape « Inscrit » — c\'est le vrai ROI de vos envois.</li>
+               <li><strong>Tableau groupé</strong> : une ligne = une campagne/un lot (pas un individu). Cliquez une ligne pour voir <strong>qui a ouvert / cliqué</strong> et rappeler ces prospects.</li>
                <li><strong>SMS</strong> : nombre d\'envois réussis / échoués.</li>
              </ul>
-             <p><em>Note :</em> certains logiciels de messagerie bloquent les images ; le taux d\'ouverture réel peut être légèrement supérieur à l\'affiché. La période (haut de page) filtre les statistiques.</p>'],
+             <p><em>Note :</em> certains logiciels de messagerie bloquent les images ; le taux d\'ouverture réel peut être légèrement supérieur à l\'affiché.</p>'],
         'competitors' => ['Veille concurrentielle',
             '<p>Un outil d\'aide à la vente : les écoles concurrentes citées spontanément par les prospects, et vos arguments pour les contrer.</p>
              <ul>
