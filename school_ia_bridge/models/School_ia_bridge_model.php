@@ -354,12 +354,13 @@ class School_ia_bridge_model extends App_Model
     /** Valeurs de rentrée déjà utilisées (pour le filtre du dashboard / datalist). */
     public function rentrees(): array
     {
-        return array_map(static fn($r) => $r->rentree, $this->db
-            ->select('DISTINCT rentree')
-            ->where('rentree IS NOT NULL', null, false)->where('rentree !=', '')
-            ->order_by('rentree', 'desc')
-            ->get($this->table())
-            ->result());
+        $this->ensure_schema();
+        $rows = $this->db->query(
+            'SELECT DISTINCT rentree FROM `' . $this->table() . "`
+             WHERE rentree IS NOT NULL AND rentree <> ''
+             ORDER BY rentree DESC"
+        )->result();
+        return array_map(static fn($r) => $r->rentree, $rows);
     }
 
     public function set_rentree(int $id, string $rentree): void
