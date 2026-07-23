@@ -39,45 +39,31 @@
       <div class="alert alert-info" style="padding:8px 12px;font-size:12.5px;"><i class="fa fa-info-circle"></i> Vue <strong>séquences automatisées</strong> : relances déclenchées après un échange, aux taux d'engagement généralement élevés.</div>
     <?php } ?>
 
-    <!-- KPIs -->
-    <div class="row">
-      <div class="col-md-3 col-sm-6"><div class="panel_s"><div class="panel-body">
-        <div class="text-muted"><i class="fa fa-envelope"></i> E-mails envoyés</div>
-        <h2 class="bold no-margin"><?php echo (int) $stats['email_sent']; ?></h2>
-      </div></div></div>
-      <div class="col-md-3 col-sm-6"><div class="panel_s"><div class="panel-body">
-        <div class="text-muted"><i class="fa fa-eye"></i> Taux d'ouverture</div>
-        <h2 class="bold no-margin" style="color:#0a8f5b;"><?php echo $stats['open_rate']; ?> %</h2>
-        <span class="text-muted"><?php echo (int) $stats['email_opened']; ?> ouvert(s)</span>
-      </div></div></div>
-      <div class="col-md-3 col-sm-6"><div class="panel_s"><div class="panel-body">
-        <div class="text-muted"><i class="fa fa-mouse-pointer"></i> Taux de clic</div>
-        <h2 class="bold no-margin" style="color:#2e6ff2;"><?php echo $stats['click_rate']; ?> %</h2>
-        <span class="text-muted"><?php echo (int) $stats['email_clicked']; ?> cliqué(s)</span>
-      </div></div></div>
-      <div class="col-md-3 col-sm-6"><div class="panel_s"><div class="panel-body">
-        <div class="text-muted"><i class="fa fa-mobile"></i> SMS</div>
-        <h2 class="bold no-margin"><?php echo (int) $stats['sms_sent']; ?><small class="text-muted"> / <?php echo (int) $stats['sms_total']; ?></small></h2>
-        <span class="text-muted"><?php echo (int) $stats['sms_failed']; ?> échec(s)</span>
-      </div></div></div>
-    </div>
-
-    <!-- KPI Conversion (l'indicateur ROI) -->
-    <div class="row">
-      <div class="col-md-12">
-        <div class="panel_s"><div class="panel-body" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-          <div class="sia-kpi-icon" style="color:#16a34a;background:#16a34a1a;width:52px;height:52px;font-size:22px;"><i class="fa fa-trophy"></i></div>
-          <div style="flex:1 1 auto;">
-            <div class="text-muted" style="font-size:12.5px;font-weight:600;">Conversions — prospects ayant cliqué puis inscrits</div>
-            <h2 class="bold no-margin" style="color:#16a34a;">
-              <?php echo (int) $stats['conversions']; ?>
-              <small class="text-muted" style="font-size:15px;">/ <?php echo (int) $stats['clickers']; ?> cliqueur(s) · <?php echo $stats['conv_rate']; ?> % de conversion</small>
-            </h2>
+    <!-- KPIs (cartes dégradées, style tableau de bord) -->
+    <?php
+    $kpi = function (string $label, $value, string $grad, string $icon, string $sub = '') {
+        ob_start(); ?>
+        <div class="col-lg-3 col-sm-6 sia-stat-col">
+          <div class="sia-stat-card" style="position:relative;overflow:hidden;border-radius:16px;padding:18px 20px;min-height:104px;color:#fff;display:flex;flex-direction:column;justify-content:center;background:<?php echo $grad; ?>;box-shadow:0 6px 18px rgba(15,23,42,.14);">
+            <div style="position:relative;z-index:1;font-size:26px;font-weight:800;line-height:1.08;letter-spacing:-.02em;"><?php echo $value; ?></div>
+            <div style="position:relative;z-index:1;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.92;margin-top:5px;"><?php echo $label; ?></div>
+            <?php if ($sub !== '') { ?><div style="position:relative;z-index:1;font-size:11.5px;opacity:.85;margin-top:3px;"><?php echo $sub; ?></div><?php } ?>
+            <i class="fa <?php echo $icon; ?>" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:54px;opacity:.20;"></i>
           </div>
-          <span class="text-muted" style="font-size:12px;max-width:340px;">Le vrai ROI de vos envois : combien de destinataires engagés sont passés à l'étape « Inscrit » du pipeline.</span>
-        </div></div>
-      </div>
+        </div>
+        <?php return ob_get_clean();
+    };
+    ?>
+    <div class="row sia-kpi-grid">
+      <?php
+      echo $kpi('E-mails envoyés', (int) $stats['email_sent'], 'linear-gradient(135deg,#6366f1,#4f46e5)', 'fa-envelope');
+      echo $kpi("Taux d'ouverture", $stats['open_rate'] . ' %', 'linear-gradient(135deg,#34d399,#059669)', 'fa-eye', (int) $stats['email_opened'] . ' ouvert(s)');
+      echo $kpi('Taux de clic', $stats['click_rate'] . ' %', 'linear-gradient(135deg,#38bdf8,#2563eb)', 'fa-mouse-pointer', (int) $stats['email_clicked'] . ' cliqué(s)');
+      echo $kpi('SMS', (int) $stats['sms_sent'] . ' <small style="opacity:.8;font-size:16px;">/ ' . (int) $stats['sms_total'] . '</small>', 'linear-gradient(135deg,#64748b,#334155)', 'fa-mobile', (int) $stats['sms_failed'] . ' échec(s)');
+      echo $kpi('Conversions', (int) $stats['conversions'], 'linear-gradient(135deg,#2dd4bf,#0d9488)', 'fa-trophy', (int) $stats['clickers'] . ' cliqueur(s) · ' . $stats['conv_rate'] . ' %');
+      ?>
     </div>
+    <p class="text-muted" style="font-size:12px;margin:-4px 0 14px;"><i class="fa fa-trophy" style="color:#0d9488;"></i> <strong>Conversions</strong> = le vrai ROI : prospects ayant cliqué puis passés à l'étape « Inscrit » du pipeline.</p>
 
     <!-- Tableau des campagnes (groupé, pas par individu) -->
     <div class="panel_s"><div class="panel-body">
