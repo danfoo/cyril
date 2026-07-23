@@ -903,8 +903,51 @@ class School_ia_bridge extends AdminController
         $data['enrollments'] = $this->school_ia_bridge_model->enrollments_for_lead((int) $lead->id);
         $data['chatMessages'] = $this->school_ia_bridge_model->chat_messages((int) $lead->id);
         $data['competitors']  = $this->school_ia_bridge_model->competitors_for_lead((int) $lead->id);
+        $data['ai_ready']   = trim((string) get_option('sia_ai_api_key')) !== '';
+        $data['aiSummary']  = json_decode((string) get_option('sia_lead_summary_' . (int) $lead->id), true) ?: null;
         $data['model']      = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/lead', $data);
+    }
+
+    /** Génère un résumé IA (3 points) de la conversation du lead. */
+    public function lead_summarize($id = 0)
+    {
+        $this->need('manage_leads');
+        $id = (int) $id;
+        $lead = $this->school_ia_bridge_model->get_lead($id);
+        if (!$lead) {
+            show_404();
+        }
+        $back = admin_url('school_ia_bridge/lead/' . $id) . '#tab-ia';
+
+        if (trim((string) get_option('sia_ai_api_key')) === '') {
+            set_alert('warning', 'Configurez d\'abord la clé API IA (Réglages → Rapports IA).');
+            redirect($back);
+        }
+        $messages = $this->school_ia_bridge_model->chat_messages($id);
+        if (empty($messages)) {
+            set_alert('warning', 'Aucune conversation à résumer pour ce lead.');
+            redirect($back);
+        }
+
+        $lines = [];
+        foreach ($messages as $m) {
+            $who = $m->role === 'user' ? 'Prospect' : 'Conseiller IA';
+            $lines[] = $who . ' : ' . trim((string) $m->content);
+        }
+        $system = 'Tu es assistant CRM pour une école supérieure. Résume la conversation ci-dessous pour un conseiller commercial qui doit rappeler ce prospect. '
+            . 'Réponds en HTML simple (uniquement <ul><li> et <strong>), sans <html>/<head>/<body>. '
+            . '3 à 5 puces maximum : besoin/projet du prospect, formation visée, objections ou concurrents cités, niveau d\'urgence, et LA prochaine action recommandée pour le conseiller.';
+        $prompt = "Conversation :\n" . implode("\n", $lines);
+
+        [$ok, $out] = school_ia_ai_generate($system, $prompt);
+        if (!$ok) {
+            set_alert('danger', 'Résumé impossible : ' . $out);
+            redirect($back);
+        }
+        update_option('sia_lead_summary_' . $id, json_encode(['content' => $out, 'at' => date('Y-m-d H:i:s')], JSON_UNESCAPED_UNICODE));
+        set_alert('success', 'Résumé généré.');
+        redirect($back);
     }
 
     /** Supprime un lead et toutes ses données rattachées. */

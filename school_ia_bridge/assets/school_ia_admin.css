@@ -477,6 +477,35 @@
 #wrapper .content .sia-report h5 { margin: 12px 0 5px; }
 #wrapper .content .sia-report p  { margin: 0 0 8px; }
 
+/* ---- Fiche lead : header + onglets collants ---- */
+#wrapper .content .sia-lead-sticky {
+  position: sticky;
+  top: 50px; /* passe sous la barre supérieure fixe de Perfex */
+  z-index: 20;
+  background: var(--sia-bg);
+  padding-top: 8px;
+  margin: -8px -4px 0;
+  padding-left: 4px; padding-right: 4px;
+}
+@media (max-width: 991px) {
+  #wrapper .content .sia-lead-sticky { position: static; }
+}
+#wrapper .content .sia-lead-sticky .sia-lead-header { margin-bottom: 0; }
+#wrapper .content .sia-lead-tabs {
+  border-bottom: 1px solid var(--sia-border);
+  margin: 10px 0 16px;
+  padding: 0 4px;
+}
+#wrapper .content .sia-lead-tabs > li > a { font-size: 13.5px; }
+#wrapper .content .sia-lead-tabs > li > a .label { margin-left: 5px; }
+#wrapper .content .sia-lead-tabcontent { padding-top: 2px; }
+
+/* Concurrents cités : alerte visuelle (bord rouge) */
+#wrapper .content .sia-competitor-alert {
+  border-left: 3px solid var(--sia-danger);
+  background: linear-gradient(180deg, rgba(220,38,38,.05), transparent 60%);
+}
+
 /* ---- Bandeau de synthèse (chips) : liste Contacts ---- */
 #wrapper .content .sia-chip-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 #wrapper .content .sia-chip {
