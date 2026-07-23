@@ -4,6 +4,7 @@ namespace BemLeadAi\Integrations;
 
 use BemLeadAi\Chat\ChannelAdapter;
 use BemLeadAi\Core\Options;
+use BemLeadAi\Knowledge\KnowledgeBaseBuilder;
 use BemLeadAi\Leads\EventRepository;
 use BemLeadAi\Leads\LeadRepository;
 
@@ -37,6 +38,7 @@ final class FormCapture
     public function gravityForms($entry, $form): void
     {
         $email = $phone = $name = $formation = null;
+        $values = [];
         foreach ((array) ($form['fields'] ?? []) as $field) {
             $type = strtolower((string) $this->prop($field, 'type'));
             $id = (string) $this->prop($field, 'id');
@@ -50,17 +52,23 @@ final class FormCapture
             } elseif ($type === 'name') {
                 $first = trim((string) ($entry[$id . '.3'] ?? ''));
                 $name = $first !== '' ? $first : ($val !== '' ? $val : $name);
-            } elseif ($val !== '' && $this->looksLikeFormation($label)) {
-                // Formulaires en cascade (Type → Diplôme recherché → Bachelors/
-                // Masters → programme précis) : on garde la valeur la PLUS PROFONDE
-                // (dernier champ programme rempli) = la formation réelle, ex.
-                // « Bachelor Prépa Ingénieur » plutôt que le niveau « Bachelor ».
-                // On récupère aussi le LIBELLÉ complet de l'option choisie.
-                $formation = $this->gfChoiceLabel($field, $val);
             } elseif ($val !== '') {
-                [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
+                // Libellé complet de l'option choisie (les listes stockent souvent
+                // un code court).
+                $resolved = $this->gfChoiceLabel($field, $val);
+                $values[] = $resolved; // candidat pour la reconnaissance par catalogue
+                if ($this->looksLikeFormation($label)) {
+                    // Repli heuristique : dernière valeur de la cascade.
+                    $formation = $resolved;
+                } else {
+                    [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
+                }
             }
         }
+        // Reconnaissance par le CATALOGUE (prioritaire, agnostique au secteur) :
+        // on rattache la valeur qui correspond à un programme réel, sinon on garde
+        // le résultat de l'heuristique par libellé.
+        $formation = $this->bestCatalogMatch($values) ?? $formation;
         $this->ingest($email, $phone, $name, $formation, 'gravityforms', (string) $this->prop($form, 'title'));
     }
 
@@ -86,6 +94,7 @@ final class FormCapture
     public function wpForms($fields, $entry, $formData, $entryId): void
     {
         $email = $phone = $name = $formation = null;
+        $values = [];
         foreach ((array) $fields as $f) {
             $type = strtolower((string) ($f['type'] ?? ''));
             $val = trim((string) ($f['value'] ?? ''));
@@ -99,13 +108,16 @@ final class FormCapture
                 $phone = $val;
             } elseif ($type === 'name') {
                 $name = $val;
-            } elseif ($this->looksLikeFormation($label)) {
-                // Cascade → on garde la dernière (plus profonde/précise) valeur.
-                $formation = $val;
             } else {
-                [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
+                $values[] = $val;
+                if ($this->looksLikeFormation($label)) {
+                    $formation = $val; // repli : dernière valeur de la cascade
+                } else {
+                    [$email, $phone, $name] = $this->guessByLabel($label, $val, $email, $phone, $name);
+                }
             }
         }
+        $formation = $this->bestCatalogMatch($values) ?? $formation;
         $title = (string) ($formData['settings']['form_title'] ?? ($formData['title'] ?? ''));
         $this->ingest($email, $phone, $name, $formation, 'wpforms', $title);
     }
@@ -179,6 +191,139 @@ final class FormCapture
     }
 
     /**
+     * Reconnaissance par le CATALOGUE : parmi les valeurs saisies, retourne le
+     * nom canonique du programme si l'une correspond à un titre du catalogue
+     * (base de connaissance) ou à un alias configuré. Value-based et agnostique
+     * au secteur : quand le catalogue change, la détection suit sans toucher au
+     * code. Renvoie null si aucune correspondance fiable (→ repli heuristique).
+     *
+     * @param array<int,string> $values
+     */
+    private function bestCatalogMatch(array $values): ?string
+    {
+        $aliases = $this->catalogAliases();
+        $catalog = $this->catalogEntries();
+        if (!$aliases && !$catalog) {
+            return null;
+        }
+
+        $best = null;
+        $bestScore = 0.0;
+        foreach ($values as $raw) {
+            $v = $this->norm((string) $raw);
+            if ($v === '' || mb_strlen($v) < 3) {
+                continue;
+            }
+            // 1) Alias exact (« mage » → « Master Grande École ») — prioritaire.
+            if (isset($aliases[$v])) {
+                return $aliases[$v];
+            }
+            foreach ($catalog as $nTitle => $title) {
+                if ($nTitle === '') {
+                    continue;
+                }
+                // 2) Correspondance exacte.
+                if ($v === $nTitle) {
+                    return $title;
+                }
+                // 3) Sous-chaîne (garde-fou de longueur contre les faux positifs).
+                $short = mb_strlen($v) <= mb_strlen($nTitle) ? $v : $nTitle;
+                if (mb_strlen($short) >= 5 && (mb_strpos($v, $nTitle) !== false || mb_strpos($nTitle, $v) !== false)) {
+                    $score = 0.92;
+                } else {
+                    // 4) Recouvrement de mots significatifs (Jaccard).
+                    $score = $this->tokenScore($v, $nTitle);
+                }
+                if ($score > $bestScore && $score >= 0.5) {
+                    $bestScore = $score;
+                    $best = $title;
+                }
+            }
+        }
+        return $best;
+    }
+
+    /** Titres du catalogue (base de connaissance), normalisés => titre affiché. */
+    private function catalogEntries(): array
+    {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache;
+        }
+        $cache = [];
+        try {
+            $titles = (new KnowledgeBaseBuilder())->indexedTitles();
+        } catch (\Throwable $e) {
+            return $cache;
+        }
+        foreach (['formations', 'onboarding'] as $k) {
+            foreach ((array) ($titles[$k] ?? []) as $t) {
+                $n = $this->norm((string) $t);
+                if ($n !== '') {
+                    $cache[$n] = (string) $t;
+                }
+            }
+        }
+        return $cache;
+    }
+
+    /** Alias configurés, normalisés => nom canonique. */
+    private function catalogAliases(): array
+    {
+        $out = [];
+        foreach (Options::programAliases() as $alias => $canonical) {
+            $n = $this->norm((string) $alias);
+            if ($n !== '') {
+                $out[$n] = (string) $canonical;
+            }
+        }
+        return $out;
+    }
+
+    /** Normalise une chaîne pour la comparaison : minuscules, sans accents. */
+    private function norm(string $s): string
+    {
+        $s = mb_strtolower(trim($s));
+        if (function_exists('remove_accents')) {
+            $s = remove_accents($s);
+        }
+        return trim((string) preg_replace('/\s+/', ' ', $s));
+    }
+
+    /** Mots significatifs d'une chaîne normalisée (≥ 3 lettres, hors mots vides). */
+    private function tokens(string $s): array
+    {
+        $stop = ['de', 'des', 'du', 'la', 'le', 'les', 'et', 'en', 'un', 'une', 'aux', 'pour', 'sur', 'the', 'of', 'and'];
+        $out = [];
+        foreach (preg_split('/[^a-z0-9]+/', $s) as $t) {
+            if ($t !== '' && mb_strlen($t) >= 3 && !in_array($t, $stop, true)) {
+                $out[] = $t;
+            }
+        }
+        return array_values(array_unique($out));
+    }
+
+    /**
+     * Score de recouvrement (Jaccard) entre deux chaînes normalisées, exigeant
+     * au moins 2 mots significatifs communs pour éviter les faux positifs
+     * (« master » seul ne doit pas matcher « Master Finance »).
+     */
+    private function tokenScore(string $a, string $b): float
+    {
+        $ta = $this->tokens($a);
+        $tb = $this->tokens($b);
+        if (!$ta || !$tb) {
+            return 0.0;
+        }
+        $inter = array_intersect($ta, $tb);
+        if (count($inter) < 2) {
+            return 0.0;
+        }
+        $union = array_unique(array_merge($ta, $tb));
+        return count($inter) / max(1, count($union));
+    }
+
+    /**
      * Libellé complet de l'option choisie dans un champ liste/radio Gravity Forms.
      * GF stocke la VALEUR de l'option dans l'entrée (souvent un code court) ; on
      * remonte le TEXTE affiché correspondant depuis les choix du champ.
@@ -233,6 +378,7 @@ final class FormCapture
     private function scanAssoc(array $data): array
     {
         $email = $phone = $name = $formation = null;
+        $values = [];
         foreach ($data as $key => $val) {
             if (is_array($val)) {
                 $val = implode(', ', array_filter($val, 'is_scalar'));
@@ -247,11 +393,15 @@ final class FormCapture
             } elseif ($phone === null && preg_match('/t[eé]l|phone|whatsapp|mobile|num[eé]ro/', $k)) {
                 $phone = $val;
             } elseif ($this->looksLikeFormation($k)) {
-                $formation = $val; // cascade → dernière valeur (la plus précise)
+                $formation = $val; // repli : dernière valeur (la plus précise)
+                $values[] = $val;
             } elseif ($name === null && preg_match('/nom|name|pr[eé]nom/', $k)) {
                 $name = $val;
+            } else {
+                $values[] = $val;
             }
         }
+        $formation = $this->bestCatalogMatch($values) ?? $formation;
         return [$email, $phone, $name, $formation];
     }
 }

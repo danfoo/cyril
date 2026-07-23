@@ -123,6 +123,7 @@ final class SettingsPage
             ]),
             $this->number('kb_max_chars_per_post', 'Caractères max par page', $o),
             $this->textarea('program_links', 'Liens des programmes — une ligne par programme : Nom du programme | https://…', $o),
+            $this->textarea('program_aliases', 'Alias de programmes (optionnel) — une ligne par alias : Abréviation | Nom complet (ex. MAGE | Master Grande École)', $o),
         ], __('Le contenu des formations est injecté dans le prompt et mis en cache côté Claude. Le catalogue est reconstruit automatiquement à chaque modification d\'une page/formation ; la reconstruction périodique n\'est qu\'un filet de sécurité (hebdomadaire suffit si vous mettez rarement à jour). Vous pouvez aussi le reconstruire manuellement plus bas.', 'bem-lead-ai'));
 
         // --- Intégrations formulaires ---
@@ -679,7 +680,7 @@ final class SettingsPage
         $defaults = Options::defaults();
         $checkboxes = ['whatsapp_enabled', 'widget_enabled', 'capture_forms',
             'notify_email_enabled', 'notify_hot_lead', 'notify_handoff', 'notify_task_reminder'];
-        $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill', 'program_links'];
+        $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill', 'program_links', 'program_aliases'];
         $clean = [];
         foreach ($defaults as $key => $default) {
             if (in_array($key, Options::SECRET_KEYS, true)) {

@@ -81,6 +81,9 @@ final class Options
             // Liens officiels des programmes, partagés par le conseiller.
             // Une ligne par programme : « Nom du programme | https://… ».
             'program_links' => '',
+            // Alias de programmes : « abréviation | Nom complet » (une par ligne).
+            // Aide à reconnaître dans les formulaires des valeurs abrégées.
+            'program_aliases' => '',
             'kb_cache_ttl' => '1h', // 5m | 1h — durée de vie du cache de préfixe LLM
             'kb_max_chars_per_post' => 4000,
             // Reconstruction auto du catalogue : manual | weekly | daily.
@@ -309,6 +312,31 @@ final class Options
             $links[] = ['label' => $parts[0] !== '' ? $parts[0] : $url, 'url' => $url];
         }
         return $links;
+    }
+
+    /**
+     * Alias de programmes : « abréviation | Nom complet » (une ligne par alias).
+     * Permet de reconnaître dans les formulaires des valeurs abrégées ou
+     * variantes (ex. « MAGE | Master Grande École ») et de les rattacher au bon
+     * programme du catalogue.
+     *
+     * @return array<string,string> alias => nom canonique
+     */
+    public static function programAliases(): array
+    {
+        $raw = stripslashes((string) self::get('program_aliases'));
+        $out = [];
+        foreach (preg_split('/\r\n|\r|\n/', $raw) as $line) {
+            $line = trim($line);
+            if ($line === '' || strpos($line, '|') === false) {
+                continue;
+            }
+            [$alias, $canonical] = array_map('trim', explode('|', $line, 2));
+            if ($alias !== '' && $canonical !== '') {
+                $out[$alias] = $canonical;
+            }
+        }
+        return $out;
     }
 
     private static function encryptionKey(): string
