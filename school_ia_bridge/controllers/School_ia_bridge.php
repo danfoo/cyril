@@ -552,7 +552,11 @@ class School_ia_bridge extends AdminController
             if ($aiKey !== '') { // ne pas écraser si laissé vide
                 update_option('sia_ai_api_key', $aiKey);
             }
-            update_option('sia_ai_model', trim((string) $this->input->post('ai_model')) ?: 'claude-opus-4-8');
+            $aiModel = trim((string) $this->input->post('ai_model'));
+            if ($aiModel === '__custom__') { // « Personnalisé… » : valeur saisie à la main
+                $aiModel = trim((string) $this->input->post('ai_model_custom'));
+            }
+            update_option('sia_ai_model', $aiModel ?: 'claude-opus-4-8');
             update_option('sia_comp_auto', $this->input->post('comp_auto') ? '1' : '0');
         }
         set_alert('success', 'Réglages enregistrés.');

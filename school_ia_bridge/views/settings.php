@@ -64,9 +64,41 @@
               </div>
               <div class="form-group">
                 <label class="control-label">Modèle</label>
-                <input type="text" name="ai_model" class="form-control" value="<?php echo htmlspecialchars((string) $ai_model, ENT_QUOTES); ?>">
-                <p class="text-muted" style="font-size:12px;">Par défaut : <code>claude-opus-4-8</code>.</p>
+                <?php
+                  $ai_models = [
+                      'claude-opus-4-8'   => 'Claude Opus 4.8 — le plus performant (défaut)',
+                      'claude-sonnet-5'   => 'Claude Sonnet 5 — équilibré vitesse / qualité',
+                      'claude-sonnet-4-6' => 'Claude Sonnet 4.6',
+                      'claude-haiku-4-5'  => 'Claude Haiku 4.5 — le plus rapide / économique',
+                      'claude-opus-4-7'   => 'Claude Opus 4.7',
+                      'claude-fable-5'    => 'Claude Fable 5 — le plus avancé',
+                  ];
+                  $ai_current   = (string) $ai_model ?: 'claude-opus-4-8';
+                  $ai_is_custom = !array_key_exists($ai_current, $ai_models);
+                ?>
+                <select name="ai_model" id="sia_ai_model_select" class="form-control" onchange="siaAiModelToggle()">
+                  <?php foreach ($ai_models as $mid => $mlabel) { ?>
+                    <option value="<?php echo htmlspecialchars($mid, ENT_QUOTES); ?>" <?php echo (!$ai_is_custom && $ai_current === $mid) ? 'selected' : ''; ?>><?php echo htmlspecialchars($mlabel, ENT_QUOTES); ?></option>
+                  <?php } ?>
+                  <option value="__custom__" <?php echo $ai_is_custom ? 'selected' : ''; ?>>Personnalisé…</option>
+                </select>
+                <input type="text" name="ai_model_custom" id="sia_ai_model_custom" class="form-control"
+                       style="margin-top:8px;<?php echo $ai_is_custom ? '' : 'display:none;'; ?>"
+                       <?php echo $ai_is_custom ? '' : 'disabled'; ?>
+                       value="<?php echo $ai_is_custom ? htmlspecialchars($ai_current, ENT_QUOTES) : ''; ?>"
+                       placeholder="Identifiant exact du modèle, ex. claude-opus-4-8">
+                <p class="text-muted" style="font-size:12px;">Modèle Anthropic utilisé pour générer les rapports. Choisissez <strong>Sonnet</strong> pour plus de rapidité, ou <strong>Personnalisé…</strong> pour saisir un identifiant précis. Par défaut : <code>claude-opus-4-8</code>.</p>
               </div>
+              <script>
+              function siaAiModelToggle(){
+                var s=document.getElementById('sia_ai_model_select'),c=document.getElementById('sia_ai_model_custom');
+                if(!s||!c){return;}
+                var custom=(s.value==='__custom__');
+                c.style.display=custom?'':'none';
+                c.disabled=!custom;
+              }
+              document.addEventListener('DOMContentLoaded',siaAiModelToggle);
+              </script>
               <label style="font-weight:normal;display:block;margin-bottom:8px;">
                 <input type="checkbox" name="comp_auto" value="1" <?php echo get_option('sia_comp_auto') !== '0' ? 'checked' : ''; ?>>
                 Analyser automatiquement les conversations pour la <strong>veille concurrentielle</strong> (à chaque cron ; ne traite que les nouvelles conversations)
