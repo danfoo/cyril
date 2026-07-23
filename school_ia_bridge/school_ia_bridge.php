@@ -152,11 +152,12 @@ function sia_help(string $key): string
         'bulk' => ['Envoi groupé',
             '<p>Contactez plusieurs leads d\'un coup (e-mail ou SMS).</p>
              <ol>
-               <li><strong>Cibler</strong> : filtrez par étape, programme et score minimum.</li>
-               <li><strong>Rédiger</strong> : choisissez un modèle ou écrivez ; <code>{prenom}</code>/<code>{formation}</code> sont personnalisés pour chaque destinataire.</li>
+               <li><strong>Cibler</strong> : filtrez par étape, programme, <strong>responsable</strong> (dont « Mes leads »), <strong>date de réception</strong> et score minimum. La <strong>pastille</strong> affiche en temps réel le nombre de destinataires.</li>
+               <li><strong>Rédiger</strong> : choisissez un modèle prêt à l\'emploi ou écrivez ; <code>{prenom}</code>/<code>{formation}</code> sont personnalisés pour chaque destinataire.</li>
+               <li><strong>Aperçu</strong> : vérifiez le rendu final (variables remplacées) avant l\'envoi.</li>
                <li>(E-mail) cochez des <strong>pièces jointes</strong> si besoin, puis envoyez.</li>
              </ol>
-             <p>Seuls les leads ayant l\'e-mail (ou le téléphone pour les SMS) sont contactés.</p>'],
+             <p>Seuls les leads ayant l\'e-mail (ou le téléphone pour les SMS) sont contactés. Chaque envoi est <strong>tracé dans la fiche du prospect</strong> et dans les <strong>statistiques des campagnes</strong>.</p>'],
         'import' => ['Import CSV / Excel',
             '<p>Importez une liste de leads existante.</p>
              <ul>

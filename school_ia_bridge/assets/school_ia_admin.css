@@ -500,6 +500,16 @@
 #wrapper .content .sia-lead-tabs > li > a .label { margin-left: 5px; }
 #wrapper .content .sia-lead-tabcontent { padding-top: 2px; }
 
+/* Pastille dynamique de destinataires (Envoi groupé) */
+#wrapper .content .sia-recipient-badge {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin-top: 10px; padding: 8px 14px;
+  background: var(--sia-success-bg); color: var(--sia-success);
+  border-radius: 999px; font-size: 13.5px; font-weight: 600;
+}
+#wrapper .content .sia-recipient-badge strong { font-weight: 800; font-size: 15px; }
+#wrapper .content .sia-recipient-badge.sia-recipient-zero { background: var(--sia-danger-bg); color: var(--sia-danger); }
+
 /* Champs avec icône à gauche (formulaire e-mail) */
 #wrapper .content .sia-field-icon { position: relative; margin-bottom: 6px; }
 #wrapper .content .sia-field-icon > i {

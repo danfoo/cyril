@@ -250,6 +250,74 @@ class School_ia_bridge_model extends App_Model
                 KEY `name` (`name`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
+
+        $this->seed_default_templates();
+    }
+
+    /**
+     * Insère une bibliothèque de modèles e-mail/SMS prêts à l'emploi, une seule
+     * fois, et seulement si aucun modèle n'existe encore (n'écrase jamais ceux
+     * créés par l'utilisateur).
+     */
+    public function seed_default_templates(): void
+    {
+        if (get_option('sia_templates_seeded') === '1') {
+            return;
+        }
+        // Une seule fois : ajoute les modèles incontournables sans écraser ni
+        // dupliquer ceux déjà présents (comparaison par nom).
+        {
+            $existing = [];
+            foreach ($this->db->select('name')->get($this->templatesTable())->result() as $r) {
+                $existing[mb_strtolower(trim((string) $r->name))] = true;
+            }
+            $ecole = get_option('companyname') ?: 'notre école';
+            $defaults = [
+                ['email', 'Premier contact — Bienvenue',
+                    'Bienvenue {prenom} — votre intérêt pour {formation}',
+                    "Bonjour {prenom},\n\nMerci de l'intérêt que vous portez à la formation {formation}. Je suis votre conseiller(ère) d'admission et je vous accompagne à chaque étape de votre projet.\n\nQuand seriez-vous disponible pour un court échange (téléphone ou visio) afin de répondre à vos questions ?\n\nBien cordialement,\nL'équipe Admissions — {$ecole}"],
+                ['email', 'Relance — informations formation',
+                    'Des informations sur la formation {formation} ?',
+                    "Bonjour {prenom},\n\nJe reviens vers vous concernant la formation {formation}. Je peux vous transmettre le programme détaillé, les débouchés et les modalités d'inscription.\n\nSouhaitez-vous que je vous envoie la brochure complète ou que l'on planifie un rendez-vous ?\n\nBien cordialement,\nL'équipe Admissions — {$ecole}"],
+                ['email', 'Invitation — Journée Portes Ouvertes',
+                    "Invitation : découvrez {$ecole} lors de notre Journée Portes Ouvertes",
+                    "Bonjour {prenom},\n\nNous serions ravis de vous accueillir à notre prochaine Journée Portes Ouvertes pour vous présenter la formation {formation}, rencontrer les enseignants et visiter le campus.\n\nConfirmez-nous votre présence en répondant à cet e-mail et nous vous communiquerons le programme détaillé.\n\nÀ très bientôt,\nL'équipe Admissions — {$ecole}"],
+                ['email', 'Candidature — documents à fournir',
+                    'Votre candidature en {formation} : pièces à fournir',
+                    "Bonjour {prenom},\n\nPour finaliser votre candidature en {formation}, voici les pièces à nous transmettre :\n- Pièce d'identité\n- Relevés de notes / diplômes\n- CV et lettre de motivation\n\nVous pouvez répondre à cet e-mail en y joignant vos documents. Je reste à votre disposition pour tout renseignement.\n\nBien cordialement,\nL'équipe Admissions — {$ecole}"],
+                ['email', 'Relance — dossier incomplet',
+                    'Votre dossier {formation} est presque complet',
+                    "Bonjour {prenom},\n\nVotre dossier de candidature pour la formation {formation} est bien avancé, mais il manque encore quelques pièces pour le valider.\n\nPourriez-vous nous les faire parvenir dans les meilleurs délais ? Les places pour la prochaine rentrée sont limitées.\n\nMerci et bien cordialement,\nL'équipe Admissions — {$ecole}"],
+                ['email', 'Financement & bourses',
+                    'Financer votre formation {formation} : nos solutions',
+                    "Bonjour {prenom},\n\nSachez qu'il existe plusieurs solutions pour financer votre formation {formation} : facilités de paiement, bourses et aides.\n\nJe peux vous présenter les options adaptées à votre situation lors d'un court entretien. Quand cela vous conviendrait-il ?\n\nBien cordialement,\nL'équipe Admissions — {$ecole}"],
+                ['email', 'Dernière relance — sans réponse',
+                    'Toujours intéressé(e) par la formation {formation} ?',
+                    "Bonjour {prenom},\n\nJe n'ai pas eu de retour de votre part concernant la formation {formation}. Votre projet est-il toujours d'actualité ?\n\nUn simple mot suffit pour que je reprenne contact et vous accompagne. Sans réponse, je me permettrai de vous rappeler.\n\nBien cordialement,\nL'équipe Admissions — {$ecole}"],
+                ['sms', 'Relance courte',
+                    null,
+                    "Bonjour {prenom}, merci pour votre intérêt pour {formation}. Un conseiller reste a votre disposition. Souhaitez-vous etre rappele(e) ? — {$ecole}"],
+                ['sms', 'Rappel de rendez-vous',
+                    null,
+                    "Bonjour {prenom}, rappel de votre rendez-vous d'admission pour {formation}. A tres bientot ! — {$ecole}"],
+                ['sms', 'Dossier — pieces manquantes',
+                    null,
+                    "Bonjour {prenom}, il manque quelques pieces a votre dossier {formation}. Merci de nous les transmettre rapidement. — {$ecole}"],
+            ];
+            foreach ($defaults as $d) {
+                if (isset($existing[mb_strtolower(trim((string) $d[1]))])) {
+                    continue; // un modèle du même nom existe déjà
+                }
+                $this->db->insert($this->templatesTable(), [
+                    'type'       => $d[0],
+                    'name'       => $d[1],
+                    'subject'    => $d[2],
+                    'body'       => $d[3],
+                    'created_at' => date('Y-m-d H:i:s'),
+                ]);
+            }
+        }
+        update_option('sia_templates_seeded', '1');
     }
 
     /** Liste les leads reçus (les plus récents d'abord). */
@@ -297,11 +365,9 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
-    /** Destinataires d'un envoi groupé e-mail (leads avec e-mail + filtres). */
-    public function email_recipients(array $f): array
+    /** Filtres communs des envois groupés (étape, programme, score, responsable, dates). */
+    private function applyBulkFilters(array $f): void
     {
-        $this->ensure_schema();
-        $this->db->where('email IS NOT NULL', null, false)->where('email !=', '');
         if (!empty($f['stage'])) {
             $this->db->where('stage', $f['stage']);
         }
@@ -311,6 +377,27 @@ class School_ia_bridge_model extends App_Model
         if (isset($f['min_score']) && $f['min_score'] !== '') {
             $this->db->where('score >=', (float) $f['min_score']);
         }
+        if (!empty($f['owner'])) {
+            if ($f['owner'] === 'none') {
+                $this->db->where('owner_id IS NULL', null, false);
+            } else {
+                $this->db->where('owner_id', (int) $f['owner']);
+            }
+        }
+        if (!empty($f['date_from'])) {
+            $this->db->where('received_at >=', $f['date_from'] . ' 00:00:00');
+        }
+        if (!empty($f['date_to'])) {
+            $this->db->where('received_at <=', $f['date_to'] . ' 23:59:59');
+        }
+    }
+
+    /** Destinataires d'un envoi groupé e-mail (leads avec e-mail + filtres). */
+    public function email_recipients(array $f): array
+    {
+        $this->ensure_schema();
+        $this->db->where('email IS NOT NULL', null, false)->where('email !=', '');
+        $this->applyBulkFilters($f);
         return $this->db->order_by('score', 'desc')->get($this->table())->result();
     }
 
@@ -319,16 +406,23 @@ class School_ia_bridge_model extends App_Model
     {
         $this->ensure_schema();
         $this->db->where('phone IS NOT NULL', null, false)->where('phone !=', '');
-        if (!empty($f['stage'])) {
-            $this->db->where('stage', $f['stage']);
-        }
-        if (!empty($f['program'])) {
-            $this->db->like('formation', $f['program']);
-        }
-        if (isset($f['min_score']) && $f['min_score'] !== '') {
-            $this->db->where('score >=', (float) $f['min_score']);
-        }
+        $this->applyBulkFilters($f);
         return $this->db->order_by('score', 'desc')->get($this->table())->result();
+    }
+
+    /** Compte les destinataires e-mail / SMS pour des filtres (pastille dynamique). */
+    public function count_recipients(array $f): array
+    {
+        $this->ensure_schema();
+        $this->db->where('email IS NOT NULL', null, false)->where('email !=', '');
+        $this->applyBulkFilters($f);
+        $email = (int) $this->db->count_all_results($this->table());
+
+        $this->db->where('phone IS NOT NULL', null, false)->where('phone !=', '');
+        $this->applyBulkFilters($f);
+        $sms = (int) $this->db->count_all_results($this->table());
+
+        return ['email' => $email, 'sms' => $sms];
     }
 
     /** Seuil de date pour une période en jours (0 = tout l'historique). */

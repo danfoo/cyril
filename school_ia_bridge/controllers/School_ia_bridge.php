@@ -503,6 +503,19 @@ class School_ia_bridge extends AdminController
         ]);
     }
 
+    /** Lit les filtres de ciblage d'un envoi groupé (POST). */
+    private function bulkFilters(): array
+    {
+        return [
+            'stage'     => $this->input->post('stage'),
+            'program'   => $this->input->post('program'),
+            'min_score' => $this->input->post('min_score'),
+            'owner'     => $this->input->post('owner'),
+            'date_from' => $this->input->post('date_from'),
+            'date_to'   => $this->input->post('date_to'),
+        ];
+    }
+
     /** Page d'envoi groupé d'e-mails. */
     public function bulk()
     {
@@ -512,19 +525,47 @@ class School_ia_bridge extends AdminController
         $data['emailTpls'] = $this->school_ia_bridge_model->templates('email');
         $data['smsTpls']   = $this->school_ia_bridge_model->templates('sms');
         $data['documents'] = $this->school_ia_bridge_model->documents();
+        $data['staff']     = $this->db->where('active', 1)->get(db_prefix() . 'staff')->result();
+        $data['counts']    = $this->school_ia_bridge_model->count_recipients([]);
         $data['model']     = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/bulk', $data);
+    }
+
+    /** Compteur dynamique de destinataires + échantillon (AJAX GET, JSON). */
+    public function bulk_count()
+    {
+        $this->need('send');
+        $filters = [
+            'stage'     => $this->input->get('stage'),
+            'program'   => $this->input->get('program'),
+            'min_score' => $this->input->get('min_score'),
+            'owner'     => $this->input->get('owner'),
+            'date_from' => $this->input->get('date_from'),
+            'date_to'   => $this->input->get('date_to'),
+        ];
+        $counts  = $this->school_ia_bridge_model->count_recipients($filters);
+
+        // Échantillon (premier destinataire) pour l'aperçu.
+        $sample = ['prenom' => 'Prénom', 'formation' => 'votre formation'];
+        $rs = $this->school_ia_bridge_model->email_recipients($filters);
+        if (empty($rs)) {
+            $rs = $this->school_ia_bridge_model->sms_recipients($filters);
+        }
+        if (!empty($rs)) {
+            $first = $rs[0];
+            $p = trim(explode('#', (string) $first->name)[0]);
+            $sample = ['prenom' => $p !== '' ? $p : 'Prénom', 'formation' => $first->formation ?: 'votre formation'];
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode(['email' => $counts['email'], 'sms' => $counts['sms'], 'sample' => $sample]);
     }
 
     /** Traite l'envoi groupé (form Perfex → CSRF). */
     public function bulk_send()
     {
         $this->need('send');
-        $filters = [
-            'stage'     => $this->input->post('stage'),
-            'program'   => $this->input->post('program'),
-            'min_score' => $this->input->post('min_score'),
-        ];
+        $filters = $this->bulkFilters();
         $subjectTpl = trim((string) $this->input->post('subject'));
         $bodyTpl    = trim((string) $this->input->post('message'));
         $attach     = (array) $this->input->post('attachments');
@@ -553,11 +594,7 @@ class School_ia_bridge extends AdminController
     public function bulk_sms_send()
     {
         $this->need('send');
-        $filters = [
-            'stage'     => $this->input->post('stage'),
-            'program'   => $this->input->post('program'),
-            'min_score' => $this->input->post('min_score'),
-        ];
+        $filters = $this->bulkFilters();
         $bodyTpl = trim((string) $this->input->post('text'));
 
         $recipients = $this->school_ia_bridge_model->sms_recipients($filters);
