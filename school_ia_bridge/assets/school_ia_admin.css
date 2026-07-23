@@ -441,6 +441,17 @@
 #wrapper .content .sia-kpi-grid > [class*="col-"] { display: flex; }
 #wrapper .content .sia-kpi-grid .sia-kpi { width: 100%; }
 
+/* Mobile : la grille étant en flex, les colonnes Bootstrap n'ont plus de
+   largeur sous 768px et se réduisent à la taille de leur contenu (cartes
+   dépareillées). On leur impose une largeur explicite pour un rendu régulier :
+   2 cartes par rangée sur téléphone, 1 seule sur très petit écran. */
+@media (max-width: 767px) {
+  #wrapper .content .sia-kpi-grid > [class*="col-"] { flex: 0 0 50%; max-width: 50%; }
+}
+@media (max-width: 420px) {
+  #wrapper .content .sia-kpi-grid > [class*="col-"] { flex: 0 0 100%; max-width: 100%; }
+}
+
 /* Cartes KPI premium à dégradé (icône estompée) */
 #wrapper .content .sia-stat-col { display: flex; margin-bottom: 16px; }
 #wrapper .content .sia-stat-card {
