@@ -80,6 +80,7 @@ class Api extends App_Controller
                 (string) ($body['canal'] ?? 'web'),
                 !empty($body['external_message_id']) ? (string) $body['external_message_id'] : null
             );
+            school_ia_notify_new_conversation((int) $lead->id);
             $this->respond(['ok' => true, 'chat' => true]);
             return;
         }
@@ -89,6 +90,11 @@ class Api extends App_Controller
             $this->respond(['ok' => false, 'error' => 'empty_lead_ignored'], 422);
             return;
         }
+
+        // Le nom arrive parfois avec la fiche lead (après quelques échanges) :
+        // on tente aussi la notification ici (sans effet si pas de conversation
+        // ou déjà envoyée).
+        school_ia_notify_new_conversation($id);
 
         $this->respond(['ok' => true, 'id' => $id]);
     }
@@ -173,6 +179,7 @@ class Api extends App_Controller
             $canal,
             $externalMessageId !== '' ? $externalMessageId : null
         );
+        school_ia_notify_new_conversation((int) $lead->id);
 
         $this->respond(['ok' => true]);
     }

@@ -91,6 +91,11 @@ class School_ia_bridge_model extends App_Model
         if (!$this->db->field_exists('rentree', $this->table())) {
             $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `rentree` VARCHAR(32) NULL DEFAULT NULL');
         }
+        // Drapeau : conseillers déjà prévenus du démarrage de la conversation
+        // (évite de renvoyer un e-mail à chaque message).
+        if (!$this->db->field_exists('conseiller_notified', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `conseiller_notified` TINYINT(1) NOT NULL DEFAULT 0');
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_tasks')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_tasks` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -1871,6 +1876,31 @@ class School_ia_bridge_model extends App_Model
             ->order_by('id', 'asc')
             ->get($this->chatTable())
             ->result();
+    }
+
+    /** Nombre de messages de conversation d'un lead (une conversation existe si > 0). */
+    public function chat_count(int $leadId): int
+    {
+        return (int) $this->db->where('lead_id', $leadId)->count_all_results($this->chatTable());
+    }
+
+    /** Premier message « user » du lead (pour l'extrait dans l'alerte). */
+    public function first_user_message(int $leadId): string
+    {
+        $row = $this->db
+            ->where('lead_id', $leadId)
+            ->where('role', 'user')
+            ->order_by('id', 'asc')
+            ->limit(1)
+            ->get($this->chatTable())
+            ->row();
+        return $row ? (string) $row->content : '';
+    }
+
+    /** Marque les conseillers comme prévenus du démarrage de la conversation. */
+    public function mark_conseiller_notified(int $leadId): void
+    {
+        $this->db->where('id', $leadId)->update($this->table(), ['conseiller_notified' => 1]);
     }
 
     /** Supprime les messages de chat portant une référence externe donnée

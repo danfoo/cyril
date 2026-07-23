@@ -88,6 +88,30 @@
 
         <div class="panel_s">
           <div class="panel-body">
+            <h4 class="no-margin"><i class="fa fa-comments"></i> Alerte « nouvelle conversation »</h4>
+            <hr class="hr-panel-heading" />
+            <p class="text-muted">Envoie un e-mail stylé aux conseillers quand un prospect démarre une conversation — <strong>uniquement s'il a donné son nom</strong> (pour ne pas être noyé d'alertes) et une seule fois par lead. Le conseiller assigné est prévenu ; sinon l'adresse d'équipe ci-dessous.</p>
+            <?php echo form_open(admin_url('school_ia_bridge/save_settings')); ?>
+              <input type="hidden" name="notify_form" value="1">
+              <label style="font-weight:normal;display:block;margin-bottom:8px;">
+                <input type="checkbox" name="notify_new_conv" value="1"
+                       <?php echo get_option('sia_notify_new_conv') !== '0' ? 'checked' : ''; ?>>
+                Activer l'alerte de prise en charge des nouvelles conversations
+              </label>
+              <div class="form-group">
+                <label class="control-label">E-mail d'équipe (leads non assignés)</label>
+                <input type="email" name="notify_email" class="form-control"
+                       value="<?php echo htmlspecialchars((string) get_option('sia_notify_email'), ENT_QUOTES); ?>"
+                       placeholder="admissions@votre-ecole.com">
+                <p class="text-muted" style="font-size:12px;">Laissez vide pour utiliser l'expéditeur SMTP de Perfex par défaut.</p>
+              </div>
+              <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <?php echo form_close(); ?>
+          </div>
+        </div>
+
+        <div class="panel_s">
+          <div class="panel-body">
             <h4 class="no-margin"><i class="fa fa-magic"></i> Rapports IA (Claude)</h4>
             <hr class="hr-panel-heading" />
             <p class="text-muted">Clé API Anthropic pour générer les rapports de la page <strong>Reporting</strong>. Obtenue sur console.anthropic.com.</p>

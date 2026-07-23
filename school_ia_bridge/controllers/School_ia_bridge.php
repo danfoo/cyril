@@ -564,6 +564,11 @@ class School_ia_bridge extends AdminController
         if ($this->input->post('reminders_form') !== null) {
             update_option('sia_reminders_enabled', $this->input->post('reminders_enabled') ? '1' : '0');
         }
+        if ($this->input->post('notify_form') !== null) {
+            update_option('sia_notify_new_conv', $this->input->post('notify_new_conv') ? '1' : '0');
+            $notifyEmail = trim((string) $this->input->post('notify_email'));
+            update_option('sia_notify_email', (filter_var($notifyEmail, FILTER_VALIDATE_EMAIL) ? $notifyEmail : ''));
+        }
         if ($this->input->post('appearance_form') !== null) {
             $color = trim((string) $this->input->post('brand_color'));
             // On n'accepte qu'un hex #RRGGBB valide ; sinon on retombe sur le défaut.

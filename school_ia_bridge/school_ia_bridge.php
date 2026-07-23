@@ -619,6 +619,105 @@ function school_ia_email_wrap(string $contentHtml, string $signatureHtml = ''): 
 }
 
 /**
+ * Prévient les conseillers, par e-mail stylé (couleurs de base), qu'une
+ * conversation a démarré et mérite une prise en charge.
+ *
+ * Filtre anti-spam : uniquement si le prospect a DONNÉ SON NOM (sinon on
+ * n'alerte pas — évite de noyer l'équipe sous les « bonjour » anonymes), et
+ * une seule fois par lead (drapeau conseiller_notified).
+ */
+function school_ia_notify_new_conversation(int $leadId): void
+{
+    if (get_option('sia_notify_new_conv') === '0') {
+        return; // désactivé (activé par défaut)
+    }
+    $CI = &get_instance();
+    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+    $m = $CI->school_ia_bridge_model;
+
+    $lead = $m->get_lead($leadId);
+    if (!$lead || (int) ($lead->conseiller_notified ?? 0) === 1) {
+        return; // introuvable ou déjà prévenu
+    }
+
+    // Filtre : le prospect doit avoir donné son nom (et pas un « Anonyme »).
+    $name = trim((string) ($lead->name ?? ''));
+    if ($name === '' || stripos($name, 'anonyme') !== false) {
+        return;
+    }
+    // Une conversation doit exister.
+    if ($m->chat_count($leadId) < 1) {
+        return;
+    }
+
+    // Destinataires : conseiller assigné, sinon e-mail d'équipe configuré,
+    // sinon expéditeur SMTP / premier admin.
+    $recipients = [];
+    if (!empty($lead->owner_id)) {
+        $staff = $CI->db->where('staffid', (int) $lead->owner_id)->get(db_prefix() . 'staff')->row();
+        if ($staff && !empty($staff->email)) {
+            $recipients[] = $staff->email;
+        }
+    }
+    if (!$recipients) {
+        $team = trim((string) get_option('sia_notify_email'));
+        if ($team !== '') {
+            $recipients[] = $team;
+        }
+    }
+    if (!$recipients) {
+        $fallback = trim((string) get_option('smtp_email'));
+        if ($fallback === '') {
+            $admin = $CI->db->where('admin', 1)->where('active', 1)->order_by('staffid', 'asc')->limit(1)->get(db_prefix() . 'staff')->row();
+            $fallback = $admin ? (string) $admin->email : '';
+        }
+        if ($fallback !== '') {
+            $recipients[] = $fallback;
+        }
+    }
+    if (!$recipients) {
+        $m->mark_conseiller_notified($leadId); // rien à envoyer : évite de réessayer en boucle
+        return;
+    }
+
+    $link    = admin_url('school_ia_bridge/lead/' . $leadId);
+    $excerpt = trim($m->first_user_message($leadId));
+    $excerpt = $excerpt !== '' ? mb_substr($excerpt, 0, 240) : '—';
+    $primary = school_ia_brand_color();
+
+    $rows = '<tr><td style="padding:4px 12px 4px 0;color:#64748b;">Nom</td><td style="padding:4px 0;font-weight:600;">' . htmlspecialchars($name, ENT_QUOTES) . '</td></tr>';
+    if (!empty($lead->formation)) {
+        $rows .= '<tr><td style="padding:4px 12px 4px 0;color:#64748b;">Formation</td><td style="padding:4px 0;font-weight:600;">' . htmlspecialchars((string) $lead->formation, ENT_QUOTES) . '</td></tr>';
+    }
+    $contact = trim((string) (($lead->email ?? '') ?: ($lead->phone ?? '')));
+    if ($contact !== '') {
+        $rows .= '<tr><td style="padding:4px 12px 4px 0;color:#64748b;">Contact</td><td style="padding:4px 0;font-weight:600;">' . htmlspecialchars($contact, ENT_QUOTES) . '</td></tr>';
+    }
+    if (isset($lead->score) && $lead->score !== null && $lead->score !== '') {
+        $rows .= '<tr><td style="padding:4px 12px 4px 0;color:#64748b;">Score</td><td style="padding:4px 0;font-weight:600;">' . (int) $lead->score . '/100</td></tr>';
+    }
+
+    $content = '<p style="margin:0 0 12px;">Un prospect a démarré une conversation et s\'est présenté. Prenez-le en charge dès que possible.</p>'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:0 0 14px;font-size:14px;">' . $rows . '</table>'
+        . '<p style="margin:0 0 4px;color:#64748b;font-size:13px;">Premier message :</p>'
+        . '<blockquote style="margin:0 0 18px;padding:10px 14px;border-radius:8px;background:#f1f5f9;font-style:italic;">« ' . htmlspecialchars($excerpt, ENT_QUOTES) . ' »</blockquote>'
+        . '<p style="margin:0;"><a href="' . $link . '" style="display:inline-block;background:' . $primary . ';color:#ffffff;text-decoration:none;font-weight:700;padding:11px 22px;border-radius:8px;">Prendre en charge</a></p>';
+
+    $html = school_ia_email_wrap($content, '');
+
+    $CI->load->library('email');
+    $CI->email->clear(true);
+    $CI->email->from(get_option('smtp_email') ?: get_option('companyname'), get_option('companyname'));
+    $CI->email->to(implode(',', $recipients));
+    $CI->email->subject('Nouvelle conversation — ' . $name);
+    $CI->email->message($html);
+    $CI->email->set_mailtype('html');
+    $CI->email->send(false);
+
+    $m->mark_conseiller_notified($leadId);
+}
+
+/**
  * Envoie un e-mail à un lead AVEC suivi : enregistre le message, insère un
  * pixel d'ouverture invisible et réécrit les liens pour tracer les clics.
  */
