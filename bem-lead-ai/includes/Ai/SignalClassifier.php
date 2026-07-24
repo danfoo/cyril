@@ -56,12 +56,22 @@ PROMPT;
         // le prochain lot de messages relancera une classification.
         $conversations->markClassified(array_map(fn($m) => (int) $m->id, $messages));
 
+        $leads = new LeadRepository();
+
         if (is_wp_error($result)) {
             error_log('[bem-lead-ai] Classification échouée: ' . $result->get_error_message());
+            // Filet déterministe : même si le LLM échoue, on ne perd pas un numéro
+            // présent dans les messages (ils viennent d'être marqués « traités »).
+            $lead = $leads->findById($leadId);
+            if ($lead && empty($lead->phone)) {
+                $phone = \BemLeadAi\Support\PhoneNumber::extractAndNormalize($text, (string) Options::get('default_dial_code'));
+                if ($phone !== null) {
+                    (new \BemLeadAi\Chat\ChannelAdapter())->attachIdentity($lead, null, $phone);
+                }
+            }
             return;
         }
 
-        $leads = new LeadRepository();
         $lead = $leads->findById($leadId);
         if (!$lead) {
             return;
@@ -87,7 +97,18 @@ PROMPT;
         // Coordonnées communiquées en conversation → rattachées au lead (events
         // email_captured/phone_captured = signaux de forte intention).
         $email = !empty($result['email']) && is_email((string) $result['email']) ? sanitize_email((string) $result['email']) : null;
-        $phone = !empty($result['phone']) ? preg_replace('/[^0-9+\s]/', '', (string) $result['phone']) : null;
+        $dialCode = (string) Options::get('default_dial_code');
+        // Téléphone : on part de la valeur du LLM ; s'il n'a rien remonté, filet
+        // déterministe (regex) sur le texte des messages — un LLM laisse parfois
+        // filer un numéro « nu » pourtant présent. Puis normalisation à l'indicatif
+        // par défaut de l'école (ex: +224) plutôt qu'une géoloc IP peu fiable.
+        $phone = null;
+        if (!empty($result['phone'])) {
+            $phone = \BemLeadAi\Support\PhoneNumber::normalize((string) $result['phone'], $dialCode) ?: null;
+        }
+        if ($phone === null) {
+            $phone = \BemLeadAi\Support\PhoneNumber::extractAndNormalize($text, $dialCode);
+        }
         if (($email && empty($lead->email)) || ($phone && empty($lead->phone))) {
             (new \BemLeadAi\Chat\ChannelAdapter())->attachIdentity(
                 $leads->findById($leadId),

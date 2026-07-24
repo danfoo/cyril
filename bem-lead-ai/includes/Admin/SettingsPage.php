@@ -129,7 +129,8 @@ final class SettingsPage
         // --- Intégrations formulaires ---
         $this->section(__('Formulaires (Gravity Forms, Contact Form 7, WPForms, Ninja Forms)', 'bem-lead-ai'), [
             $this->checkbox('capture_forms', 'Capturer les leads des formulaires', $o),
-        ], __('Quand un visiteur soumet un de vos formulaires, School IA crée automatiquement un lead (email, téléphone, prénom, formation détectés) — aucune configuration par formulaire nécessaire. La détection est automatique dès que le plugin de formulaire est actif.', 'bem-lead-ai'));
+            $this->text('default_dial_code', 'Indicatif pays par défaut (ex. +224) — appliqué aux numéros communiqués sans indicatif', $o),
+        ], __('Quand un visiteur soumet un de vos formulaires, School IA crée automatiquement un lead (email, téléphone, prénom, formation détectés) — aucune configuration par formulaire nécessaire. La détection est automatique dès que le plugin de formulaire est actif. L\'indicatif par défaut complète les numéros locaux captés en conversation (ex. « 613063895 » → « +224613063895 ») ; laissez vide pour conserver le numéro tel quel.', 'bem-lead-ai'));
 
         // --- Scoring ---
         $this->section(__('Scoring (logique marketing)', 'bem-lead-ai'), [

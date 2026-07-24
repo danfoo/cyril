@@ -84,6 +84,10 @@ final class Options
             // Alias de programmes : « abréviation | Nom complet » (une par ligne).
             // Aide à reconnaître dans les formulaires des valeurs abrégées.
             'program_aliases' => '',
+            // Indicatif pays par défaut (ex: +224 pour la Guinée). Appliqué aux
+            // numéros captés en conversation qui n'ont pas d'indicatif — bien plus
+            // fiable qu'une géoloc IP puisque chaque école connaît son marché.
+            'default_dial_code' => '',
             'kb_cache_ttl' => '1h', // 5m | 1h — durée de vie du cache de préfixe LLM
             'kb_max_chars_per_post' => 4000,
             // Reconstruction auto du catalogue : manual | weekly | daily.

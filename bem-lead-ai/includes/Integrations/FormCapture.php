@@ -142,7 +142,10 @@ final class FormCapture
     private function ingest(?string $email, ?string $phone, ?string $name, ?string $formation, string $source, string $formTitle = ''): void
     {
         $email = $email && is_email($email) ? sanitize_email($email) : null;
-        $phone = $phone ? sanitize_text_field($phone) : null;
+        // Normalise le numéro à l'indicatif par défaut de l'école (ex. +224) :
+        // un formulaire ne demande souvent que le numéro local.
+        $phone = $phone ? \BemLeadAi\Support\PhoneNumber::normalize($phone, (string) Options::get('default_dial_code')) : '';
+        $phone = $phone !== '' ? sanitize_text_field($phone) : null;
         if (!$email && !$phone) {
             return; // sans coordonnée, pas de lead exploitable
         }
