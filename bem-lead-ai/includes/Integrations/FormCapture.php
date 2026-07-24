@@ -154,6 +154,17 @@ final class FormCapture
 
         $leads = new LeadRepository();
         $lead = $email ? $leads->findByEmail($email) : null;
+        // Même personne, même navigateur : si un chat est déjà en cours, le widget
+        // a posé le cookie « bem_lead_session ». On rattache le formulaire à ce lead
+        // anonyme au lieu de créer un doublon (chat démarré → puis formulaire soumis).
+        if (!$lead) {
+            $chatSid = isset($_COOKIE['bem_lead_session'])
+                ? sanitize_text_field(wp_unslash($_COOKIE['bem_lead_session']))
+                : '';
+            if ($chatSid !== '') {
+                $lead = $leads->findBySessionId($chatSid);
+            }
+        }
         if (!$lead) {
             $sid = 'form_' . substr(md5(($email ?: $phone) . '|' . $source . '|' . wp_salt()), 0, 24);
             $lead = $leads->findOrCreate($sid, $source);
