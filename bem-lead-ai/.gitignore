@@ -1,0 +1,6 @@
+# Dépendances (installées via `composer install`)
+/vendor/
+
+# Cache et rapports PHPUnit
+/.phpunit.cache/
+/.phpunit.result.cache

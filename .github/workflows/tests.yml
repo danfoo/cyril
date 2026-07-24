@@ -1,0 +1,52 @@
+name: Tests
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'bem-lead-ai/**'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    paths:
+      - 'bem-lead-ai/**'
+      - '.github/workflows/tests.yml'
+
+jobs:
+  phpunit:
+    name: PHPUnit (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # PHPUnit 11 requiert PHP >= 8.2 ; le plugin tourne dès 8.0 en prod.
+        php: ['8.2', '8.3', '8.4']
+
+    defaults:
+      run:
+        working-directory: bem-lead-ai
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurer PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache des dépendances Composer
+        uses: actions/cache@v4
+        with:
+          path: bem-lead-ai/vendor
+          key: composer-${{ matrix.php }}-${{ hashFiles('bem-lead-ai/composer.json') }}
+          restore-keys: composer-${{ matrix.php }}-
+
+      - name: Installer les dépendances
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Lint PHP (toutes les sources)
+        run: find includes -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
+
+      - name: Lancer la suite de tests
+        run: vendor/bin/phpunit
