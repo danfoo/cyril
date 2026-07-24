@@ -78,6 +78,9 @@ final class SettingsPage
                 . esc_html((string) ($mailTest['msg'] ?? '')) . '</p></div>';
         }
 
+        // État des tâches planifiées (heartbeat).
+        $this->renderCronHealth();
+
         // Bouton de test de connexion (diagnostic de l'erreur "souci technique momentané").
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:12px 0;">';
         wp_nonce_field('bem_test_claude');
@@ -560,6 +563,34 @@ final class SettingsPage
     }
 
     /* --- Rendu des champs --------------------------------------------- */
+
+    /** Panneau lecture seule : santé des tâches planifiées (heartbeat). */
+    private function renderCronHealth(): void
+    {
+        $rows = \BemLeadAi\Core\CronHealth::status();
+        $anyLate = false;
+        $cells = '';
+        foreach ($rows as $r) {
+            if ($r['late']) {
+                $anyLate = true;
+                $badge = '<span style="color:#b32d2e;font-weight:600;">⚠ ' . esc_html__('En retard', 'bem-lead-ai') . '</span>';
+            } else {
+                $badge = '<span style="color:#1a7f37;font-weight:600;">✓ ' . esc_html__('OK', 'bem-lead-ai') . '</span>';
+            }
+            $when = $r['last_run']
+                ? esc_html(sprintf(__('il y a %s', 'bem-lead-ai'), \BemLeadAi\Core\CronHealth::humanAge(time() - (int) $r['last_run'])))
+                : '<em>' . esc_html__('jamais', 'bem-lead-ai') . '</em>';
+            $cells .= '<tr><th scope="row">' . esc_html($r['label']) . '</th><td>' . $badge
+                . ' <span class="description">' . $when . '</span></td></tr>';
+        }
+
+        echo '<h2>' . esc_html__('Santé des tâches planifiées', 'bem-lead-ai') . '</h2>';
+        echo '<p class="description">' . esc_html__('Ces tâches tournent via le WP-cron. En cas de retard, une alerte part par e-mail et Slack.', 'bem-lead-ai');
+        if ($anyLate) {
+            echo ' <strong style="color:#b32d2e;">' . esc_html__('Vérifiez que le WP-cron du site se déclenche (trafic ou tâche système sur wp-cron.php).', 'bem-lead-ai') . '</strong>';
+        }
+        echo '</p><table class="form-table"><tbody>' . $cells . '</tbody></table>';
+    }
 
     private function section(string $title, array $rows, string $help = '', bool $allowHtmlHelp = false): void
     {

@@ -17,6 +17,8 @@
       <directory suffix=".php">includes/Support</directory>
       <directory suffix=".php">includes/Integrations</directory>
       <directory suffix=".php">includes/Scoring</directory>
+      <directory suffix=".php">includes/Crm</directory>
+      <directory suffix=".php">includes/Core</directory>
     </include>
   </source>
 </phpunit>

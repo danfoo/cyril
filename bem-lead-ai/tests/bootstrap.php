@@ -27,6 +27,13 @@ namespace {
     if (!function_exists('wp_salt'))               { function wp_salt($s = 'auth'){ return 'test-salt'; } }
     if (!function_exists('wp_json_encode'))        { function wp_json_encode($d){ return json_encode($d); } }
     if (!function_exists('do_action'))             { function do_action($h, ...$a){ /* no-op */ } }
+
+    // Options WordPress (état runtime) — store mémoire, distinct des réglages
+    // du plugin (gérés par le faux BemLeadAi\Core\Options).
+    $GLOBALS['__wp_options'] = [];
+    if (!function_exists('get_option'))    { function get_option($k, $default = false){ return $GLOBALS['__wp_options'][$k] ?? $default; } }
+    if (!function_exists('update_option')) { function update_option($k, $v, $autoload = null){ $GLOBALS['__wp_options'][$k] = $v; return true; } }
+    if (!function_exists('delete_option')) { function delete_option($k){ unset($GLOBALS['__wp_options'][$k]); return true; } }
     // Horloge contrôlable : FakeLeadStore::$now fige le temps pour tester la
     // décroissance du score de façon déterministe (null = temps réel).
     if (!function_exists('current_time')) {
@@ -103,6 +110,7 @@ namespace {
             $GLOBALS['wpdb']->rules = [];
             $GLOBALS['wpdb']->candidates = [];
             $GLOBALS['wpdb']->eventRows = [];
+            $GLOBALS['__wp_options'] = [];
             \BemLeadAi\Leads\EventRepository::$records = [];
         }
 
@@ -287,4 +295,5 @@ namespace {
     require __DIR__ . '/../includes/Scoring/ScoringEngine.php';
     require __DIR__ . '/../includes/Scoring/DisengagementDetector.php';
     require __DIR__ . '/../includes/Crm/PayloadCodec.php';
+    require __DIR__ . '/../includes/Core/CronHealth.php';
 }

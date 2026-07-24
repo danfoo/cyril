@@ -53,6 +53,10 @@ final class Plugin
 
         if (is_admin()) {
             (new AdminMenu())->register();
+            // Surveillance des tâches planifiées : vérification légère et throttlée
+            // au chargement de l'admin (le WP-cron peut être en panne — on ne peut
+            // donc pas confier cette vérification à un cron).
+            add_action('admin_init', [CronHealth::class, 'maybeRun']);
         }
 
         // Mises à jour automatiques depuis le serveur de licences maison.
@@ -84,6 +88,12 @@ final class Plugin
         add_action('bem_lead_ai_cron_rebuild_kb', fn() => (new KnowledgeBaseBuilder())->rebuild());
         add_action('bem_lead_ai_cron_bandit', fn() => (new VariantBandit())->sweepConversions());
         add_action('bem_lead_ai_cron_crm_tasks', ['\BemLeadAi\Crm\TaskReminder', 'run']);
+
+        // Heartbeat : chaque tâche surveillée horodate son passage (priorité tardive,
+        // donc après l'exécution réelle — un cron qui fatale ne s'enregistre pas).
+        foreach (CronHealth::monitoredHooks() as $hook) {
+            add_action($hook, static fn() => CronHealth::recordSuccess($hook), 99);
+        }
 
         // Export / effacement des données personnelles (droit à l'oubli, loi n°2008-12).
         add_filter('wp_privacy_personal_data_erasers', function (array $erasers): array {
