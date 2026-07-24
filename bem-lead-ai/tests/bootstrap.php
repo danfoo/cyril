@@ -11,6 +11,10 @@ namespace {
         define('ABSPATH', sys_get_temp_dir() . '/');
     }
 
+    if (!defined('DAY_IN_SECONDS')) {
+        define('DAY_IN_SECONDS', 86400);
+    }
+
     /* ---------- Stubs de fonctions WordPress ---------- */
     if (!function_exists('is_email'))              { function is_email($e){ return is_string($e) && strpos($e, '@') !== false ? $e : false; } }
     if (!function_exists('sanitize_email'))        { function sanitize_email($e){ return trim((string) $e); } }
@@ -18,6 +22,26 @@ namespace {
     if (!function_exists('sanitize_textarea_field')){ function sanitize_textarea_field($s){ return trim((string) $s); } }
     if (!function_exists('wp_unslash'))            { function wp_unslash($s){ return $s; } }
     if (!function_exists('wp_salt'))               { function wp_salt($s = 'auth'){ return 'test-salt'; } }
+    if (!function_exists('wp_json_encode'))        { function wp_json_encode($d){ return json_encode($d); } }
+    if (!function_exists('do_action'))             { function do_action($h, ...$a){ /* no-op */ } }
+    // Horloge contrôlable : FakeLeadStore::$now fige le temps pour tester la
+    // décroissance du score de façon déterministe (null = temps réel).
+    if (!function_exists('current_time')) {
+        function current_time($type){
+            $ts = \FakeLeadStore::$now ?? time();
+            return $type === 'timestamp' ? $ts : date('Y-m-d H:i:s', $ts);
+        }
+    }
+
+    /** $wpdb minimal : sert les règles de scoring à RulesRepository::activeRules(). */
+    final class FakeWpdb
+    {
+        public string $prefix = 'wp_';
+        /** @var object[] */
+        public array $rules = [];
+        public function get_results($sql){ return $this->rules; }
+    }
+    $GLOBALS['wpdb'] = new FakeWpdb();
 
     /**
      * Store de leads en mémoire + configuration, partagé par les faux
@@ -28,14 +52,52 @@ namespace {
         /** @var array<int,object> */
         public static array $leads = [];
         public static int $seq = 0;
+        /** @var array<int,object> Événements par lead (pour EventRepository::forLead). */
+        public static array $events = [];
+        /** Horloge figée pour tester la décroissance (null = temps réel). */
+        public static ?int $now = null;
         /** @var array<string,mixed> */
-        public static array $options = ['default_dial_code' => '+224'];
+        public static array $options = [];
+
+        private const DEFAULT_OPTIONS = [
+            'default_dial_code' => '+224',
+            'score_blend_intent_weight' => 0.55,
+            'score_decay_half_life_days' => 7,
+            'threshold_warm' => 30,
+            'threshold_hot' => 60,
+            'threshold_very_hot' => 80,
+        ];
 
         public static function reset(): void
         {
             self::$leads = [];
+            self::$events = [];
             self::$seq = 0;
-            self::$options = ['default_dial_code' => '+224'];
+            self::$now = null;
+            self::$options = self::DEFAULT_OPTIONS;
+            $GLOBALS['wpdb']->rules = [];
+        }
+
+        /** Ajoute un événement pour un lead (created_at au format mysql). */
+        public static function addEvent(int $leadId, string $type, array $payload, string $createdAt): void
+        {
+            self::$events[] = (object) [
+                'lead_id' => $leadId,
+                'type' => $type,
+                'payload' => json_encode($payload),
+                'created_at' => $createdAt,
+            ];
+        }
+
+        /** Déclare une règle de scoring active (servie via le faux $wpdb). */
+        public static function addRule(string $type, array $condition, float $weight): void
+        {
+            $GLOBALS['wpdb']->rules[] = (object) [
+                'type' => $type,
+                'condition_json' => json_encode($condition),
+                'poids' => $weight,
+                'actif' => 1,
+            ];
         }
 
         public static function insert(array $data): object
@@ -113,10 +175,18 @@ namespace BemLeadAi\Leads {
     class EventRepository
     {
         /** @var array<int,array{lead:int,type:string}> */
-        public static array $events = [];
+        public static array $records = [];
         public function record($leadId, $type, $payload = [], $canal = ''): void
         {
-            self::$events[] = ['lead' => (int) $leadId, 'type' => (string) $type];
+            self::$records[] = ['lead' => (int) $leadId, 'type' => (string) $type];
+        }
+
+        /** Événements du lead, ordre chronologique (comme le vrai forLead). */
+        public function forLead($leadId, $sinceDays = 90): array
+        {
+            $rows = array_filter(\FakeLeadStore::$events, fn($e) => (int) $e->lead_id === (int) $leadId);
+            usort($rows, fn($a, $b) => strcmp($a->created_at, $b->created_at));
+            return array_values($rows);
         }
     }
 }
@@ -160,4 +230,6 @@ namespace BemLeadAi\Chat {
 namespace {
     require __DIR__ . '/../includes/Support/PhoneNumber.php';
     require __DIR__ . '/../includes/Integrations/FormCapture.php';
+    require __DIR__ . '/../includes/Scoring/RulesRepository.php';
+    require __DIR__ . '/../includes/Scoring/ScoringEngine.php';
 }
