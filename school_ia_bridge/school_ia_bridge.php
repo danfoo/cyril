@@ -751,19 +751,40 @@ function school_ia_send_tracked_email(object $lead, string $subject, string $bod
     // Pixel d'ouverture.
     $html .= '<img src="' . site_url('school_ia_bridge/api/track_open/' . $token) . '" width="1" height="1" alt="" style="display:none">';
 
+    // Adresse de réponse = conseiller expéditeur si connu (les réponses du lead
+    // reviennent à la bonne personne, et un Reply-To légitime aide l'inbox).
+    $replyTo = '';
+    if (function_exists('get_staff_user_id') && get_staff_user_id()) {
+        $staff = $CI->db->select('email')->where('staffid', (int) get_staff_user_id())
+            ->get(db_prefix() . 'staff')->row();
+        $replyTo = $staff->email ?? '';
+    }
+
     $CI->load->library('email');
     $CI->email->clear(true);
     $CI->email->from(get_option('smtp_email') ?: get_option('companyname'), get_option('companyname'));
+    if ($replyTo !== '') {
+        $CI->email->reply_to($replyTo, get_option('companyname'));
+    }
     $CI->email->to($lead->email);
     $CI->email->subject($subject);
     $CI->email->message($html);
     $CI->email->set_mailtype('html');
+    // Version texte alternative : un e-mail multipart (HTML + texte) est nettement
+    // moins souvent classé en spam qu'un HTML seul.
+    $CI->email->set_alt_message(trim(preg_replace('/\s+/', ' ', strip_tags($content))));
     foreach ($attachPaths as $p) {
         if (is_file($p)) {
             $CI->email->attach($p);
         }
     }
-    return $CI->email->send(false);
+    $ok = $CI->email->send(false);
+    // En cas d'échec réel, on trace le diagnostic SMTP pour le journal serveur.
+    if (!$ok && method_exists($CI->email, 'print_debugger')) {
+        log_message('error', '[school_ia_bridge] Échec envoi e-mail lead #' . (int) $lead->id . ' : '
+            . strip_tags((string) $CI->email->print_debugger(['headers'])));
+    }
+    return $ok;
 }
 
 /** Journalise un SMS envoyé (pour les statistiques). */

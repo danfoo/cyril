@@ -798,6 +798,28 @@ class School_ia_bridge_model extends App_Model
         return (int) $this->db->insert_id();
     }
 
+    /** Met à jour les informations éditables d'un lead (saisie manuelle). */
+    public function update_lead(int $id, array $d): void
+    {
+        $this->ensure_schema();
+        $fields = [
+            'name'      => substr(trim((string) ($d['name'] ?? '')), 0, 191) ?: null,
+            'email'     => substr(trim((string) ($d['email'] ?? '')), 0, 191) ?: null,
+            'phone'     => substr(trim((string) ($d['phone'] ?? '')), 0, 64) ?: null,
+            'formation' => substr(trim((string) ($d['formation'] ?? '')), 0, 191) ?: null,
+            'rentree'   => substr(trim((string) ($d['rentree'] ?? '')), 0, 32) ?: null,
+        ];
+        // Le score n'est écrasé que s'il est explicitement fourni (0–100).
+        if (isset($d['score']) && $d['score'] !== '') {
+            $fields['score'] = min(100, max(0, (float) $d['score']));
+        }
+        // L'étape n'est mise à jour que si elle est valide.
+        if (isset($d['stage']) && array_key_exists($d['stage'], $this->stages())) {
+            $fields['stage'] = $d['stage'];
+        }
+        $this->db->where('id', $id)->update($this->table(), $fields);
+    }
+
     /** Leads groupés par étape du pipeline (pour le Kanban). */
     public function by_stage(): array
     {

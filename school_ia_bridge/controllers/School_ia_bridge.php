@@ -1226,6 +1226,59 @@ class School_ia_bridge extends AdminController
         redirect(admin_url('school_ia_bridge/lead/' . $id));
     }
 
+    /** Formulaire d'édition d'un lead existant. */
+    public function edit_lead($id = 0)
+    {
+        $this->need('manage_leads');
+        $id = (int) $id;
+        $lead = $this->school_ia_bridge_model->get_lead($id);
+        if (!$lead) {
+            show_404();
+        }
+        $data['title']    = 'Modifier — ' . ($lead->name ?: ('Lead #' . $lead->id));
+        $data['lead']     = $lead;
+        $data['programs'] = $this->school_ia_bridge_model->programs();
+        $data['rentrees'] = $this->school_ia_bridge_model->rentrees();
+        $data['model']    = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/lead_edit', $data);
+    }
+
+    /** Enregistre les modifications d'un lead (form Perfex → CSRF). */
+    public function update_lead()
+    {
+        $this->need('manage_leads');
+        $id = (int) $this->input->post('id');
+        $lead = $this->school_ia_bridge_model->get_lead($id);
+        if (!$lead) {
+            show_404();
+        }
+        $name  = trim((string) $this->input->post('name'));
+        $email = trim((string) $this->input->post('email'));
+        $phone = trim((string) $this->input->post('phone'));
+
+        if ($name === '' && $email === '' && $phone === '') {
+            set_alert('warning', 'Renseignez au moins un nom, un e-mail ou un téléphone.');
+            redirect(admin_url('school_ia_bridge/edit_lead/' . $id));
+        }
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            set_alert('warning', 'L\'adresse e-mail saisie n\'est pas valide.');
+            redirect(admin_url('school_ia_bridge/edit_lead/' . $id));
+        }
+
+        $this->school_ia_bridge_model->update_lead($id, [
+            'name'      => $name,
+            'email'     => $email,
+            'phone'     => $phone,
+            'formation' => $this->input->post('formation'),
+            'score'     => $this->input->post('score'),
+            'stage'     => $this->input->post('stage'),
+            'rentree'   => $this->input->post('rentree'),
+        ]);
+        $this->school_ia_bridge_model->add_activity($id, 'note', 'Informations du lead modifiées.', get_staff_user_id());
+        set_alert('success', 'Lead mis à jour.');
+        redirect(admin_url('school_ia_bridge/lead/' . $id));
+    }
+
     /** Fiche détaillée d'un lead. */
     public function lead($id = 0)
     {
