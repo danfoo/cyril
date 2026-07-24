@@ -89,4 +89,36 @@ final class FormCaptureDedupTest extends TestCase
 
         $this->assertCount(0, \FakeLeadStore::$leads);
     }
+
+    /* ---------- Capture externe (site non-WordPress) : captureLead() ---------- */
+
+    public function testExternalCaptureLinksToChatBySessionId(): void
+    {
+        // Site non-WordPress : la session vient du session_id du widget (pas d'un
+        // cookie). On rattache au lead de chat existant plutôt qu'un doublon.
+        $chat = \FakeLeadStore::insert(['session_id' => 'web_ext', 'prenom' => 'Anonyme']);
+
+        $id = $this->capture->captureLead('sara@bem.gn', '613063895', 'Sara', 'MBA', 'embed', 'Candidature', 'web_ext');
+
+        $this->assertSame($chat->id, $id, 'même lead que le chat, pas de doublon');
+        $this->assertCount(1, \FakeLeadStore::$leads);
+        $this->assertSame('+224613063895', \FakeLeadStore::$leads[$chat->id]->phone);
+    }
+
+    public function testExternalCaptureCreatesLeadWithoutSession(): void
+    {
+        $id = $this->capture->captureLead('yaya@bem.gn', null, 'Yaya', null, 'embed', 'Brochure', null);
+
+        $this->assertNotNull($id);
+        $this->assertCount(1, \FakeLeadStore::$leads);
+        $this->assertSame('yaya@bem.gn', \FakeLeadStore::$leads[$id]->email);
+    }
+
+    public function testExternalCaptureReturnsNullWithoutContact(): void
+    {
+        $id = $this->capture->captureLead(null, null, 'Anonyme', 'Master', 'embed', 'Sondage', 'web_x');
+
+        $this->assertNull($id);
+        $this->assertCount(0, \FakeLeadStore::$leads);
+    }
 }

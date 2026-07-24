@@ -88,6 +88,9 @@ final class Options
             // numéros captés en conversation qui n'ont pas d'indicatif — bien plus
             // fiable qu'une géoloc IP puisque chaque école connaît son marché.
             'default_dial_code' => '',
+            // Embarquement inter-sites (sites non-WordPress) : origines autorisées à
+            // appeler l'API (widget + capture), une par ligne (ex: https://ecole.com).
+            'embed_allowed_origins' => '',
             'kb_cache_ttl' => '1h', // 5m | 1h — durée de vie du cache de préfixe LLM
             'kb_max_chars_per_post' => 4000,
             // Reconstruction auto du catalogue : manual | weekly | daily.

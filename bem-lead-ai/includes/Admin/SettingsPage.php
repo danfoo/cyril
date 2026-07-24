@@ -135,6 +135,19 @@ final class SettingsPage
             $this->text('default_dial_code', 'Indicatif pays par défaut (ex. +224) — appliqué aux numéros communiqués sans indicatif', $o),
         ], __('Quand un visiteur soumet un de vos formulaires, School IA crée automatiquement un lead (email, téléphone, prénom, formation détectés) — aucune configuration par formulaire nécessaire. La détection est automatique dès que le plugin de formulaire est actif. L\'indicatif par défaut complète les numéros locaux captés en conversation (ex. « 613063895 » → « +224613063895 ») ; laissez vide pour conserver le numéro tel quel.', 'bem-lead-ai'));
 
+        // --- Embarquement sur un site non-WordPress ---
+        $embedBackend = rest_url(BEM_LEAD_AI_REST_NS);
+        $embedScript  = BEM_LEAD_AI_URL . 'assets/js/embed.js';
+        $siteKey      = \BemLeadAi\Api\RestController::siteKey();
+        $snippet = '<script src="' . esc_url($embedScript) . '"' . "\n"
+            . '        data-backend="' . esc_url($embedBackend) . '"' . "\n"
+            . '        data-key="' . esc_attr($siteKey) . '" defer></script>';
+        $this->section(__('Embarquement sur un site non-WordPress', 'bem-lead-ai'), [
+            $this->row('Clé de site', '<input type="text" class="regular-text" readonly value="' . esc_attr($siteKey) . '" onclick="this.select()">'),
+            $this->textarea('embed_allowed_origins', 'Origines autorisées (une par ligne, ex. https://ecole.com)', $o),
+            $this->row('Code à coller', '<textarea class="large-text code" rows="4" readonly onclick="this.select()">' . esc_textarea($snippet) . '</textarea>'),
+        ], __('Pour un site qui n\'est pas sous WordPress : collez ce code avant la balise </body>. Le widget de chat s\'affiche et les formulaires de la page sont capturés automatiquement — aucune installation côté site client. Renseignez les origines autorisées (le domaine de chaque site) pour la sécurité (CORS) ; laissez vide en test pour autoriser toutes les origines.', 'bem-lead-ai'));
+
         // --- Scoring ---
         $this->section(__('Scoring (logique marketing)', 'bem-lead-ai'), [
             $this->number('score_decay_half_life_days', 'Demi-vie du score (jours)', $o),
@@ -712,7 +725,7 @@ final class SettingsPage
         $defaults = Options::defaults();
         $checkboxes = ['whatsapp_enabled', 'widget_enabled', 'capture_forms',
             'notify_email_enabled', 'notify_hot_lead', 'notify_handoff', 'notify_task_reminder'];
-        $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill', 'program_links', 'program_aliases'];
+        $textareas = ['widget_greeting', 'whatsapp_numbers', 'whatsapp_prefill', 'program_links', 'program_aliases', 'embed_allowed_origins'];
         $clean = [];
         foreach ($defaults as $key => $default) {
             if (in_array($key, Options::SECRET_KEYS, true)) {

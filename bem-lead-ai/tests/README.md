@@ -28,7 +28,7 @@ sans nécessiter une installation WordPress complète.
 | Fichier de test | Ce qui est vérifié |
 |---|---|
 | `PhoneNumberTest` | Extraction déterministe et normalisation des numéros (indicatif par défaut, formats internationaux, rejet des montants monétaires). |
-| `FormCaptureDedupTest` | Résolution d'identité multi-canal : une même personne ne crée jamais deux fiches selon l'ordre chat / formulaire. |
+| `FormCaptureDedupTest` | Résolution d'identité multi-canal (chat / formulaire) et capture externe (sites non-WordPress) : une même personne ne crée jamais deux fiches. |
 | `ScoringTest` | Score comportemental (règles pondérées × décroissance de récence, plafond), classification en bandes, et mélange avec l'intention conversationnelle. |
 | `DisengagementTest` | Détection de désengagement : calcul du pic d'activité (fenêtre glissante 72 h), décision d'émission sur chute nette, et non-répétition d'une relance récente. |
 | `PayloadCodecTest` | Transport vers Perfex : compression gzip + base64url (préfixe `SIAZ1:`), round-trip, sûreté pare-feu, et contrat d'interop avec le décodeur Perfex. |

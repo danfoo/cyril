@@ -139,7 +139,23 @@ final class FormCapture
 
     /* ---------------- Cœur : création / complétion du lead ---------------- */
 
+    /** Soumission d'un formulaire WordPress : la session vient du cookie du widget. */
     private function ingest(?string $email, ?string $phone, ?string $name, ?string $formation, string $source, string $formTitle = ''): void
+    {
+        $chatSid = isset($_COOKIE['bem_lead_session'])
+            ? sanitize_text_field(wp_unslash($_COOKIE['bem_lead_session']))
+            : null;
+        $this->captureLead($email, $phone, $name, $formation, $source, $formTitle, $chatSid);
+    }
+
+    /**
+     * Cœur de la capture, réutilisable hors WordPress (endpoint REST pour les sites
+     * non-WordPress). La session du chat est fournie explicitement (elle vient du
+     * cookie côté WP, ou du session_id du widget côté site externe).
+     *
+     * @return int|null Identifiant du lead créé/mis à jour, ou null si rien d'exploitable.
+     */
+    public function captureLead(?string $email, ?string $phone, ?string $name, ?string $formation, string $source, string $formTitle = '', ?string $sessionId = null): ?int
     {
         $email = $email && is_email($email) ? sanitize_email($email) : null;
         // Normalise le numéro à l'indicatif par défaut de l'école (ex. +224) :
@@ -147,23 +163,18 @@ final class FormCapture
         $phone = $phone ? \BemLeadAi\Support\PhoneNumber::normalize($phone, (string) Options::get('default_dial_code')) : '';
         $phone = $phone !== '' ? sanitize_text_field($phone) : null;
         if (!$email && !$phone) {
-            return; // sans coordonnée, pas de lead exploitable
+            return null; // sans coordonnée, pas de lead exploitable
         }
 
         $formTitle = trim($formTitle);
 
         $leads = new LeadRepository();
         $lead = $email ? $leads->findByEmail($email) : null;
-        // Même personne, même navigateur : si un chat est déjà en cours, le widget
-        // a posé le cookie « bem_lead_session ». On rattache le formulaire à ce lead
-        // anonyme au lieu de créer un doublon (chat démarré → puis formulaire soumis).
-        if (!$lead) {
-            $chatSid = isset($_COOKIE['bem_lead_session'])
-                ? sanitize_text_field(wp_unslash($_COOKIE['bem_lead_session']))
-                : '';
-            if ($chatSid !== '') {
-                $lead = $leads->findBySessionId($chatSid);
-            }
+        // Même personne, même navigateur : si un chat est déjà en cours, on rattache
+        // le formulaire à ce lead anonyme (via le session_id du widget) au lieu de
+        // créer un doublon (chat démarré → puis formulaire soumis).
+        if (!$lead && $sessionId !== null && $sessionId !== '') {
+            $lead = $leads->findBySessionId($sessionId);
         }
         if (!$lead) {
             $sid = 'form_' . substr(md5(($email ?: $phone) . '|' . $source . '|' . wp_salt()), 0, 24);
@@ -188,6 +199,8 @@ final class FormCapture
         $leads->update((int) $lead->id, $updates);
 
         (new EventRepository())->record((int) $lead->id, 'form_submitted', ['source' => $source, 'form' => $formTitle], 'form');
+
+        return (int) $lead->id;
     }
 
     /**

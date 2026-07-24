@@ -104,6 +104,139 @@ final class RestController
             'callback' => [$this, 'financingSimulate'],
             'permission_callback' => '__return_true',
         ]);
+
+        // Embarquement sur un site NON-WordPress : configuration publique du widget
+        // et capture de formulaire, authentifiées par la clé de site (embed_site_key).
+        register_rest_route($ns, '/embed/config', [
+            'methods' => 'GET',
+            'callback' => [$this, 'embedConfig'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        register_rest_route($ns, '/embed/capture', [
+            'methods' => 'POST',
+            'callback' => [$this, 'embedCapture'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // En-têtes CORS pour autoriser les appels depuis les domaines des sites clients.
+        add_filter('rest_pre_serve_request', [$this, 'sendCorsHeaders'], 10, 3);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Embarquement inter-sites (sites non-WordPress)                      */
+    /* ------------------------------------------------------------------ */
+
+    /** Clé publique de site, auto-générée au premier accès (identifie le tenant). */
+    public static function siteKey(): string
+    {
+        $key = (string) get_option('bem_lead_ai_embed_site_key', '');
+        if ($key === '') {
+            $key = function_exists('wp_generate_password') ? wp_generate_password(32, false) : bin2hex(random_bytes(16));
+            update_option('bem_lead_ai_embed_site_key', $key, false);
+        }
+        return $key;
+    }
+
+    /** Origines autorisées (une par ligne dans les réglages). */
+    private function allowedOrigins(): array
+    {
+        $raw = (string) Options::get('embed_allowed_origins');
+        $list = array_filter(array_map('trim', preg_split('/[\r\n,]+/', $raw) ?: []));
+        return array_map(fn($o) => rtrim($o, '/'), $list);
+    }
+
+    /** Origine à renvoyer dans Access-Control-Allow-Origin, ou '' si non autorisée. */
+    private function corsOrigin(): string
+    {
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? rtrim((string) $_SERVER['HTTP_ORIGIN'], '/') : '';
+        if ($origin === '') {
+            return '';
+        }
+        $allowed = $this->allowedOrigins();
+        // Liste vide = prototype permissif (on reflète l'origine) ; sinon strict.
+        if (!$allowed || in_array($origin, $allowed, true)) {
+            return $origin;
+        }
+        return '';
+    }
+
+    /** Ajoute les en-têtes CORS aux réponses de notre namespace REST. */
+    public function sendCorsHeaders($served, $result, $request)
+    {
+        if (!($request instanceof WP_REST_Request)) {
+            return $served;
+        }
+        if (strpos($request->get_route(), '/' . BEM_LEAD_AI_REST_NS) !== 0) {
+            return $served;
+        }
+        $origin = $this->corsOrigin();
+        if ($origin !== '') {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Vary: Origin');
+            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+            header('Access-Control-Allow-Headers: Content-Type, X-WP-Nonce');
+        }
+        return $served;
+    }
+
+    private function keyValid(WP_REST_Request $request): bool
+    {
+        $provided = (string) ($request->get_param('key') ?? '');
+        return $provided !== '' && hash_equals(self::siteKey(), $provided);
+    }
+
+    /** Configuration publique du widget (design + textes), sans nonce. */
+    public function embedConfig(WP_REST_Request $request): WP_REST_Response|WP_Error
+    {
+        if (!$this->keyValid($request)) {
+            return new WP_Error('bem_forbidden', 'Invalid site key', ['status' => 403]);
+        }
+        $clean = static fn($v) => stripslashes((string) $v);
+        return rest_ensure_response([
+            'restUrl' => esc_url_raw(rest_url(BEM_LEAD_AI_REST_NS)),
+            'assetsUrl' => esc_url_raw(BEM_LEAD_AI_URL . 'assets/'),
+            'title' => $clean(Options::get('widget_title')),
+            'subtitle' => $clean(Options::get('widget_subtitle')),
+            'greeting' => $clean(Options::get('widget_greeting')),
+            'teaser' => $clean(Options::get('widget_teaser')),
+            'whatsappEnabled' => (new WhatsAppHandoff())->isEnabled(),
+            'whatsappLabel' => $clean(Options::get('whatsapp_cta_label')),
+            'design' => [
+                'primary' => Options::get('widget_primary_color'),
+                'accent' => Options::get('widget_accent_color'),
+                'userBubble' => Options::get('widget_bubble_user_color'),
+                'avatar' => esc_url_raw((string) Options::get('widget_avatar_url')),
+                'launcher' => Options::get('widget_launcher_icon'),
+                'position' => Options::get('widget_position') === 'left' ? 'left' : 'right',
+                'theme' => Options::get('widget_theme') === 'dark' ? 'dark' : 'light',
+            ],
+        ]);
+    }
+
+    /** Capture d'un formulaire soumis depuis un site externe (non-WordPress). */
+    public function embedCapture(WP_REST_Request $request): WP_REST_Response|WP_Error
+    {
+        if (!$this->keyValid($request)) {
+            return new WP_Error('bem_forbidden', 'Invalid site key', ['status' => 403]);
+        }
+        if (\BemLeadAi\Core\BotDetector::isBot()) {
+            return new WP_Error('bem_forbidden', 'Forbidden', ['status' => 403]);
+        }
+        $p = static fn($k) => is_string($request->get_param($k)) ? trim((string) $request->get_param($k)) : '';
+        $leadId = (new \BemLeadAi\Integrations\FormCapture())->captureLead(
+            $p('email') ?: null,
+            $p('phone') ?: null,
+            $p('name') ?: null,
+            $p('formation') ?: null,
+            'embed',
+            $p('source_form'),
+            $p('session_id') ?: null
+        );
+        if ($leadId === null) {
+            return new WP_Error('bem_no_contact', 'Aucune coordonnée exploitable', ['status' => 422]);
+        }
+        return rest_ensure_response(['ok' => true, 'lead_id' => $leadId]);
     }
 
     /* ------------------------------------------------------------------ */
