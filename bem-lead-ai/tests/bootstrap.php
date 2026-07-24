@@ -14,6 +14,9 @@ namespace {
     if (!defined('DAY_IN_SECONDS')) {
         define('DAY_IN_SECONDS', 86400);
     }
+    if (!defined('HOUR_IN_SECONDS')) {
+        define('HOUR_IN_SECONDS', 3600);
+    }
 
     /* ---------- Stubs de fonctions WordPress ---------- */
     if (!function_exists('is_email'))              { function is_email($e){ return is_string($e) && strpos($e, '@') !== false ? $e : false; } }
@@ -33,13 +36,30 @@ namespace {
         }
     }
 
-    /** $wpdb minimal : sert les règles de scoring à RulesRepository::activeRules(). */
+    /**
+     * $wpdb minimal : route get_results() selon la table visée (le code ne teste
+     * pas le filtrage SQL — non reproductible sans base — mais la logique PHP
+     * qui consomme les lignes renvoyées).
+     */
     final class FakeWpdb
     {
         public string $prefix = 'wp_';
-        /** @var object[] */
+        /** @var object[] Règles de scoring (RulesRepository::activeRules). */
         public array $rules = [];
-        public function get_results($sql){ return $this->rules; }
+        /** @var object[] Leads candidats au désengagement. */
+        public array $candidates = [];
+        /** @var object[] Lignes d'événements (DisengagementDetector::activityWindows). */
+        public array $eventRows = [];
+
+        public function prepare($query, ...$args){ return $query; }
+
+        public function get_results($sql)
+        {
+            if (str_contains($sql, 'bem_scoring_rules')) return $this->rules;
+            if (str_contains($sql, 'bem_leads'))         return $this->candidates;
+            if (str_contains($sql, 'bem_events'))        return $this->eventRows;
+            return [];
+        }
     }
     $GLOBALS['wpdb'] = new FakeWpdb();
 
@@ -56,6 +76,8 @@ namespace {
         public static array $events = [];
         /** Horloge figée pour tester la décroissance (null = temps réel). */
         public static ?int $now = null;
+        /** Dernier événement d'un type donné (EventRepository::lastOfType). */
+        public static ?object $lastOfType = null;
         /** @var array<string,mixed> */
         public static array $options = [];
 
@@ -66,6 +88,8 @@ namespace {
             'threshold_warm' => 30,
             'threshold_hot' => 60,
             'threshold_very_hot' => 80,
+            'disengagement_min_score' => 30,
+            'disengagement_drop_ratio' => 0.7,
         ];
 
         public static function reset(): void
@@ -74,8 +98,24 @@ namespace {
             self::$events = [];
             self::$seq = 0;
             self::$now = null;
+            self::$lastOfType = null;
             self::$options = self::DEFAULT_OPTIONS;
             $GLOBALS['wpdb']->rules = [];
+            $GLOBALS['wpdb']->candidates = [];
+            $GLOBALS['wpdb']->eventRows = [];
+            \BemLeadAi\Leads\EventRepository::$records = [];
+        }
+
+        /** Déclare un lead candidat au désengagement (id servi par le faux $wpdb). */
+        public static function addCandidate(int $id): void
+        {
+            $GLOBALS['wpdb']->candidates[] = (object) ['id' => $id];
+        }
+
+        /** Ajoute une ligne d'événement brute (created_at) pour activityWindows(). */
+        public static function addRawEvent(string $createdAt): void
+        {
+            $GLOBALS['wpdb']->eventRows[] = (object) ['created_at' => $createdAt];
         }
 
         /** Ajoute un événement pour un lead (created_at au format mysql). */
@@ -174,11 +214,12 @@ namespace BemLeadAi\Leads {
 
     class EventRepository
     {
-        /** @var array<int,array{lead:int,type:string}> */
+        /** @var array<int,array{lead:int,type:string,payload:array}> */
         public static array $records = [];
-        public function record($leadId, $type, $payload = [], $canal = ''): void
+        public function record($leadId, $type, $payload = [], $canal = ''): int
         {
-            self::$records[] = ['lead' => (int) $leadId, 'type' => (string) $type];
+            self::$records[] = ['lead' => (int) $leadId, 'type' => (string) $type, 'payload' => (array) $payload];
+            return count(self::$records);
         }
 
         /** Événements du lead, ordre chronologique (comme le vrai forLead). */
@@ -187,6 +228,18 @@ namespace BemLeadAi\Leads {
             $rows = array_filter(\FakeLeadStore::$events, fn($e) => (int) $e->lead_id === (int) $leadId);
             usort($rows, fn($a, $b) => strcmp($a->created_at, $b->created_at));
             return array_values($rows);
+        }
+
+        /** Dernier événement d'un type (pour la dédup de relance). */
+        public function lastOfType($leadId, $type)
+        {
+            return \FakeLeadStore::$lastOfType;
+        }
+
+        /** Nombre d'événements « disengagement » enregistrés (aide aux assertions). */
+        public static function countRecorded(string $type): int
+        {
+            return count(array_filter(self::$records, fn($r) => $r['type'] === $type));
         }
     }
 }
@@ -232,4 +285,5 @@ namespace {
     require __DIR__ . '/../includes/Integrations/FormCapture.php';
     require __DIR__ . '/../includes/Scoring/RulesRepository.php';
     require __DIR__ . '/../includes/Scoring/ScoringEngine.php';
+    require __DIR__ . '/../includes/Scoring/DisengagementDetector.php';
 }

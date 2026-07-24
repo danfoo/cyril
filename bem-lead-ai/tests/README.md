@@ -30,6 +30,8 @@ sans nécessiter une installation WordPress complète.
 | `PhoneNumberTest` | Extraction déterministe et normalisation des numéros (indicatif par défaut, formats internationaux, rejet des montants monétaires). |
 | `FormCaptureDedupTest` | Résolution d'identité multi-canal : une même personne ne crée jamais deux fiches selon l'ordre chat / formulaire. |
 | `ScoringTest` | Score comportemental (règles pondérées × décroissance de récence, plafond), classification en bandes, et mélange avec l'intention conversationnelle. |
+| `DisengagementTest` | Détection de désengagement : calcul du pic d'activité (fenêtre glissante 72 h), décision d'émission sur chute nette, et non-répétition d'une relance récente. |
 
-Ces tests couvrent les corrections de capture les plus sensibles et le cœur du
-scoring. À étendre aux triggers et à la synchro CRM au fil des évolutions.
+Ces tests couvrent les corrections de capture les plus sensibles, le cœur du
+scoring et la détection de désengagement. À étendre à la synchro CRM au fil des
+évolutions.
