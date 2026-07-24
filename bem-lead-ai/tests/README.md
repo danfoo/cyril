@@ -31,7 +31,8 @@ sans nécessiter une installation WordPress complète.
 | `FormCaptureDedupTest` | Résolution d'identité multi-canal : une même personne ne crée jamais deux fiches selon l'ordre chat / formulaire. |
 | `ScoringTest` | Score comportemental (règles pondérées × décroissance de récence, plafond), classification en bandes, et mélange avec l'intention conversationnelle. |
 | `DisengagementTest` | Détection de désengagement : calcul du pic d'activité (fenêtre glissante 72 h), décision d'émission sur chute nette, et non-répétition d'une relance récente. |
+| `PayloadCodecTest` | Transport vers Perfex : compression gzip + base64url (préfixe `SIAZ1:`), round-trip, sûreté pare-feu, et contrat d'interop avec le décodeur Perfex. |
 
 Ces tests couvrent les corrections de capture les plus sensibles, le cœur du
-scoring et la détection de désengagement. À étendre à la synchro CRM au fil des
-évolutions.
+scoring, la détection de désengagement et le transport CRM. À étendre au reste
+de la synchro Perfex au fil des évolutions.

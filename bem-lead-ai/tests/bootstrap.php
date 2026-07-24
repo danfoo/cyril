@@ -286,4 +286,5 @@ namespace {
     require __DIR__ . '/../includes/Scoring/RulesRepository.php';
     require __DIR__ . '/../includes/Scoring/ScoringEngine.php';
     require __DIR__ . '/../includes/Scoring/DisengagementDetector.php';
+    require __DIR__ . '/../includes/Crm/PayloadCodec.php';
 }

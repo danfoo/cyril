@@ -112,16 +112,10 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
 
         // Compression pour tenir dans l'URL (GET) : une réponse IA longue, une
         // fois url-encodée (accents, markdown → %XX), dépassait la longueur d'URL
-        // acceptée et le message était perdu côté Perfex. On gzip + base64url
-        // (uniquement [A-Za-z0-9-_], jamais bloqué par un pare-feu) ; Perfex décode.
-        $content = mb_substr($content, 0, 6000);
-        $encoded = $content;
-        if (function_exists('gzencode') && strlen($content) > 400) {
-            $gz = gzencode($content, 6);
-            if ($gz !== false) {
-                $encoded = 'SIAZ1:' . rtrim(strtr(base64_encode($gz), '+/', '-_'), '=');
-            }
-        }
+        // acceptée et le message était perdu côté Perfex. Le codec gzip + base64url
+        // (uniquement [A-Za-z0-9-_], jamais bloqué par un pare-feu) est décodé par
+        // le module Perfex (school_ia_bridge → unpack_content).
+        $encoded = PayloadCodec::encode($content);
 
         $payload = [
             'external_id'         => (string) $leadId,
