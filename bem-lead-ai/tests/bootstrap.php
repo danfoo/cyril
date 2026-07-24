@@ -296,4 +296,5 @@ namespace {
     require __DIR__ . '/../includes/Scoring/DisengagementDetector.php';
     require __DIR__ . '/../includes/Crm/PayloadCodec.php';
     require __DIR__ . '/../includes/Core/CronHealth.php';
+    require __DIR__ . '/../includes/Core/WidgetStyle.php';
 }

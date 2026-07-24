@@ -33,6 +33,7 @@ sans nécessiter une installation WordPress complète.
 | `DisengagementTest` | Détection de désengagement : calcul du pic d'activité (fenêtre glissante 72 h), décision d'émission sur chute nette, et non-répétition d'une relance récente. |
 | `PayloadCodecTest` | Transport vers Perfex : compression gzip + base64url (préfixe `SIAZ1:`), round-trip, sûreté pare-feu, et contrat d'interop avec le décodeur Perfex. |
 | `CronHealthTest` | Surveillance des tâches planifiées : détection des retards, période de grâce après installation, formatage, et état persistant. |
+| `WidgetStyleTest` | CSS de design du widget (couleurs dérivées, replis), partagé par l'affichage WordPress et l'embarquement inter-sites. |
 
 Ces tests couvrent les corrections de capture les plus sensibles, le cœur du
 scoring, la détection de désengagement, le transport CRM et la supervision des

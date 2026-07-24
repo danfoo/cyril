@@ -196,6 +196,9 @@ final class RestController
         return rest_ensure_response([
             'restUrl' => esc_url_raw(rest_url(BEM_LEAD_AI_REST_NS)),
             'assetsUrl' => esc_url_raw(BEM_LEAD_AI_URL . 'assets/'),
+            // CSS des couleurs/design : sous WordPress il est injecté en inline ;
+            // pour un site externe on le fournit ici, injecté par embed.js.
+            'inlineCss' => \BemLeadAi\Core\WidgetStyle::css(),
             'title' => $clean(Options::get('widget_title')),
             'subtitle' => $clean(Options::get('widget_subtitle')),
             'greeting' => $clean(Options::get('widget_greeting')),

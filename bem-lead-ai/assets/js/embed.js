@@ -53,13 +53,22 @@
       };
       window.BemLeadAiConfig = cfg;
 
-      // Feuille de style + script du widget, servis par le backend.
+      // Feuille de style de base + script du widget, servis par le backend.
       var assets = (cfg.assetsUrl || '').replace(/\/+$/, '');
       if (assets) {
         var link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = assets + '/css/widget.css';
         document.head.appendChild(link);
+
+        // Variables CSS des couleurs/design (sous WordPress elles sont injectées
+        // en inline ; ici elles viennent de la config). Sans ça, le widget
+        // s'affiche mais garde les couleurs par défaut.
+        if (cfg.inlineCss) {
+          var style = document.createElement('style');
+          style.textContent = cfg.inlineCss;
+          document.head.appendChild(style);
+        }
 
         var s = document.createElement('script');
         s.src = assets + '/js/widget.js';
