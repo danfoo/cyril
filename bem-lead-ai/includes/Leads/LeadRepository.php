@@ -78,6 +78,35 @@ final class LeadRepository
     }
 
     /**
+     * Attribution de campagne (UTM) en « premier contact » : on ne renseigne
+     * une valeur que si elle est encore vide, pour attribuer le lead à la
+     * campagne qui l'a fait ARRIVER (et non à la dernière page visitée).
+     *
+     * @param array{source?:string,medium?:string,campaign?:string} $utm
+     */
+    public function applyUtm(int $id, array $utm): void
+    {
+        $lead = $this->findById($id);
+        if (!$lead) {
+            return;
+        }
+        $map = [
+            'utm_source'   => trim((string) ($utm['source'] ?? '')),
+            'utm_medium'   => trim((string) ($utm['medium'] ?? '')),
+            'utm_campaign' => trim((string) ($utm['campaign'] ?? '')),
+        ];
+        $fields = [];
+        foreach ($map as $col => $val) {
+            if ($val !== '' && empty($lead->$col)) {
+                $fields[$col] = mb_substr($val, 0, 150);
+            }
+        }
+        if ($fields) {
+            $this->update($id, $fields);
+        }
+    }
+
+    /**
      * Leads « réels » (identifiés ou scorés), pour l'envoi en masse vers le CRM.
      * Les sessions anonymes sans aucune donnée sont exclues.
      */

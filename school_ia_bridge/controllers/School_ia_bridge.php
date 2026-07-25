@@ -263,8 +263,14 @@ class School_ia_bridge extends AdminController
         $rows[] = ['Formation', 'Leads'];
         foreach ($agg['top_formations'] as $f => $n) { $rows[] = [$f, $n]; }
         $rows[] = [];
-        $rows[] = ['Source', 'Leads'];
+        $rows[] = ['Source (site)', 'Leads'];
         foreach ($agg['by_source'] as $s => $n) { $rows[] = [$s, $n]; }
+        $rows[] = [];
+        $rows[] = ['Canal (UTM)', 'Leads'];
+        foreach (($agg['by_channel'] ?? []) as $c => $n) { $rows[] = [$c, $n]; }
+        $rows[] = [];
+        $rows[] = ['Campagne (UTM)', 'Leads'];
+        foreach (($agg['by_campaign'] ?? []) as $c => $n) { $rows[] = [$c, $n]; }
         $rows[] = [];
         $rows[] = ['Motif de perte', 'Leads'];
         foreach (($agg['loss_reasons'] ?? []) as $r => $n) { $rows[] = [$r, $n]; }

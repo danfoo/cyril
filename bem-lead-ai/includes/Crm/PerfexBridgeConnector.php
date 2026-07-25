@@ -45,6 +45,9 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
             'phone'       => (string) ($lead->phone ?? ''),
             'formation'   => (string) ($lead->formation_interet ?? ''),
             'source_form' => (string) ($lead->source_form ?? ''),
+            'utm_source'   => (string) ($lead->utm_source ?? ''),
+            'utm_medium'   => (string) ($lead->utm_medium ?? ''),
+            'utm_campaign' => (string) ($lead->utm_campaign ?? ''),
             'score'       => (float) $lead->score_final,
             'band'        => $band,
             // Vraie date d'arrivée du lead (première visite), pour que Perfex

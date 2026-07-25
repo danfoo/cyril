@@ -217,6 +217,23 @@ namespace BemLeadAi\Leads {
             }
         }
 
+        /** Attribution UTM first-touch (réplique de la vraie logique). */
+        public function applyUtm($id, array $utm): void
+        {
+            $lead = $this->findById($id);
+            if (!$lead) return;
+            $map = [
+                'utm_source' => trim((string) ($utm['source'] ?? '')),
+                'utm_medium' => trim((string) ($utm['medium'] ?? '')),
+                'utm_campaign' => trim((string) ($utm['campaign'] ?? '')),
+            ];
+            $fields = [];
+            foreach ($map as $col => $val) {
+                if ($val !== '' && empty($lead->$col)) { $fields[$col] = $val; }
+            }
+            if ($fields) $this->update($id, $fields);
+        }
+
         public function delete($id): void { unset(\FakeLeadStore::$leads[$id]); }
     }
 

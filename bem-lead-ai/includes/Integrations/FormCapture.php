@@ -139,13 +139,30 @@ final class FormCapture
 
     /* ---------------- Cœur : création / complétion du lead ---------------- */
 
-    /** Soumission d'un formulaire WordPress : la session vient du cookie du widget. */
+    /** Soumission d'un formulaire WordPress : session + UTM viennent des cookies du widget. */
     private function ingest(?string $email, ?string $phone, ?string $name, ?string $formation, string $source, string $formTitle = ''): void
     {
         $chatSid = isset($_COOKIE['bem_lead_session'])
             ? sanitize_text_field(wp_unslash($_COOKIE['bem_lead_session']))
             : null;
-        $this->captureLead($email, $phone, $name, $formation, $source, $formTitle, $chatSid);
+        $this->captureLead($email, $phone, $name, $formation, $source, $formTitle, $chatSid, self::utmFromCookie());
+    }
+
+    /** Lit l'attribution UTM (first-touch) posée par le widget dans un cookie. */
+    public static function utmFromCookie(): array
+    {
+        if (empty($_COOKIE['bem_lead_utm'])) {
+            return [];
+        }
+        $raw = json_decode(stripslashes((string) wp_unslash($_COOKIE['bem_lead_utm'])), true);
+        if (!is_array($raw)) {
+            return [];
+        }
+        return [
+            'source'   => sanitize_text_field((string) ($raw['source'] ?? '')),
+            'medium'   => sanitize_text_field((string) ($raw['medium'] ?? '')),
+            'campaign' => sanitize_text_field((string) ($raw['campaign'] ?? '')),
+        ];
     }
 
     /**
@@ -155,7 +172,7 @@ final class FormCapture
      *
      * @return int|null Identifiant du lead créé/mis à jour, ou null si rien d'exploitable.
      */
-    public function captureLead(?string $email, ?string $phone, ?string $name, ?string $formation, string $source, string $formTitle = '', ?string $sessionId = null): ?int
+    public function captureLead(?string $email, ?string $phone, ?string $name, ?string $formation, string $source, string $formTitle = '', ?string $sessionId = null, array $utm = []): ?int
     {
         $email = $email && is_email($email) ? sanitize_email($email) : null;
         // Normalise le numéro à l'indicatif par défaut de l'école (ex. +224) :
@@ -197,6 +214,12 @@ final class FormCapture
             $updates['source_form'] = sanitize_text_field(mb_substr($formTitle, 0, 190));
         }
         $leads->update((int) $lead->id, $updates);
+
+        // Attribution de campagne (first-touch) : rattache le lead à la campagne
+        // qui l'a fait arriver (Facebook Ads, recherche, e-mail…).
+        if ($utm) {
+            $leads->applyUtm((int) $lead->id, $utm);
+        }
 
         (new EventRepository())->record((int) $lead->id, 'form_submitted', ['source' => $source, 'form' => $formTitle], 'form');
 

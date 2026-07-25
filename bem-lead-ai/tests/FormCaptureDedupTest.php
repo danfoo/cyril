@@ -121,4 +121,35 @@ final class FormCaptureDedupTest extends TestCase
         $this->assertNull($id);
         $this->assertCount(0, \FakeLeadStore::$leads);
     }
+
+    /* ---------- Attribution de campagne (UTM) ---------- */
+
+    public function testCaptureStoresUtmAttribution(): void
+    {
+        $utm = ['source' => 'facebook', 'medium' => 'cpc', 'campaign' => 'rentree2026'];
+        $id = $this->capture->captureLead('faty@bem.gn', null, 'Faty', null, 'embed', 'Pub', null, $utm);
+
+        $lead = \FakeLeadStore::$leads[$id];
+        $this->assertSame('facebook', $lead->utm_source);
+        $this->assertSame('cpc', $lead->utm_medium);
+        $this->assertSame('rentree2026', $lead->utm_campaign);
+    }
+
+    public function testUtmIsFirstTouchAndNotOverwritten(): void
+    {
+        // Lead arrivé via Facebook, en cours de chat.
+        $chat = \FakeLeadStore::insert(['session_id' => 'web_ft', 'utm_source' => 'facebook', 'utm_campaign' => 'rentree']);
+
+        // Il soumet ensuite un formulaire avec une autre UTM (dernière touche) :
+        // l'attribution d'origine (Facebook) ne doit PAS être écrasée.
+        $this->capture->captureLead('ft@bem.gn', null, 'FT', null, 'embed', 'Form', 'web_ft', [
+            'source' => 'google', 'medium' => 'organic', 'campaign' => 'autre',
+        ]);
+
+        $lead = \FakeLeadStore::$leads[$chat->id];
+        $this->assertSame('facebook', $lead->utm_source, 'la 1re campagne est conservée');
+        $this->assertSame('rentree', $lead->utm_campaign);
+        // Le champ vide au départ (medium) peut, lui, être complété.
+        $this->assertSame('organic', $lead->utm_medium);
+    }
 }

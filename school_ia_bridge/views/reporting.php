@@ -143,17 +143,28 @@
           </h5>
           <?php
           $srcPalette = ['#0a8f5b', '#2563eb', '#d97706', '#8a63d2', '#dc2626', '#0ea5e9', '#e2683c'];
-          $srcSlices = [];
+          $chSlices = [];
           $j = 0;
-          foreach (($agg['by_source'] ?? []) as $src => $n) {
-              $srcSlices[] = ['label' => (string) $src, 'value' => (int) $n, 'color' => $srcPalette[$j % count($srcPalette)]];
+          foreach (($agg['by_channel'] ?? []) as $ch => $n) {
+              $chSlices[] = ['label' => (string) $ch, 'value' => (int) $n, 'color' => $srcPalette[$j % count($srcPalette)]];
               $j++;
           }
-          echo sia_pie_block($srcSlices);
+          echo sia_pie_block($chSlices);
+          // Détail des campagnes (utm_campaign) sous forme de liste compacte.
+          if (!empty($agg['by_campaign'])) {
+              echo '<div style="margin-top:14px;border-top:1px solid var(--sia-border,#e6e9f0);padding-top:10px;">';
+              echo '<div class="text-muted" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:6px;">Campagnes</div>';
+              foreach ($agg['by_campaign'] as $camp => $n) {
+                  echo '<div style="display:flex;justify-content:space-between;font-size:13px;padding:3px 0;">'
+                     . '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' . htmlspecialchars((string) $camp, ENT_QUOTES) . '</span>'
+                     . '<strong style="padding-left:10px;">' . (int) $n . '</strong></div>';
+              }
+              echo '</div>';
+          }
           ?>
           <p class="text-muted" style="margin:12px 0 0;font-size:12px;">
-            <i class="fa fa-info-circle"></i> Origine par <strong>site</strong>. Le suivi par <strong>canal marketing</strong>
-            (Facebook Ads, recherche organique, flyer…) via les paramètres UTM est prévu dans une prochaine évolution.
+            <i class="fa fa-info-circle"></i> Canal détecté via les paramètres <strong>UTM</strong> des liens
+            (ex. <code>?utm_source=facebook&amp;utm_campaign=rentree</code>). « Direct / inconnu » = arrivée sans UTM.
           </p>
         </div></div>
       </div>

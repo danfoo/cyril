@@ -180,6 +180,20 @@ final class RestController
         return $served;
     }
 
+    /** Attribution de campagne (UTM) transmise par le widget/snippet. */
+    private function utmFromRequest(WP_REST_Request $request): array
+    {
+        $utm = $request->get_param('utm');
+        if (!is_array($utm)) {
+            return [];
+        }
+        return [
+            'source'   => sanitize_text_field((string) ($utm['source'] ?? '')),
+            'medium'   => sanitize_text_field((string) ($utm['medium'] ?? '')),
+            'campaign' => sanitize_text_field((string) ($utm['campaign'] ?? '')),
+        ];
+    }
+
     private function keyValid(WP_REST_Request $request): bool
     {
         $provided = (string) ($request->get_param('key') ?? '');
@@ -234,7 +248,8 @@ final class RestController
             $p('formation') ?: null,
             'embed',
             $p('source_form'),
-            $p('session_id') ?: null
+            $p('session_id') ?: null,
+            $this->utmFromRequest($request)
         );
         if ($leadId === null) {
             return new WP_Error('bem_no_contact', 'Aucune coordonnée exploitable', ['status' => 422]);
@@ -270,6 +285,8 @@ final class RestController
         if ((int) $lead->consent !== 1) {
             (new LeadRepository())->update((int) $lead->id, ['consent' => 1]);
         }
+        // Attribution de campagne (first-touch) transmise par le widget.
+        (new LeadRepository())->applyUtm((int) $lead->id, $this->utmFromRequest($request));
 
         $email = $request->get_param('email');
         $phone = $request->get_param('phone');
@@ -379,12 +396,14 @@ final class RestController
             $lead = $leads->findBySessionId($sessionId) ?: $adapter->resolveWebLead($sessionId);
             $leads->update((int) $lead->id, ['consent' => 1]);
             $adapter->attachIdentity($lead, (string) $payload['email'], null);
+            $leads->applyUtm((int) $lead->id, $this->utmFromRequest($request));
             return rest_ensure_response(['ok' => true]);
         }
         if ($type === 'phone_captured' && !empty($payload['phone'])) {
             $lead = $leads->findBySessionId($sessionId) ?: $adapter->resolveWebLead($sessionId);
             $leads->update((int) $lead->id, ['consent' => 1]);
             $adapter->attachIdentity($lead, null, (string) $payload['phone']);
+            $leads->applyUtm((int) $lead->id, $this->utmFromRequest($request));
             return rest_ensure_response(['ok' => true]);
         }
 

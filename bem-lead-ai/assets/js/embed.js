@@ -37,6 +37,27 @@
     return id || '';
   }
 
+  /* Attribution de campagne (UTM) « premier contact » : figée 90 jours. */
+  function writeCookie(name, value, days) {
+    try {
+      var d = new Date();
+      d.setTime(d.getTime() + days * 864e5);
+      document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + d.toUTCString() + '; path=/; SameSite=Lax';
+    } catch (e) {}
+  }
+  function utm() {
+    var stored = readCookie('bem_lead_utm');
+    if (stored) { try { return JSON.parse(stored); } catch (e) {} }
+    var p;
+    try { p = new URLSearchParams(location.search); } catch (e) { return { source: '', medium: '', campaign: '' }; }
+    var u = { source: p.get('utm_source') || '', medium: p.get('utm_medium') || '', campaign: p.get('utm_campaign') || '' };
+    if (u.source || u.medium || u.campaign) { writeCookie('bem_lead_utm', JSON.stringify(u), 90); }
+    return u;
+  }
+
+  // Fige l'attribution UTM dès l'atterrissage (avant toute navigation).
+  utm();
+
   /* ---- Chargement du widget après récupération de la config ---- */
   fetch(BACKEND + '/embed/config?key=' + encodeURIComponent(KEY), { method: 'GET' })
     .then(function (r) { return r.ok ? r.json() : null; })
@@ -113,6 +134,10 @@
     body.set('formation', formation);
     body.set('source_form', formTitle(form));
     body.set('session_id', sessionId());
+    var u = utm();
+    body.set('utm[source]', u.source || '');
+    body.set('utm[medium]', u.medium || '');
+    body.set('utm[campaign]', u.campaign || '');
 
     // keepalive : l'envoi survit à la navigation qui suit la soumission.
     fetch(BACKEND + '/embed/capture', {

@@ -108,6 +108,12 @@ class School_ia_bridge_model extends App_Model
         if (!$this->db->field_exists('converted_at', $this->table())) {
             $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `converted_at` DATETIME NULL DEFAULT NULL');
         }
+        // Attribution de campagne (UTM) : canal marketing d'où vient le lead.
+        foreach (['utm_source' => 100, 'utm_medium' => 100, 'utm_campaign' => 150] as $col => $len) {
+            if (!$this->db->field_exists($col, $this->table())) {
+                $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `' . $col . '` VARCHAR(' . $len . ') NULL DEFAULT NULL');
+            }
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_tasks')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_tasks` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -1014,6 +1020,20 @@ class School_ia_bridge_model extends App_Model
             $bySource[(string) $r->src] = (int) $r->n;
         }
 
+        // Canal d'acquisition (UTM) : source marketing d'où vient le lead.
+        $byChannel = [];
+        $this->db->where('received_at >=', $from)->where('received_at <=', $to);
+        foreach ($this->db->select("COALESCE(NULLIF(TRIM(utm_source),''),'Direct / inconnu') ch, COUNT(*) n", false)->group_by('ch')->order_by('n', 'desc')->get($t)->result() as $r) {
+            $byChannel[(string) $r->ch] = (int) $r->n;
+        }
+
+        // Campagnes (UTM) — uniquement les leads réellement issus d'une campagne.
+        $byCampaign = [];
+        $this->db->where('received_at >=', $from)->where('received_at <=', $to)->where('utm_campaign IS NOT NULL', null, false)->where('utm_campaign !=', '');
+        foreach ($this->db->select('utm_campaign camp, COUNT(*) n')->group_by('utm_campaign')->order_by('n', 'desc')->limit(8)->get($t)->result() as $r) {
+            $byCampaign[(string) $r->camp] = (int) $r->n;
+        }
+
         // Formations : on compte TOUS les leads (les vides regroupés en « Non
         // renseignée »), puis top 7 + « Autres » → la somme égale le total des
         // leads (fini l'écart « 12 vs 26 » entre le camembert et le compteur).
@@ -1083,6 +1103,8 @@ class School_ia_bridge_model extends App_Model
             'conversion'     => $leadsTotal > 0 ? round($inscrits * 100 / $leadsTotal, 1) : 0,
             'by_stage'       => $byStage,
             'by_source'      => $bySource,
+            'by_channel'     => $byChannel,
+            'by_campaign'    => $byCampaign,
             'top_formations' => $topFormations,
             'first_response_hours' => $firstResponseHours,
             'loss_reasons'   => $lossReasons,
@@ -2090,6 +2112,9 @@ class School_ia_bridge_model extends App_Model
         if (array_key_exists('phone', $p))       { $data['phone']       = ($v = substr((string) $p['phone'], 0, 64)) !== '' ? $v : null; }
         if (array_key_exists('formation', $p))   { $data['formation']   = ($v = substr((string) $p['formation'], 0, 191)) !== '' ? $v : null; }
         if (array_key_exists('source_form', $p)) { $data['source_form'] = ($v = substr((string) $p['source_form'], 0, 191)) !== '' ? $v : null; }
+        if (array_key_exists('utm_source', $p))   { $data['utm_source']   = ($v = substr((string) $p['utm_source'], 0, 100)) !== '' ? $v : null; }
+        if (array_key_exists('utm_medium', $p))   { $data['utm_medium']   = ($v = substr((string) $p['utm_medium'], 0, 100)) !== '' ? $v : null; }
+        if (array_key_exists('utm_campaign', $p)) { $data['utm_campaign'] = ($v = substr((string) $p['utm_campaign'], 0, 150)) !== '' ? $v : null; }
         if (array_key_exists('score', $p))       { $data['score']       = (float) $p['score']; }
         if (array_key_exists('band', $p))        { $data['band']        = ($v = substr((string) $p['band'], 0, 32)) !== '' ? $v : null; }
         if (array_key_exists('source_site', $p)) { $data['source_site'] = ($v = substr((string) $p['source_site'], 0, 191)) !== '' ? $v : null; }

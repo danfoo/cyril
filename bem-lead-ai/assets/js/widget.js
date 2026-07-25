@@ -42,6 +42,21 @@
     return id;
   }
 
+  /* Attribution de campagne (UTM) en « premier contact » : on capte les
+     paramètres utm_* de l'URL au premier atterrissage et on les fige 90 jours,
+     pour créditer la campagne qui a fait ARRIVER le visiteur. */
+  function utm() {
+    var stored = readCookie('bem_lead_utm');
+    if (stored) { try { return JSON.parse(stored); } catch (e) {} }
+    var p;
+    try { p = new URLSearchParams(location.search); } catch (e) { return { source: '', medium: '', campaign: '' }; }
+    var u = { source: p.get('utm_source') || '', medium: p.get('utm_medium') || '', campaign: p.get('utm_campaign') || '' };
+    if (u.source || u.medium || u.campaign) {
+      writeCookie('bem_lead_utm', JSON.stringify(u), 90);
+    }
+    return u;
+  }
+
   function hasConsent() {
     try { if (localStorage.getItem(CONSENT_KEY) === '1') return true; } catch (e) {}
     return readCookie(CONSENT_KEY) === '1';
@@ -62,7 +77,7 @@
 
   function track(type, payload) {
     if (!hasConsent() && type !== 'consent_given') return;
-    api('/track', { session_id: sessionId(), type: type, payload: payload || {} }).catch(function () {});
+    api('/track', { session_id: sessionId(), type: type, payload: payload || {}, utm: utm() }).catch(function () {});
   }
 
   /* ---- Consentement (loi n°2008-12 CDP Sénégal) ---------------------- */
@@ -326,7 +341,7 @@
       addMessage('user', text);
       input.value = '';
       var typing = addTyping();
-      api('/chat', { session_id: sessionId(), message: text }).then(function (res) {
+      api('/chat', { session_id: sessionId(), message: text, utm: utm() }).then(function (res) {
         typing.remove();
         if (res.handoff) {
           root.querySelector('.bem-handoff-note').hidden = false;
