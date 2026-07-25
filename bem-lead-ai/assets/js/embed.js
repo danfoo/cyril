@@ -45,14 +45,56 @@
       document.cookie = name + '=' + encodeURIComponent(value) + '; expires=' + d.toUTCString() + '; path=/; SameSite=Lax';
     } catch (e) {}
   }
+  // Détection automatique du canal (aucun UTM requis) : UTM → identifiant de clic
+  // publicitaire → referrer → direct. Voir widget.js pour le détail.
+  function resolveAttribution() {
+    var p; try { p = new URLSearchParams(location.search); } catch (e) { p = null; }
+    var g = function (k) { return p ? (p.get(k) || '') : ''; };
+    var camp = g('utm_campaign');
+
+    if (g('utm_source')) {
+      return { source: g('utm_source').toLowerCase(), medium: (g('utm_medium') || '').toLowerCase(), campaign: camp };
+    }
+
+    var host = '';
+    try { host = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '').toLowerCase() : ''; } catch (e) {}
+
+    var clicks = [
+      ['gclid', 'google', 'cpc'], ['gbraid', 'google', 'cpc'], ['wbraid', 'google', 'cpc'],
+      ['fbclid', host.indexOf('instagram') > -1 ? 'instagram' : 'facebook', 'paid-social'],
+      ['ttclid', 'tiktok', 'paid-social'], ['msclkid', 'bing', 'cpc'],
+      ['twclid', 'twitter', 'paid-social'], ['sccid', 'snapchat', 'paid-social'],
+      ['ScCid', 'snapchat', 'paid-social'], ['li_fat_id', 'linkedin', 'paid-social']
+    ];
+    for (var i = 0; i < clicks.length; i++) {
+      if (g(clicks[i][0])) { return { source: clicks[i][1], medium: clicks[i][2], campaign: camp }; }
+    }
+
+    if (host) {
+      var map = [
+        [/(^|\.)google\./, 'google', 'organic'], [/(^|\.)bing\.com/, 'bing', 'organic'],
+        [/duckduckgo\.com/, 'duckduckgo', 'organic'], [/(^|\.)yahoo\./, 'yahoo', 'organic'],
+        [/facebook\.com/, 'facebook', 'social'], [/instagram\.com/, 'instagram', 'social'],
+        [/linkedin\.com|lnkd\.in/, 'linkedin', 'social'], [/t\.co$|twitter\.com|x\.com/, 'twitter', 'social'],
+        [/tiktok\.com/, 'tiktok', 'social'], [/snapchat\.com/, 'snapchat', 'social'],
+        [/youtube\.com|youtu\.be/, 'youtube', 'social'], [/wa\.me|whatsapp\.com/, 'whatsapp', 'social']
+      ];
+      for (var j = 0; j < map.length; j++) {
+        if (map[j][0].test(host)) { return { source: map[j][1], medium: map[j][2], campaign: camp }; }
+      }
+      var self = location.hostname.replace(/^www\./, '').toLowerCase();
+      if (host !== self) { return { source: host, medium: 'referral', campaign: camp }; }
+    }
+
+    return { source: 'direct', medium: 'none', campaign: camp };
+  }
+
   function utm() {
     var stored = readCookie('bem_lead_utm');
     if (stored) { try { return JSON.parse(stored); } catch (e) {} }
-    var p;
-    try { p = new URLSearchParams(location.search); } catch (e) { return { source: '', medium: '', campaign: '' }; }
-    var u = { source: p.get('utm_source') || '', medium: p.get('utm_medium') || '', campaign: p.get('utm_campaign') || '' };
-    if (u.source || u.medium || u.campaign) { writeCookie('bem_lead_utm', JSON.stringify(u), 90); }
-    return u;
+    var a = resolveAttribution();
+    if (a.source && a.source !== 'direct') { writeCookie('bem_lead_utm', JSON.stringify(a), 90); }
+    return a;
   }
 
   // Fige l'attribution UTM dès l'atterrissage (avant toute navigation).

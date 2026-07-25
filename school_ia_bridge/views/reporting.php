@@ -163,8 +163,9 @@
           }
           ?>
           <p class="text-muted" style="margin:12px 0 0;font-size:12px;">
-            <i class="fa fa-info-circle"></i> Canal détecté via les paramètres <strong>UTM</strong> des liens
-            (ex. <code>?utm_source=facebook&amp;utm_campaign=rentree</code>). « Direct / inconnu » = arrivée sans UTM.
+            <i class="fa fa-info-circle"></i> Canal <strong>détecté automatiquement</strong> (identifiant de clic
+            publicitaire ou site référent) — aucun réglage requis. Ajoutez des <strong>UTM</strong> à vos liens
+            (ex. <code>?utm_source=facebook&amp;utm_campaign=rentree</code>) seulement pour nommer précisément une campagne.
           </p>
         </div></div>
       </div>
