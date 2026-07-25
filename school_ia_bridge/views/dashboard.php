@@ -116,12 +116,13 @@
                 Finance
               </h5>
               <div class="sia-stat-row">
+                <?php $cur = htmlspecialchars((string) ($currency ?? 'GNF'), ENT_QUOTES); ?>
                 <div class="sia-stat">
-                  <div class="sia-stat-value" style="color:#8a63d2;"><?php echo number_format($finance['pipeline'], 0, ',', ' '); ?></div>
+                  <div class="sia-stat-value" style="color:#8a63d2;"><?php echo number_format($finance['pipeline'], 0, ',', ' '); ?> <span style="font-size:.55em;font-weight:600;opacity:.75;"><?php echo $cur; ?></span></div>
                   <div class="sia-stat-label">Valeur du pipeline</div>
                 </div>
                 <div class="sia-stat">
-                  <div class="sia-stat-value" style="color:#16a34a;"><?php echo number_format($finance['realized'], 0, ',', ' '); ?></div>
+                  <div class="sia-stat-value" style="color:#16a34a;"><?php echo number_format($finance['realized'], 0, ',', ' '); ?> <span style="font-size:.55em;font-weight:600;opacity:.75;"><?php echo $cur; ?></span></div>
                   <div class="sia-stat-label">CA réalisé (inscrits)</div>
                 </div>
               </div>

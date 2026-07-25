@@ -197,6 +197,16 @@
                 <input type="number" name="target_inscrits" class="form-control" min="0"
                        value="<?php echo (int) $target_inscrits; ?>">
               </div>
+              <div class="form-group">
+                <label class="control-label">Devise (affichée sur les montants du tableau de bord)</label>
+                <input type="text" name="currency" class="form-control" maxlength="8" list="sia-currencies"
+                       value="<?php echo htmlspecialchars((string) ($currency ?? 'GNF'), ENT_QUOTES); ?>"
+                       placeholder="Ex. GNF">
+                <datalist id="sia-currencies">
+                  <option value="GNF"></option><option value="FCFA"></option><option value="XOF"></option>
+                  <option value="EUR"></option><option value="USD"></option><option value="MAD"></option>
+                </datalist>
+              </div>
               <button type="submit" class="btn btn-primary">Enregistrer</button>
             <?php echo form_close(); ?>
           </div>

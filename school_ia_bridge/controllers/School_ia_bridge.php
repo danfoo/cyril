@@ -57,6 +57,7 @@ class School_ia_bridge extends AdminController
         $data['avgFirstContact'] = $this->school_ia_bridge_model->avg_first_contact_hours($filters);
         $data['finance']   = $this->school_ia_bridge_model->finance_summary($filters);
         $data['target']    = (int) get_option('sia_target_inscrits');
+        $data['currency']  = (string) (get_option('sia_currency') ?: 'GNF');
         $data['dueTasks']  = $this->school_ia_bridge_model->pending_tasks(8, $scopeOwner);
         $data['recentActivities'] = $this->school_ia_bridge_model->global_activities(
             $scopeOwner !== null ? ['staff_id' => $scopeOwner] : [], 8
@@ -523,6 +524,7 @@ class School_ia_bridge extends AdminController
         $data['ai_model']    = get_option('sia_ai_model') ?: 'claude-opus-4-8';
         $data['program_fees'] = get_option('sia_program_fees');
         $data['target_inscrits'] = (int) get_option('sia_target_inscrits');
+        $data['currency']    = (string) (get_option('sia_currency') ?: 'GNF');
         $data['brand_color'] = school_ia_brand_color();
         $this->load->view('school_ia_bridge/settings', $data);
     }
@@ -560,6 +562,10 @@ class School_ia_bridge extends AdminController
         }
         if ($this->input->post('target_inscrits') !== null) {
             update_option('sia_target_inscrits', (int) $this->input->post('target_inscrits'));
+        }
+        if ($this->input->post('currency') !== null) {
+            $cur = trim((string) $this->input->post('currency'));
+            update_option('sia_currency', $cur !== '' ? substr($cur, 0, 8) : 'GNF');
         }
         if ($this->input->post('reminders_form') !== null) {
             update_option('sia_reminders_enabled', $this->input->post('reminders_enabled') ? '1' : '0');
