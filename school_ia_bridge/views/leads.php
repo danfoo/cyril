@@ -145,12 +145,13 @@
                 <tr>
                   <th style="width:26px;" data-orderable="false"><input type="checkbox" onclick="var b=this.checked;document.querySelectorAll('#sia-leads-form input[name=\'ids[]\']').forEach(function(c){c.checked=b;});"></th>
                   <th>#</th>
-                  <th>Reçu le</th>
+                  <th style="white-space:nowrap;">Reçu le</th>
                   <th>Nom</th>
                   <th>E-mail</th>
                   <th>Téléphone</th>
                   <th>Formation</th>
                   <th>Score</th>
+                  <th style="white-space:nowrap;">Valeur</th>
                   <th>Étape</th>
                   <th>Conseiller</th>
                   <th>Rentrée</th>
@@ -160,7 +161,7 @@
               <tbody>
               <?php if (empty($leads)) { ?>
                 <tr>
-                  <td colspan="12" class="text-center text-muted" style="padding:30px;">
+                  <td colspan="13" class="text-center text-muted" style="padding:30px;">
                     Aucun lead reçu pour l'instant.
                   </td>
                 </tr>
@@ -170,7 +171,11 @@
                 <tr>
                   <td><input type="checkbox" name="ids[]" value="<?php echo (int) $lead->id; ?>"></td>
                   <td><?php echo (int) $lead->id; ?></td>
-                  <td><?php echo htmlspecialchars((string) $lead->received_at, ENT_QUOTES); ?></td>
+                  <td style="font-size:11px;line-height:1.25;white-space:nowrap;"><?php
+                    $rc = (string) $lead->received_at;
+                    echo htmlspecialchars(substr($rc, 0, 10), ENT_QUOTES)
+                       . '<br><span style="opacity:.6;">' . htmlspecialchars(substr($rc, 11, 5), ENT_QUOTES) . '</span>';
+                  ?></td>
                   <td>
                     <a href="<?php echo admin_url('school_ia_bridge/lead/' . (int) $lead->id); ?>">
                       <?php echo htmlspecialchars((string) ($lead->name ?: ('Lead #' . $lead->id)), ENT_QUOTES); ?>
@@ -180,6 +185,14 @@
                   <td><?php echo htmlspecialchars((string) $lead->phone, ENT_QUOTES); ?></td>
                   <td><?php echo htmlspecialchars((string) $lead->formation, ENT_QUOTES); ?></td>
                   <td><span class="label label-info"><?php echo htmlspecialchars((string) $lead->score, ENT_QUOTES); ?></span></td>
+                  <td style="white-space:nowrap;"><?php
+                    $val = $model->resolve_fee((string) $lead->formation, $feesIndex);
+                    if ($val !== null) {
+                        echo '<span style="font-size:11.5px;color:#0f766e;font-weight:600;">' . number_format($val, 0, ',', ' ')
+                           . ' <span style="opacity:.55;font-weight:400;">' . htmlspecialchars((string) $currency, ENT_QUOTES) . '</span></span>';
+                    } else {
+                        echo '<span class="text-muted">—</span>';
+                    } ?></td>
                   <td>
                     <span class="label" style="background:<?php echo $model->stageColor($stage); ?>1a;color:<?php echo $model->stageColor($stage); ?>;">
                       <?php echo htmlspecialchars($model->stageLabel($stage), ENT_QUOTES); ?>

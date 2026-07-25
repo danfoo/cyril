@@ -95,6 +95,8 @@ class School_ia_bridge extends AdminController
         $data['filters']  = $filters;
         $data['rentrees'] = $this->school_ia_bridge_model->rentrees();
         $data['staff']    = $this->db->where('active', 1)->get(db_prefix() . 'staff')->result();
+        $data['feesIndex'] = $this->school_ia_bridge_model->fees_index();
+        $data['currency']  = (string) (get_option('sia_currency') ?: 'GNF');
         $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/leads', $data);
     }
