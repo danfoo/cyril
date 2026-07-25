@@ -712,15 +712,101 @@ class School_ia_bridge_model extends App_Model
         return $fees;
     }
 
+    /** Normalise un libellé de formation : minuscules, sans accents ni ponctuation. */
+    public function fee_norm(string $s): string
+    {
+        $s = function_exists('mb_strtolower') ? mb_strtolower(trim($s), 'UTF-8') : strtolower(trim($s));
+        $map = [
+            'á' => 'a', 'à' => 'a', 'â' => 'a', 'ä' => 'a', 'ã' => 'a', 'å' => 'a',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
+            'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'ö' => 'o', 'õ' => 'o',
+            'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+            'ç' => 'c', 'ñ' => 'n',
+        ];
+        $s = strtr($s, $map);
+        $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+        return trim(preg_replace('/\s+/', ' ', (string) $s));
+    }
+
+    /** Tokens significatifs d'un libellé normalisé (mots vides et bruit écartés). */
+    private function fee_tokens(string $norm): array
+    {
+        $stop = ['de', 'et', 'en', 'du', 'des', 'la', 'le', 'les', 'au', 'aux', 'the', 'of', 'and', 'avec'];
+        return array_values(array_unique(array_filter(
+            explode(' ', $norm),
+            fn($t) => strlen($t) >= 2 && !in_array($t, $stop, true)
+        )));
+    }
+
+    /**
+     * Retrouve le tarif d'une formation avec tolérance : match exact après
+     * normalisation (accents/casse/ponctuation), sinon repli flou par tokens
+     * (« Master Supply Chain » ≈ « Master 2 Logistique – Supply Chain »).
+     * Renvoie null si aucune correspondance suffisamment fiable — mieux vaut
+     * sous-estimer que d'attribuer un tarif au mauvais programme.
+     */
+    public function resolve_fee(string $formation, array $index): ?float
+    {
+        $norm = $this->fee_norm($formation);
+        if ($norm === '') {
+            return null;
+        }
+        if (isset($index['exact'][$norm])) {
+            return $index['exact'][$norm];
+        }
+        $tokens = $this->fee_tokens($norm);
+        if (count($tokens) < 2) {
+            return null; // trop générique (ex. « Master » seul) → pas d'attribution
+        }
+        $best = null;
+        $bestScore = 0.0;
+        foreach ($index['list'] as $entry) {
+            $shared = count(array_intersect($tokens, $entry['tokens']));
+            if ($shared < 2) {
+                continue;
+            }
+            $union = count(array_unique(array_merge($tokens, $entry['tokens'])));
+            $jaccard = $union > 0 ? $shared / $union : 0.0;
+            // Contenance : tous les tokens de l'un sont dans l'autre (variante étendue).
+            $contained = ($shared === count($tokens) || $shared === count($entry['tokens']));
+            $score = $contained ? max($jaccard, 0.6) : $jaccard;
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $entry['fee'];
+            }
+        }
+        return $bestScore >= 0.6 ? $best : null;
+    }
+
+    /** Index des tarifs : table de correspondance exacte + liste tokenisée. */
+    public function fees_index(): array
+    {
+        $index = ['exact' => [], 'list' => []];
+        foreach ($this->program_fees() as $name => $fee) {
+            $norm = $this->fee_norm($name);
+            if ($norm === '') {
+                continue;
+            }
+            $index['exact'][$norm] = $fee;
+            $index['list'][] = ['norm' => $norm, 'tokens' => $this->fee_tokens($norm), 'fee' => $fee];
+        }
+        return $index;
+    }
+
     /**
      * Valeur financière du pipeline : somme des frais (par formation, définis
      * dans les réglages) des leads actifs, séparée du montant déjà « réalisé »
      * (leads inscrits). Les leads « perdu » ne comptent pas.
+     *
+     * La correspondance formation → tarif est tolérante (accents, casse, tirets,
+     * variantes) : un lead « Bachelor Prépa Ingénieur » est bien rattaché au
+     * tarif « Bachelor PRÉPA-INGÉNIEUR ».
      */
     public function finance_summary(array $filters = []): array
     {
-        $fees = $this->program_fees();
-        if (!$fees) {
+        $index = $this->fees_index();
+        if (!$index['list']) {
             return ['has_fees' => false, 'pipeline' => 0.0, 'realized' => 0.0];
         }
 
@@ -734,7 +820,7 @@ class School_ia_bridge_model extends App_Model
         $pipeline = 0.0;
         $realized = 0.0;
         foreach ($rows as $r) {
-            $fee = $fees[$r->formation] ?? null;
+            $fee = $this->resolve_fee((string) $r->formation, $index);
             if ($fee === null) {
                 continue;
             }
