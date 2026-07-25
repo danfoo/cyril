@@ -28,9 +28,9 @@
     };
 
     // Carte KPI en dégradé, même style que le tableau de bord.
-    $rkpi = function (string $label, $value, string $grad, string $icon, string $delta = '') {
+    $rkpi = function (string $label, $value, string $grad, string $icon, string $delta = '', string $colClass = 'col-lg-3 col-sm-6') {
         ob_start(); ?>
-        <div class="col-lg-3 col-sm-6 sia-stat-col">
+        <div class="<?php echo $colClass; ?> sia-stat-col">
           <div class="sia-stat-card" style="position:relative;overflow:hidden;border-radius:16px;padding:18px 20px;min-height:104px;color:#fff;display:flex;flex-direction:column;justify-content:center;background:<?php echo $grad; ?>;box-shadow:0 6px 18px rgba(15,23,42,.14);">
             <div style="position:relative;z-index:1;font-size:26px;font-weight:800;line-height:1.08;letter-spacing:-.02em;"><?php echo $value; ?></div>
             <div style="position:relative;z-index:1;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.92;margin-top:5px;"><?php echo $label; ?></div>
@@ -75,6 +75,18 @@
       ?>
     </div>
 
+    <!-- KPIs délais (temps de traitement) -->
+    <div class="row sia-kpi-grid">
+      <?php
+      $frh = $agg['first_response_hours'] ?? null;
+      $frVal = $frh === null ? '—' : ((float) $frh < 24 ? number_format((float) $frh, 1, ',', ' ') . ' h' : number_format((float) $frh / 24, 1, ',', ' ') . ' j');
+      $cvd = $agg['conversion_days'] ?? null;
+      $cvVal = $cvd === null ? '—' : number_format((float) $cvd, 1, ',', ' ') . ' j';
+      echo $rkpi('Délai moyen 1re réponse', $frVal, 'linear-gradient(135deg,#fbbf24,#d97706)', 'fa-clock-o', 'réception → 1re action', 'col-lg-6 col-sm-6');
+      echo $rkpi('Délai moyen de conversion', $cvVal, 'linear-gradient(135deg,#a78bfa,#7c3aed)', 'fa-hourglass-half', 'réception → inscription', 'col-lg-6 col-sm-6');
+      ?>
+    </div>
+
     <!-- Tendance des nouveaux leads -->
     <div class="panel_s"><div class="panel-body">
       <h5 class="bold" style="margin-top:0;">
@@ -98,13 +110,6 @@
               $stageSlices[] = ['label' => $conf[0], 'value' => (int) ($agg['by_stage'][$conf[0]] ?? 0), 'color' => $conf[1]];
           }
           echo sia_pie_block($stageSlices, 150, true); // true = affiche toutes les étapes, même à 0
-          $frh = $agg['first_response_hours'] ?? null;
-          $frTxt = $frh === null ? '—' : ((float) $frh < 24 ? number_format((float) $frh, 1, ',', ' ') . ' h' : number_format((float) $frh / 24, 1, ',', ' ') . ' j');
-          $cvd = $agg['conversion_days'] ?? null;
-          $cvTxt = $cvd === null ? '—' : number_format((float) $cvd, 1, ',', ' ') . ' j';
-          echo '<p class="text-muted" style="margin:14px 0 0;border-top:1px solid var(--sia-border,#e6e9f0);padding-top:10px;line-height:1.9;">'
-             . '<i class="fa fa-clock-o"></i> Délai moyen de 1<sup>re</sup> réponse : <strong>' . $frTxt . '</strong><br>'
-             . '<i class="fa fa-graduation-cap"></i> Délai moyen de conversion : <strong>' . $cvTxt . '</strong></p>';
           ?>
         </div></div>
       </div>
