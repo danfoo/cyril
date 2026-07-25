@@ -100,6 +100,14 @@ class School_ia_bridge_model extends App_Model
         if (!$this->db->field_exists('source_form', $this->table())) {
             $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `source_form` VARCHAR(191) NULL DEFAULT NULL');
         }
+        // Motif de perte (renseigné au passage en « Perdu ») pour l'analyse.
+        if (!$this->db->field_exists('lost_reason', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `lost_reason` VARCHAR(191) NULL DEFAULT NULL');
+        }
+        // Date de conversion (passage en « Inscrit ») pour le délai de conversion.
+        if (!$this->db->field_exists('converted_at', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `converted_at` DATETIME NULL DEFAULT NULL');
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_tasks')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_tasks` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -930,7 +938,25 @@ class School_ia_bridge_model extends App_Model
         if (!array_key_exists($stage, $this->stages())) {
             return;
         }
-        $this->db->where('id', $id)->update($this->table(), ['stage' => $stage]);
+        $this->ensure_schema();
+        $fields = ['stage' => $stage];
+        // Horodate la première conversion (passage en « Inscrit ») pour mesurer
+        // le délai de conversion ; ne pas l'écraser si déjà inscrit auparavant.
+        if ($stage === 'inscrit') {
+            $lead = $this->get_lead($id);
+            if (!$lead || empty($lead->converted_at)) {
+                $fields['converted_at'] = date('Y-m-d H:i:s');
+            }
+        }
+        $this->db->where('id', $id)->update($this->table(), $fields);
+    }
+
+    /** Enregistre le motif de perte d'un lead (renseigné au passage en « Perdu »). */
+    public function set_lost_reason(int $id, string $reason): void
+    {
+        $this->ensure_schema();
+        $reason = substr(trim($reason), 0, 191);
+        $this->db->where('id', $id)->update($this->table(), ['lost_reason' => $reason !== '' ? $reason : null]);
     }
 
     public function set_owner(int $id, int $staffId): void
@@ -1023,6 +1049,23 @@ class School_ia_bridge_model extends App_Model
         )->row();
         $firstResponseHours = ($frRow && $frRow->avg_minutes !== null) ? round(((float) $frRow->avg_minutes) / 60, 1) : null;
 
+        // Motifs de perte des leads passés en « Perdu » sur la période.
+        $lossReasons = [];
+        $this->db->where('received_at >=', $from)->where('received_at <=', $to)->where('stage', 'perdu');
+        foreach ($this->db->select("COALESCE(NULLIF(TRIM(lost_reason),''),'Non précisé') r, COUNT(*) n", false)->group_by('r')->order_by('n', 'desc')->get($t)->result() as $r) {
+            $lossReasons[(string) $r->r] = (int) $r->n;
+        }
+
+        // Délai moyen de conversion (réception → passage en « Inscrit »), en jours.
+        $convRow = $this->db->query(
+            'SELECT AVG(TIMESTAMPDIFF(HOUR, received_at, converted_at)) AS avg_hours
+             FROM `' . $t . '`
+             WHERE stage = "inscrit" AND converted_at IS NOT NULL
+               AND received_at >= ? AND received_at <= ?',
+            [$from, $to]
+        )->row();
+        $conversionDays = ($convRow && $convRow->avg_hours !== null) ? round(((float) $convRow->avg_hours) / 24, 1) : null;
+
         // Messages (e-mails / SMS) envoyés dans la période
         $mt = $this->messagesTable();
         $emailSent = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'email')->count_all_results($mt);
@@ -1042,6 +1085,8 @@ class School_ia_bridge_model extends App_Model
             'by_source'      => $bySource,
             'top_formations' => $topFormations,
             'first_response_hours' => $firstResponseHours,
+            'loss_reasons'   => $lossReasons,
+            'conversion_days' => $conversionDays,
             'email_sent'     => $emailSent,
             'email_opened'   => $emailOpened,
             'email_clicked'  => $emailClicked,

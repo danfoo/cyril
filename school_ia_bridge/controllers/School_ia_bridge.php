@@ -255,6 +255,7 @@ class School_ia_bridge extends AdminController
         $rows[] = ['SMS en échec', $agg['sms_failed']];
         $rows[] = ['Tâches/relances créées', $agg['tasks']];
         $rows[] = ['Délai moyen 1re réponse (h)', $agg['first_response_hours'] ?? '—'];
+        $rows[] = ['Délai moyen de conversion (j)', $agg['conversion_days'] ?? '—'];
         $rows[] = [];
         $rows[] = ['Étape du pipeline', 'Leads'];
         foreach ($agg['by_stage'] as $stage => $n) { $rows[] = [$stage, $n]; }
@@ -264,6 +265,9 @@ class School_ia_bridge extends AdminController
         $rows[] = [];
         $rows[] = ['Source', 'Leads'];
         foreach ($agg['by_source'] as $s => $n) { $rows[] = [$s, $n]; }
+        $rows[] = [];
+        $rows[] = ['Motif de perte', 'Leads'];
+        foreach (($agg['loss_reasons'] ?? []) as $r => $n) { $rows[] = [$r, $n]; }
         $rows[] = [];
         $rows[] = ['Conseiller', 'Leads', 'Inscrits'];
         foreach ($byStaff as $st) { $rows[] = [$st->name, (int) $st->total, (int) $st->inscrits]; }
@@ -1703,6 +1707,12 @@ class School_ia_bridge extends AdminController
             $fromLabel = $this->school_ia_bridge_model->stageLabel($lead->stage ?? 'nouveau');
             $toLabel   = $this->school_ia_bridge_model->stageLabel($stage);
             $this->school_ia_bridge_model->set_stage($id, $stage);
+            // Motif de perte (facultatif) renseigné depuis la fiche lead.
+            $reason = trim((string) $this->input->get('reason'));
+            if ($stage === 'perdu' && $reason !== '') {
+                $this->school_ia_bridge_model->set_lost_reason($id, $reason);
+                $toLabel .= ' (' . $reason . ')';
+            }
             $this->school_ia_bridge_model->add_activity(
                 $id,
                 'stage_change',
