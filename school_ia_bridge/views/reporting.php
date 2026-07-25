@@ -98,20 +98,13 @@
               $stageSlices[] = ['label' => $conf[0], 'value' => (int) ($agg['by_stage'][$conf[0]] ?? 0), 'color' => $conf[1]];
           }
           echo sia_pie_block($stageSlices, 150, true); // true = affiche toutes les étapes, même à 0
-          $frLine = '';
-          if (isset($agg['first_response_hours']) && $agg['first_response_hours'] !== null) {
-              $frh = (float) $agg['first_response_hours'];
-              $frTxt = $frh < 24 ? number_format($frh, 1, ',', ' ') . ' h' : number_format($frh / 24, 1, ',', ' ') . ' j';
-              $frLine .= '<i class="fa fa-clock-o"></i> Délai moyen de 1<sup>re</sup> réponse : <strong>' . $frTxt . '</strong>';
-          }
-          if (isset($agg['conversion_days']) && $agg['conversion_days'] !== null) {
-              if ($frLine !== '') { $frLine .= '<br>'; }
-              $frLine .= '<i class="fa fa-graduation-cap"></i> Délai moyen de conversion : <strong>'
-                       . number_format((float) $agg['conversion_days'], 1, ',', ' ') . ' j</strong>';
-          }
-          if ($frLine !== '') {
-              echo '<p class="text-muted" style="margin:14px 0 0;border-top:1px solid var(--sia-border,#e6e9f0);padding-top:10px;line-height:1.9;">' . $frLine . '</p>';
-          }
+          $frh = $agg['first_response_hours'] ?? null;
+          $frTxt = $frh === null ? '—' : ((float) $frh < 24 ? number_format((float) $frh, 1, ',', ' ') . ' h' : number_format((float) $frh / 24, 1, ',', ' ') . ' j');
+          $cvd = $agg['conversion_days'] ?? null;
+          $cvTxt = $cvd === null ? '—' : number_format((float) $cvd, 1, ',', ' ') . ' j';
+          echo '<p class="text-muted" style="margin:14px 0 0;border-top:1px solid var(--sia-border,#e6e9f0);padding-top:10px;line-height:1.9;">'
+             . '<i class="fa fa-clock-o"></i> Délai moyen de 1<sup>re</sup> réponse : <strong>' . $frTxt . '</strong><br>'
+             . '<i class="fa fa-graduation-cap"></i> Délai moyen de conversion : <strong>' . $cvTxt . '</strong></p>';
           ?>
         </div></div>
       </div>

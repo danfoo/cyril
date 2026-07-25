@@ -86,36 +86,6 @@
                 <?php } ?>
               </ul>
             </div>
-
-            <!-- Modal : motif de perte -->
-            <div class="modal fade" id="sia-lost-modal" tabindex="-1" role="dialog">
-              <div class="modal-dialog modal-sm" role="document">
-                <form method="get" action="<?php echo admin_url('school_ia_bridge/move/' . (int) $lead->id); ?>">
-                  <input type="hidden" name="stage" value="perdu">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <button type="button" class="close" data-dismiss="modal">&times;</button>
-                      <h4 class="modal-title">Marquer comme perdu</h4>
-                    </div>
-                    <div class="modal-body">
-                      <label class="control-label">Motif de perte</label>
-                      <select name="reason" class="form-control">
-                        <option value="Trop cher">Trop cher</option>
-                        <option value="A choisi une autre école">A choisi une autre école</option>
-                        <option value="Injoignable">Injoignable</option>
-                        <option value="Pas le bon profil">Pas le bon profil</option>
-                        <option value="Plus intéressé">Plus intéressé</option>
-                        <option value="Autre">Autre</option>
-                      </select>
-                    </div>
-                    <div class="modal-footer">
-                      <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
-                      <button type="submit" class="btn btn-danger">Confirmer la perte</button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            </div>
             <a href="<?php echo admin_url('school_ia_bridge/edit_lead/' . (int) $lead->id); ?>" class="btn btn-default"><i class="fa fa-pencil"></i> Modifier</a>
             <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-default"><i class="fa fa-columns"></i> Pipeline</a>
             <a href="<?php echo admin_url('school_ia_bridge/lead_delete/' . (int) $lead->id); ?>" class="btn btn-default"
@@ -671,6 +641,37 @@
   }
 })();
 </script>
+
+<!-- Modal : motif de perte (placé hors du #wrapper → enfant direct de body pour
+     un positionnement/empilement Bootstrap correct). -->
+<div class="modal fade" id="sia-lost-modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <form method="get" action="<?php echo admin_url('school_ia_bridge/move/' . (int) $lead->id); ?>">
+      <input type="hidden" name="stage" value="perdu">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">Marquer comme perdu</h4>
+        </div>
+        <div class="modal-body">
+          <label class="control-label">Motif de perte</label>
+          <select name="reason" class="form-control">
+            <option value="Trop cher">Trop cher</option>
+            <option value="A choisi une autre école">A choisi une autre école</option>
+            <option value="Injoignable">Injoignable</option>
+            <option value="Pas le bon profil">Pas le bon profil</option>
+            <option value="Plus intéressé">Plus intéressé</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-danger">Confirmer la perte</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 <?php init_tail(); ?>
 </body>
 </html>
