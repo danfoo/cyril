@@ -97,7 +97,13 @@
           foreach ($model->stages() as $slug => $conf) {
               $stageSlices[] = ['label' => $conf[0], 'value' => (int) ($agg['by_stage'][$conf[0]] ?? 0), 'color' => $conf[1]];
           }
-          echo sia_pie_block($stageSlices);
+          echo sia_pie_block($stageSlices, 150, true); // true = affiche toutes les étapes, même à 0
+          if (isset($agg['first_response_hours']) && $agg['first_response_hours'] !== null) {
+              $frh = (float) $agg['first_response_hours'];
+              $frTxt = $frh < 24 ? number_format($frh, 1, ',', ' ') . ' h' : number_format($frh / 24, 1, ',', ' ') . ' j';
+              echo '<p class="text-muted" style="margin:14px 0 0;border-top:1px solid var(--sia-border,#e6e9f0);padding-top:10px;">'
+                 . '<i class="fa fa-clock-o"></i> Délai moyen de 1<sup>re</sup> réponse : <strong>' . $frTxt . '</strong></p>';
+          }
           ?>
         </div></div>
       </div>
@@ -117,6 +123,32 @@
           }
           echo sia_pie_block($formSlices);
           ?>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- Sources d'acquisition -->
+    <div class="row">
+      <div class="col-md-6">
+        <div class="panel_s sia-panel-fill"><div class="panel-body">
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon" style="background:#0a8f5b1a;color:#0a8f5b;"><i class="fa fa-share-alt"></i></span>
+            Sources d'acquisition
+          </h5>
+          <?php
+          $srcPalette = ['#0a8f5b', '#2563eb', '#d97706', '#8a63d2', '#dc2626', '#0ea5e9', '#e2683c'];
+          $srcSlices = [];
+          $j = 0;
+          foreach (($agg['by_source'] ?? []) as $src => $n) {
+              $srcSlices[] = ['label' => (string) $src, 'value' => (int) $n, 'color' => $srcPalette[$j % count($srcPalette)]];
+              $j++;
+          }
+          echo sia_pie_block($srcSlices);
+          ?>
+          <p class="text-muted" style="margin:12px 0 0;font-size:12px;">
+            <i class="fa fa-info-circle"></i> Origine par <strong>site</strong>. Le suivi par <strong>canal marketing</strong>
+            (Facebook Ads, recherche organique, flyer…) via les paramètres UTM est prévu dans une prochaine évolution.
+          </p>
         </div></div>
       </div>
     </div>

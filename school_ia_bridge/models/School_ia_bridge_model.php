@@ -988,13 +988,40 @@ class School_ia_bridge_model extends App_Model
             $bySource[(string) $r->src] = (int) $r->n;
         }
 
-        $topFormations = [];
-        $this->db->where('received_at >=', $from)->where('received_at <=', $to)->where('formation IS NOT NULL', null, false)->where('formation !=', '');
-        foreach ($this->db->select('formation, COUNT(*) n')->group_by('formation')->order_by('n', 'desc')->limit(8)->get($t)->result() as $r) {
-            $topFormations[(string) $r->formation] = (int) $r->n;
+        // Formations : on compte TOUS les leads (les vides regroupés en « Non
+        // renseignée »), puis top 7 + « Autres » → la somme égale le total des
+        // leads (fini l'écart « 12 vs 26 » entre le camembert et le compteur).
+        $formCounts = [];
+        $this->db->where('received_at >=', $from)->where('received_at <=', $to);
+        foreach ($this->db->select('formation, COUNT(*) n')->group_by('formation')->get($t)->result() as $r) {
+            $label = trim((string) $r->formation);
+            $label = $label !== '' ? $label : 'Non renseignée';
+            $formCounts[$label] = ($formCounts[$label] ?? 0) + (int) $r->n;
         }
+        $nonRens = $formCounts['Non renseignée'] ?? 0;
+        unset($formCounts['Non renseignée']);
+        arsort($formCounts);
+        $topFormations = array_slice($formCounts, 0, 7, true);
+        $autres = array_sum($formCounts) - array_sum($topFormations);
+        if ($autres > 0) { $topFormations['Autres'] = $autres; }
+        if ($nonRens > 0) { $topFormations['Non renseignée'] = $nonRens; }
 
         $inscrits = (int) $this->db->where('received_at >=', $from)->where('received_at <=', $to)->where('stage', 'inscrit')->count_all_results($t);
+
+        // Délai moyen de première réponse (réception → 1re action du conseiller).
+        $frRow = $this->db->query(
+            'SELECT AVG(TIMESTAMPDIFF(MINUTE, l.received_at, fc.first_contact)) AS avg_minutes
+             FROM `' . $t . '` l
+             INNER JOIN (
+                 SELECT lead_id, MIN(created_at) AS first_contact
+                 FROM `' . $this->activityTable() . "`
+                 WHERE type IN ('note','email','sms','stage_change')
+                 GROUP BY lead_id
+             ) fc ON fc.lead_id = l.id
+             WHERE l.received_at >= ? AND l.received_at <= ?",
+            [$from, $to]
+        )->row();
+        $firstResponseHours = ($frRow && $frRow->avg_minutes !== null) ? round(((float) $frRow->avg_minutes) / 60, 1) : null;
 
         // Messages (e-mails / SMS) envoyés dans la période
         $mt = $this->messagesTable();
@@ -1014,6 +1041,7 @@ class School_ia_bridge_model extends App_Model
             'by_stage'       => $byStage,
             'by_source'      => $bySource,
             'top_formations' => $topFormations,
+            'first_response_hours' => $firstResponseHours,
             'email_sent'     => $emailSent,
             'email_opened'   => $emailOpened,
             'email_clicked'  => $emailClicked,

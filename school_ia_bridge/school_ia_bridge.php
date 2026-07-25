@@ -249,7 +249,7 @@ function sia_help(string $key): string
  * légende. Chaque tranche : ['label' => string, 'value' => number, 'color' => '#rrggbb'].
  * Les tranches nulles sont ignorées ; renvoie un message si tout est à zéro.
  */
-function sia_pie_block(array $slices, int $size = 150): string
+function sia_pie_block(array $slices, int $size = 150, bool $showZeroLegend = false): string
 {
     $total = 0.0;
     foreach ($slices as $s) {
@@ -291,10 +291,12 @@ function sia_pie_block(array $slices, int $size = 150): string
     $legend = '<ul style="list-style:none;margin:0;padding:0;flex:1 1 190px;min-width:170px;">';
     foreach ($slices as $s) {
         $val = max(0.0, (float) $s['value']);
-        if ($val <= 0) {
+        // Le donut n'affiche que les parts non nulles ; la légende peut lister
+        // toutes les étapes (même à 0) pour montrer la forme complète du pipeline.
+        if ($val <= 0 && !$showZeroLegend) {
             continue;
         }
-        $pct   = round($val * 100 / $total);
+        $pct   = $total > 0 ? round($val * 100 / $total) : 0;
         $label = htmlspecialchars((string) $s['label'], ENT_QUOTES);
         $color = htmlspecialchars((string) $s['color'], ENT_QUOTES);
         $legend .= '<li style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid var(--sia-border,#e6e9f0);font-size:13px;">'

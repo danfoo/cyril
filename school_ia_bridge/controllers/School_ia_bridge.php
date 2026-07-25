@@ -254,6 +254,7 @@ class School_ia_bridge extends AdminController
         $rows[] = ['SMS envoyés', $agg['sms_sent']];
         $rows[] = ['SMS en échec', $agg['sms_failed']];
         $rows[] = ['Tâches/relances créées', $agg['tasks']];
+        $rows[] = ['Délai moyen 1re réponse (h)', $agg['first_response_hours'] ?? '—'];
         $rows[] = [];
         $rows[] = ['Étape du pipeline', 'Leads'];
         foreach ($agg['by_stage'] as $stage => $n) { $rows[] = [$stage, $n]; }
