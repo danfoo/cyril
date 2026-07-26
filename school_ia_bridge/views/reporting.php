@@ -82,8 +82,9 @@
       $frVal = $frh === null ? '—' : ((float) $frh < 24 ? number_format((float) $frh, 1, ',', ' ') . ' h' : number_format((float) $frh / 24, 1, ',', ' ') . ' j');
       $cvd = $agg['conversion_days'] ?? null;
       $cvVal = $cvd === null ? '—' : number_format((float) $cvd, 1, ',', ' ') . ' j';
-      echo $rkpi('Délai moyen 1re réponse', $frVal, 'linear-gradient(135deg,#fbbf24,#d97706)', 'fa-clock-o', 'réception → 1re action', 'col-lg-6 col-sm-6');
-      echo $rkpi('Délai moyen de conversion', $cvVal, 'linear-gradient(135deg,#a78bfa,#7c3aed)', 'fa-hourglass-half', 'réception → inscription', 'col-lg-6 col-sm-6');
+      echo $rkpi('Délai moyen 1re réponse', $frVal, 'linear-gradient(135deg,#fbbf24,#d97706)', 'fa-clock-o', 'réception → 1re action', 'col-lg-4 col-sm-6');
+      echo $rkpi('Délai moyen de conversion', $cvVal, 'linear-gradient(135deg,#a78bfa,#7c3aed)', 'fa-hourglass-half', 'réception → inscription', 'col-lg-4 col-sm-6');
+      echo $rkpi('SMS envoyés', (int) $agg['sms_sent'], 'linear-gradient(135deg,#2dd4bf,#0d9488)', 'fa-mobile', $rdelta($agg['sms_sent'], $prevAgg['sms_sent']), 'col-lg-4 col-sm-6');
       ?>
     </div>
 
