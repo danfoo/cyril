@@ -104,57 +104,43 @@
     </div>
 
     <?php if (!$isGlobal && $schoolScope) {
-        // Repères de l'établissement : sans cela, un conseiller sans lead
-        // assigné voit un tableau entièrement à zéro et croit que le CRM ne
-        // reçoit rien. Ses KPIs ci-dessus restent strictement les siens.
+        // Bandeau de contexte : les KPIs ci-dessus restent strictement les
+        // leads du conseiller. Sans ce rappel, un conseiller sans lead assigné
+        // voit une rangée de zéros et croit que le CRM ne reçoit rien.
         $scDelay = '—';
         if ($schoolScope['first_contact_hours'] !== null) {
             $h = (float) $schoolScope['first_contact_hours'];
             $scDelay = $h < 48 ? number_format($h, 1, ',', ' ') . ' h' : number_format($h / 24, 1, ',', ' ') . ' j';
-        } ?>
-      <div class="panel_s"><div class="panel-body">
-        <div class="clearfix" style="margin-bottom:4px;">
-          <h5 class="bold pull-left" style="margin-top:0;">
-            <span class="sia-panel-icon sia-ic-info"><i class="fa fa-building-o"></i></span>
-            Repères de l'établissement
-            <span class="text-muted" style="font-weight:400;font-size:12.5px;">— sur la même période, tous conseillers confondus</span>
-          </h5>
-          <?php if ($unassignedCount > 0) { ?>
-            <a href="<?php echo admin_url('school_ia_bridge') . '?unassigned=1'; ?>" class="btn btn-primary btn-sm pull-right">
-              <i class="fa fa-hand-paper-o"></i> Prendre des leads en charge
-            </a>
-          <?php } ?>
-        </div>
-        <div class="sia-stat-row">
-          <div class="sia-stat">
-            <div class="sia-stat-value" style="color:#4f46e5;"><?php echo (int) $schoolScope['total']; ?></div>
-            <div class="sia-stat-label">Leads reçus</div>
+        }
+        $scChip = function (string $color, string $text) {
+            return '<span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--sia-text,#0f172a);">'
+                 . '<span style="width:8px;height:8px;border-radius:50%;background:' . $color . ';"></span>' . $text . '</span>';
+        }; ?>
+      <div class="panel_s"><div class="panel-body" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span class="sia-panel-icon sia-ic-info"><i class="fa fa-info-circle"></i></span>
+        <div style="flex:1 1 320px;min-width:0;">
+          <div>
+            <strong>Vous voyez uniquement vos propres leads.</strong>
+            <span class="text-muted">
+              Sur cette période, l'établissement a reçu <strong><?php echo (int) $schoolScope['total']; ?></strong> lead(s)
+              au total, dont <strong><?php echo (int) $schoolScope['inscrits']; ?></strong> inscrit(s)
+              — et <strong><?php echo (int) $unassignedCount; ?></strong> attend(ent) un responsable.
+            </span>
           </div>
-          <div class="sia-stat">
-            <div class="sia-stat-value" style="color:#e11d48;"><?php echo (int) $schoolScope['chaud']; ?></div>
-            <div class="sia-stat-label">Chauds (≥ 60)</div>
-          </div>
-          <div class="sia-stat">
-            <div class="sia-stat-value" style="color:#d97706;"><?php echo (int) $schoolScope['tiede']; ?></div>
-            <div class="sia-stat-label">Tièdes (40-59)</div>
-          </div>
-          <div class="sia-stat">
-            <div class="sia-stat-value" style="color:#2563eb;"><?php echo (int) $schoolScope['froid']; ?></div>
-            <div class="sia-stat-label">Froids (&lt; 40)</div>
-          </div>
-          <div class="sia-stat">
-            <div class="sia-stat-value" style="color:#059669;"><?php echo (int) $schoolScope['inscrits']; ?> <span style="font-size:.55em;font-weight:600;opacity:.75;"><?php echo $schoolScope['conversion']; ?> %</span></div>
-            <div class="sia-stat-label">Inscrits</div>
-          </div>
-          <div class="sia-stat">
-            <div class="sia-stat-value" style="color:#334155;"><?php echo $scDelay; ?></div>
-            <div class="sia-stat-label">Délai moyen 1ᵉʳ contact</div>
-          </div>
-          <div class="sia-stat">
-            <div class="sia-stat-value" style="color:<?php echo $unassignedCount > 0 ? '#ea580c' : '#64748b'; ?>;"><?php echo (int) $unassignedCount; ?></div>
-            <div class="sia-stat-label">Sans responsable</div>
+          <div style="display:flex;gap:8px 18px;flex-wrap:wrap;margin-top:7px;">
+            <?php
+            echo $scChip('#e11d48', '<strong>' . (int) $schoolScope['chaud'] . '</strong> chaud(s)');
+            echo $scChip('#d97706', '<strong>' . (int) $schoolScope['tiede'] . '</strong> tiède(s)');
+            echo $scChip('#2563eb', '<strong>' . (int) $schoolScope['froid'] . '</strong> froid(s)');
+            echo $scChip('#334155', 'Délai moyen 1ᵉʳ contact : <strong>' . $scDelay . '</strong>');
+            ?>
           </div>
         </div>
+        <?php if ($unassignedCount > 0) { ?>
+          <a href="<?php echo admin_url('school_ia_bridge') . '?unassigned=1'; ?>" class="btn btn-primary">
+            <i class="fa fa-hand-paper-o"></i> Prendre des leads en charge
+          </a>
+        <?php } ?>
       </div></div>
     <?php } ?>
 
