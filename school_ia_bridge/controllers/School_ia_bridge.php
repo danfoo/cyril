@@ -224,6 +224,11 @@ class School_ia_bridge extends AdminController
             ? $this->school_ia_bridge_model->get_report((int) $this->input->get('report'))
             : $this->school_ia_bridge_model->latest_report($period, $from, $to);
         $data['ai_ready'] = trim((string) get_option('sia_ai_api_key')) !== '';
+        $data['currency'] = (string) (get_option('sia_currency') ?: 'GNF');
+        // Prévision financière : indépendante de la période affichée — elle
+        // reflète l'état du pipeline actuel et le taux de conversion historique
+        // de l'école, pas seulement l'activité de la période sélectionnée.
+        $data['financeForecast'] = $this->school_ia_bridge_model->finance_forecast();
         $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/reporting', $data);
     }
@@ -256,6 +261,14 @@ class School_ia_bridge extends AdminController
         $rows[] = ['Tâches/relances créées', $agg['tasks']];
         $rows[] = ['Délai moyen 1re réponse (h)', $agg['first_response_hours'] ?? '—'];
         $rows[] = ['Délai moyen de conversion (j)', $agg['conversion_days'] ?? '—'];
+        if (!empty($agg['has_fees'])) {
+            $currency = (string) (get_option('sia_currency') ?: 'GNF');
+            $forecast = $this->school_ia_bridge_model->finance_forecast();
+            $rows[] = ['CA réalisé période (' . $currency . ')', (int) round($agg['finance_realized'])];
+            $rows[] = ['Valeur ajoutée au pipeline (' . $currency . ')', (int) round($agg['finance_pipeline'])];
+            $rows[] = ['Revenu prévisionnel (' . $currency . ')', (int) round($forecast['projected'] ?? 0)];
+            $rows[] = ['Taux de conversion historique (%)', $forecast['conversion_rate'] ?? 0];
+        }
         $rows[] = [];
         $rows[] = ['Étape du pipeline', 'Leads'];
         foreach ($agg['by_stage'] as $stage => $n) { $rows[] = [$stage, $n]; }
@@ -263,6 +276,11 @@ class School_ia_bridge extends AdminController
         $rows[] = ['Formation', 'Leads'];
         foreach ($agg['top_formations'] as $f => $n) { $rows[] = [$f, $n]; }
         $rows[] = [];
+        if (!empty($agg['revenue_by_formation'])) {
+            $rows[] = ['Revenu par formation', 'Montant'];
+            foreach ($agg['revenue_by_formation'] as $f => $v) { $rows[] = [$f, (int) round($v)]; }
+            $rows[] = [];
+        }
         $rows[] = ['Source (site)', 'Leads'];
         foreach ($agg['by_source'] as $s => $n) { $rows[] = [$s, $n]; }
         $rows[] = [];

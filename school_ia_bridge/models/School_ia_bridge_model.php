@@ -847,6 +847,42 @@ class School_ia_bridge_model extends App_Model
         return ['has_fees' => true, 'pipeline' => $pipeline, 'realized' => $realized];
     }
 
+    /**
+     * Revenu prévisionnel : valeur actuelle du pipeline (tous les leads actifs,
+     * tous temps confondus) multipliée par le taux de conversion HISTORIQUE réel
+     * de l'école (inscrits / total des leads jamais reçus) — une estimation
+     * réaliste, plutôt qu'un pipeline brut qui supposerait 100 % de conversion.
+     */
+    public function finance_forecast(): array
+    {
+        $index = $this->fees_index();
+        if (!$index['list']) {
+            return ['has_fees' => false, 'pipeline' => 0.0, 'conversion_rate' => 0.0, 'projected' => 0.0];
+        }
+        $t = $this->table();
+
+        $totalEver = (int) $this->db->count_all_results($t);
+        $inscritsEver = (int) $this->db->where('stage', 'inscrit')->count_all_results($t);
+        $rate = $totalEver > 0 ? $inscritsEver / $totalEver : 0.0;
+
+        $pipeline = 0.0;
+        $this->db->where('stage !=', 'perdu')->where('stage !=', 'inscrit');
+        foreach ($this->db->select("COALESCE(NULLIF(formation,''),'Non renseignée') formation, COUNT(*) n")->group_by('formation')->get($t)->result() as $r) {
+            $fee = $this->resolve_fee((string) $r->formation, $index);
+            if ($fee === null) {
+                continue;
+            }
+            $pipeline += $fee * (int) $r->n;
+        }
+
+        return [
+            'has_fees' => true,
+            'pipeline' => $pipeline,
+            'conversion_rate' => round($rate * 100, 1),
+            'projected' => $pipeline * $rate,
+        ];
+    }
+
     public function get_lead(int $id)
     {
         return $this->db->where('id', $id)->get($this->table())->row();
@@ -1086,6 +1122,50 @@ class School_ia_bridge_model extends App_Model
         )->row();
         $conversionDays = ($convRow && $convRow->avg_hours !== null) ? round(((float) $convRow->avg_hours) / 24, 1) : null;
 
+        // Financier : réutilise la correspondance tolérante formation → tarif.
+        // - Valeur ajoutée au pipeline : leads REÇUS pendant la période, encore
+        //   actifs (hors perdu/inscrit) — « combien de business est arrivé ».
+        // - CA réalisé : basé sur la date de CONVERSION (converted_at), pas de
+        //   réception — reflète l'argent effectivement encaissé pendant la
+        //   période, et non les leads arrivés ce mois-ci qui n'ont pas encore eu
+        //   le temps de convertir (qui seraient artificiellement sous-estimés).
+        // - Revenu par formation : valeur totale (hors perdu) des leads reçus
+        //   pendant la période, triée par montant — une formation à faible
+        //   volume mais chère peut peser plus qu'une formation à fort volume.
+        $financeIndex = $this->fees_index();
+        $hasFees = (bool) $financeIndex['list'];
+        $financePipeline = 0.0;
+        $revenueByFormation = [];
+        if ($hasFees) {
+            $this->db->where('received_at >=', $from)->where('received_at <=', $to)->where('stage !=', 'perdu');
+            foreach ($this->db->select("COALESCE(NULLIF(formation,''),'Non renseignée') formation, stage, COUNT(*) n")->group_by('formation, stage')->get($t)->result() as $r) {
+                $fee = $this->resolve_fee((string) $r->formation, $financeIndex);
+                if ($fee === null) {
+                    continue;
+                }
+                $value = $fee * (int) $r->n;
+                if ($r->stage !== 'inscrit') {
+                    $financePipeline += $value;
+                }
+                $label = (string) $r->formation;
+                $revenueByFormation[$label] = ($revenueByFormation[$label] ?? 0) + $value;
+            }
+            arsort($revenueByFormation);
+            $revenueByFormation = array_slice($revenueByFormation, 0, 7, true);
+        }
+
+        $financeRealized = 0.0;
+        if ($hasFees) {
+            $this->db->where('converted_at >=', $from)->where('converted_at <=', $to)->where('stage', 'inscrit');
+            foreach ($this->db->select("COALESCE(NULLIF(formation,''),'Non renseignée') formation, COUNT(*) n")->group_by('formation')->get($t)->result() as $r) {
+                $fee = $this->resolve_fee((string) $r->formation, $financeIndex);
+                if ($fee === null) {
+                    continue;
+                }
+                $financeRealized += $fee * (int) $r->n;
+            }
+        }
+
         // Messages (e-mails / SMS) envoyés dans la période
         $mt = $this->messagesTable();
         $emailSent = (int) $this->db->where('sent_at >=', $from)->where('sent_at <=', $to)->where('channel', 'email')->count_all_results($mt);
@@ -1109,6 +1189,10 @@ class School_ia_bridge_model extends App_Model
             'first_response_hours' => $firstResponseHours,
             'loss_reasons'   => $lossReasons,
             'conversion_days' => $conversionDays,
+            'has_fees'          => $hasFees,
+            'finance_pipeline'  => $financePipeline,
+            'finance_realized'  => $financeRealized,
+            'revenue_by_formation' => $revenueByFormation,
             'email_sent'     => $emailSent,
             'email_opened'   => $emailOpened,
             'email_clicked'  => $emailClicked,

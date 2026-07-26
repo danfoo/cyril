@@ -88,6 +88,26 @@
       ?>
     </div>
 
+    <?php if (!empty($agg['has_fees'])) {
+        $money = function ($v) use ($currency) { return number_format((float) $v, 0, ',', ' ') . ' ' . $currency; }; ?>
+    <!-- KPIs financiers -->
+    <div class="row sia-kpi-grid">
+      <?php
+      echo $rkpi('CA réalisé (période)', $money($agg['finance_realized']), 'linear-gradient(135deg,#34d399,#059669)', 'fa-money',
+          $rdelta($agg['finance_realized'], $prevAgg['finance_realized']) . '<div class="text-muted" style="margin-top:4px;font-size:11px;color:rgba(255,255,255,.85) !important;">basé sur la date de conversion</div>',
+          'col-lg-4 col-sm-6');
+      echo $rkpi('Valeur ajoutée au pipeline', $money($agg['finance_pipeline']), 'linear-gradient(135deg,#8a63d2,#6d3fc4)', 'fa-line-chart',
+          $rdelta($agg['finance_pipeline'], $prevAgg['finance_pipeline']) . '<div class="text-muted" style="margin-top:4px;font-size:11px;color:rgba(255,255,255,.85) !important;">leads reçus cette période</div>',
+          'col-lg-4 col-sm-6');
+      $fc = $financeForecast ?? ['has_fees' => false];
+      echo $rkpi('Revenu prévisionnel', !empty($fc['has_fees']) ? $money($fc['projected']) : '—', 'linear-gradient(135deg,#f59e0b,#d97706)', 'fa-magic',
+          !empty($fc['has_fees']) ? '<span style="display:inline-block;background:rgba(255,255,255,.22);color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;">Taux de conversion historique : ' . $fc['conversion_rate'] . ' %</span>'
+              . '<div class="text-muted" style="margin-top:4px;font-size:11px;color:rgba(255,255,255,.85) !important;">pipeline actuel × taux historique</div>' : '',
+          'col-lg-4 col-sm-6');
+      ?>
+    </div>
+    <?php } ?>
+
     <!-- Tendance des nouveaux leads -->
     <div class="panel_s"><div class="panel-body">
       <h5 class="bold" style="margin-top:0;">
@@ -133,6 +153,42 @@
         </div></div>
       </div>
     </div>
+
+    <?php if (!empty($agg['has_fees']) && !empty($agg['revenue_by_formation'])) { ?>
+    <!-- Revenu par formation -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="panel_s sia-panel-fill"><div class="panel-body">
+          <h5 class="bold" style="margin-top:0;">
+            <span class="sia-panel-icon" style="background:#0596691a;color:#059669;"><i class="fa fa-money"></i></span>
+            Revenu par formation
+          </h5>
+          <p class="text-muted" style="margin:0 0 14px;font-size:12.5px;">
+            Valeur (pipeline + réalisé) des leads reçus sur la période, par formation — un programme à faible volume
+            mais coûteux peut peser plus qu'un programme à fort volume mais économique.
+          </p>
+          <?php
+          $revMax = max($agg['revenue_by_formation']);
+          $revPalette = ['#059669', '#0d9488', '#2563eb', '#8a63d2', '#d97706', '#e2683c', '#dc2626'];
+          $ri = 0;
+          foreach ($agg['revenue_by_formation'] as $formLabel => $val) {
+              $pctWidth = $revMax > 0 ? max(4, round($val * 100 / $revMax)) : 0;
+              $barColor = $revPalette[$ri % count($revPalette)]; $ri++;
+              ?>
+              <div style="margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:10px;"><?php echo htmlspecialchars((string) $formLabel, ENT_QUOTES); ?></span>
+                  <strong style="white-space:nowrap;"><?php echo number_format((float) $val, 0, ',', ' '); ?> <?php echo htmlspecialchars((string) $currency, ENT_QUOTES); ?></strong>
+                </div>
+                <div style="height:8px;border-radius:5px;background:var(--sia-border,#e6e9f0);overflow:hidden;">
+                  <div style="height:8px;border-radius:5px;width:<?php echo $pctWidth; ?>%;background:<?php echo $barColor; ?>;"></div>
+                </div>
+              </div>
+          <?php } ?>
+        </div></div>
+      </div>
+    </div>
+    <?php } ?>
 
     <!-- Sources d'acquisition -->
     <div class="row">
