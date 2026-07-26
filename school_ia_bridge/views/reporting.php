@@ -9,7 +9,8 @@
         <a href="<?php echo admin_url('school_ia_bridge/reporting_export?period=' . urlencode($period) . ($date ? '&date=' . urlencode($date) : '')); ?>" class="btn btn-default">
           <i class="fa fa-download"></i> Exporter (CSV)
         </a>
-        <button type="button" class="btn btn-default" onclick="window.print()"><i class="fa fa-print"></i> Imprimer / PDF</button>
+        <a href="<?php echo admin_url('school_ia_bridge/reporting_print?period=' . urlencode($period) . ($date ? '&date=' . urlencode($date) : '') . ($report ? '&report=' . (int) $report->id : '')); ?>"
+           target="_blank" rel="noopener" class="btn btn-default"><i class="fa fa-print"></i> Imprimer / PDF</a>
       </div>
     </div>
 

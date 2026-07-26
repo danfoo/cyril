@@ -53,6 +53,15 @@
                 </div>
                 <p class="text-muted" style="font-size:12px;margin-top:6px;">Format hexadécimal <code>#RRGGBB</code>.</p>
               </div>
+              <div class="form-group">
+                <label class="control-label">Logo (en-tête des rapports PDF)</label>
+                <input type="url" name="report_logo" class="form-control" maxlength="255"
+                       value="<?php echo htmlspecialchars((string) $report_logo, ENT_QUOTES); ?>"
+                       placeholder="https://votre-site.com/logo.png">
+                <p class="text-muted" style="font-size:12px;margin-top:6px;">
+                  URL absolue d'une image (PNG/SVG, fond transparent recommandé). Laissez vide pour afficher le nom de l'école à la place.
+                </p>
+              </div>
               <button type="submit" class="btn btn-primary">Enregistrer</button>
             <?php echo form_close(); ?>
             <script>

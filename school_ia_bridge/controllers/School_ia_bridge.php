@@ -233,6 +233,43 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/reporting', $data);
     }
 
+    /**
+     * Version imprimable / PDF du reporting : document AUTONOME, sans le menu
+     * ni la barre latérale de la plateforme (contrairement à un simple
+     * window.print() sur la page admin). Ouverte dans un nouvel onglet, elle
+     * déclenche automatiquement la boîte de dialogue d'impression.
+     */
+    public function reporting_print()
+    {
+        $this->need('view_reports');
+        $period = $this->input->get('period') ?: 'month';
+        $date   = (string) $this->input->get('date');
+        [$from, $to, $label] = school_ia_period_range($period, $date);
+        [$pFrom, $pTo, $pLabel] = school_ia_prev_range($period, $from);
+        $granularity = ['day' => 'hour', 'week' => 'day', 'month' => 'day', 'year' => 'month'][$period] ?? 'day';
+
+        $data['period']    = $period;
+        $data['label']     = $label;
+        $data['from']      = $from;
+        $data['to']        = $to;
+        $data['prevLabel'] = $pLabel;
+        $data['agg']       = $this->school_ia_bridge_model->report_data($from, $to);
+        $data['prevAgg']   = $this->school_ia_bridge_model->report_data($pFrom, $pTo);
+        $data['series']    = $this->school_ia_bridge_model->leads_series($from, $to, $granularity);
+        $data['byStaff']   = $this->school_ia_bridge_model->by_staff_range($from, $to);
+        $data['activityBreakdown'] = $this->school_ia_bridge_model->activity_breakdown($from, $to);
+        $data['report']    = $this->input->get('report')
+            ? $this->school_ia_bridge_model->get_report((int) $this->input->get('report'))
+            : $this->school_ia_bridge_model->latest_report($period, $from, $to);
+        $data['currency']  = (string) (get_option('sia_currency') ?: 'GNF');
+        $data['financeForecast'] = $this->school_ia_bridge_model->finance_forecast();
+        $data['brandColor'] = school_ia_brand_color();
+        $data['reportLogo'] = (string) get_option('sia_report_logo');
+        $data['schoolName'] = (string) (get_option('companyname') ?: 'School AI');
+        $data['model']     = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/reporting_print', $data);
+    }
+
     /** Export CSV de la synthèse de la période (KPIs + ventilations). */
     public function reporting_export()
     {
@@ -557,6 +594,7 @@ class School_ia_bridge extends AdminController
         $data['target_inscrits'] = (int) get_option('sia_target_inscrits');
         $data['currency']    = (string) (get_option('sia_currency') ?: 'GNF');
         $data['brand_color'] = school_ia_brand_color();
+        $data['report_logo'] = get_option('sia_report_logo');
         $this->load->view('school_ia_bridge/settings', $data);
     }
 
@@ -610,6 +648,9 @@ class School_ia_bridge extends AdminController
             $color = trim((string) $this->input->post('brand_color'));
             // On n'accepte qu'un hex #RRGGBB valide ; sinon on retombe sur le défaut.
             update_option('sia_brand_color', preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? strtolower($color) : '#d11349');
+            // Logo affiché en en-tête des rapports PDF (URL absolue) ; vide = pas de logo.
+            $logo = trim((string) $this->input->post('report_logo'));
+            update_option('sia_report_logo', ($logo !== '' && filter_var($logo, FILTER_VALIDATE_URL)) ? $logo : '');
         }
         if ($this->input->post('ai_form') !== null) {
             $aiKey = (string) $this->input->post('ai_api_key');
