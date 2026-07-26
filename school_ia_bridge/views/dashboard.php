@@ -90,19 +90,40 @@
 
     <div class="row sia-kpi-grid">
       <?php
-      echo $kpi('Leads au total',        (int) $stats['total'],    'linear-gradient(135deg,#6366f1,#4f46e5)', 'fa-users');
+      echo $kpi($isGlobal ? 'Leads au total' : 'Mes leads', (int) $stats['total'], 'linear-gradient(135deg,#6366f1,#4f46e5)', 'fa-users');
       echo $kpi('Leads chauds (≥ 60)',   (int) $sd['chaud'],       'linear-gradient(135deg,#fb7185,#e11d48)', 'fa-fire');
       echo $kpi('Leads tièdes (40-59)',  (int) $sd['tiede'],       'linear-gradient(135deg,#fbbf24,#d97706)', 'fa-thermometer-half');
       echo $kpi('Leads froids (< 40)',   (int) $sd['froid'],       'linear-gradient(135deg,#38bdf8,#2563eb)', 'fa-snowflake-o');
-      echo $kpi('Inscrits',              (int) $stats['inscrits'], 'linear-gradient(135deg,#34d399,#059669)', 'fa-graduation-cap');
+      echo $kpi($isGlobal ? 'Inscrits' : 'Mes inscrits', (int) $stats['inscrits'], 'linear-gradient(135deg,#34d399,#059669)', 'fa-graduation-cap');
       echo $kpi('Taux de conversion',    $stats['conversion'] . ' %', 'linear-gradient(135deg,#2dd4bf,#0d9488)', 'fa-line-chart');
       echo $kpi('Délai moyen 1ᵉʳ contact', $delayLabel,           'linear-gradient(135deg,#64748b,#334155)', 'fa-hourglass-half');
-      // « Leads non assignés » est une métrique globale : masquée en vue « Mes données ».
-      if ($isGlobal) {
-          echo $kpi('Leads non assignés',    (int) $unassignedCount,   $unassignedCount > 0 ? 'linear-gradient(135deg,#fb923c,#ea580c)' : 'linear-gradient(135deg,#334155,#0f172a)', 'fa-user-times');
-      }
+      // Vivier commun : visible par TOUS les conseillers — c'est là qu'ils
+      // prennent des leads en charge (« premier arrivé, premier servi »).
+      echo $kpi('Leads non assignés',    (int) $unassignedCount,   $unassignedCount > 0 ? 'linear-gradient(135deg,#fb923c,#ea580c)' : 'linear-gradient(135deg,#334155,#0f172a)', 'fa-user-times');
       ?>
     </div>
+
+    <?php if (!$isGlobal && $schoolScope) { ?>
+      <!-- Repères de l'établissement : sans cela, un conseiller sans lead
+           assigné voit un tableau entièrement à zéro et croit que le CRM ne
+           reçoit rien. -->
+      <div class="panel_s"><div class="panel-body" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span class="sia-panel-icon sia-ic-info"><i class="fa fa-info-circle"></i></span>
+        <div style="flex:1 1 auto;">
+          <strong>Vous voyez uniquement vos propres leads.</strong>
+          <span class="text-muted">
+            Sur cette période, l'établissement a reçu <strong><?php echo (int) $schoolScope['total']; ?></strong> lead(s)
+            au total, dont <strong><?php echo (int) $schoolScope['inscrits']; ?></strong> inscrit(s)
+            — et <strong><?php echo (int) $unassignedCount; ?></strong> attend(ent) un responsable.
+          </span>
+        </div>
+        <?php if ($unassignedCount > 0) { ?>
+          <a href="<?php echo admin_url('school_ia_bridge') . '?unassigned=1'; ?>" class="btn btn-primary">
+            <i class="fa fa-hand-paper-o"></i> Prendre des leads en charge
+          </a>
+        <?php } ?>
+      </div></div>
+    <?php } ?>
 
     <!-- Financier & objectif -->
     <?php if ($hasFees || $hasTarget) {
@@ -169,7 +190,6 @@
     <div class="sia-section-title">Actions prioritaires</div>
 
     <div class="row">
-      <?php if ($isGlobal) { ?>
       <div class="col-md-6">
         <div class="panel_s sia-panel-fill"><div class="panel-body">
           <div class="clearfix">
@@ -201,8 +221,7 @@
           <?php } ?>
         </div></div>
       </div>
-      <?php } ?>
-      <div class="col-md-<?php echo $isGlobal ? '6' : '12'; ?>">
+      <div class="col-md-6">
         <div class="panel_s sia-panel-fill"><div class="panel-body">
           <div class="clearfix">
             <h5 class="bold pull-left" style="margin-top:0;">

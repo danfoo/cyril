@@ -648,6 +648,10 @@ class School_ia_bridge_model extends App_Model
     /** Nombre de leads sans responsable assigné. */
     public function unassigned_count(array $filters = []): int
     {
+        // Un lead non assigné n'appartient par définition à personne : le
+        // cadrage par conseiller (owner_id) donnerait une condition
+        // contradictoire (owner_id = X ET owner_id IS NULL) → toujours 0.
+        unset($filters['owner_id']);
         $this->applyLeadFilters($filters);
         return (int) $this->db->where('owner_id IS NULL', null, false)->count_all_results($this->table());
     }
@@ -655,6 +659,7 @@ class School_ia_bridge_model extends App_Model
     /** Derniers leads non assignés (pour le widget du dashboard). */
     public function unassigned_leads(array $filters = [], int $limit = 6): array
     {
+        unset($filters['owner_id']); // voir unassigned_count()
         $this->applyLeadFilters($filters);
         return $this->db
             ->where('owner_id IS NULL', null, false)
@@ -662,6 +667,26 @@ class School_ia_bridge_model extends App_Model
             ->limit($limit)
             ->get($this->table())
             ->result();
+    }
+
+    /**
+     * Volumétrie de l'établissement, hors cadrage par conseiller : sert à
+     * donner du contexte au conseiller qui ne voit que ses propres leads
+     * (sans cela, un conseiller sans lead assigné voit un tableau de bord
+     * entièrement à zéro et croit que le CRM ne reçoit rien).
+     */
+    public function school_scope(array $filters = []): array
+    {
+        unset($filters['owner_id']);
+        $t = $this->table();
+
+        $this->applyLeadFilters($filters);
+        $total = (int) $this->db->count_all_results($t);
+
+        $this->applyLeadFilters($filters);
+        $inscrits = (int) $this->db->where('stage', 'inscrit')->count_all_results($t);
+
+        return ['total' => $total, 'inscrits' => $inscrits];
     }
 
     /** Derniers leads reçus (aperçu sur le dashboard). */

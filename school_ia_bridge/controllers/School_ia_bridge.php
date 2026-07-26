@@ -51,8 +51,15 @@ class School_ia_bridge extends AdminController
         $data['stats']     = $this->school_ia_bridge_model->stats(60, $filters);
         $data['byFormation'] = $this->school_ia_bridge_model->by_formation($filters);
         $data['byStaff']   = $this->school_ia_bridge_model->by_staff($filters);
+        // Les leads non assignés sont le VIVIER commun : visible par tous les
+        // conseillers (c'est là qu'ils prennent des leads en charge), même en
+        // vue « Mes données ».
         $data['unassignedCount'] = $this->school_ia_bridge_model->unassigned_count($filters);
         $data['unassignedLeads'] = $this->school_ia_bridge_model->unassigned_leads($filters, 6);
+        // Repères de l'établissement, pour situer ses propres chiffres.
+        $data['schoolScope'] = $scopeOwner !== null
+            ? $this->school_ia_bridge_model->school_scope($filters)
+            : null;
         $data['recentLeads']     = $this->school_ia_bridge_model->recent_leads($filters, 8);
         $data['avgFirstContact'] = $this->school_ia_bridge_model->avg_first_contact_hours($filters);
         $data['finance']   = $this->school_ia_bridge_model->finance_summary($filters);
