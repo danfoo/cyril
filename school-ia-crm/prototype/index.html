@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Prototype cliquable du CRM SaaS School IA — thème clair, mobile-first. Espaces Admin et Client. Édité par Maestro Dan.">
+<meta name="description" content="School AI — Convert more. Enroll smarter. Le CRM & marketing d'admission propulsé par l'IA : conseiller conversationnel, capture et scoring des leads, pipeline, campagnes multicanal et reporting 360°.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
-<title>School IA CRM — Prototype</title>
+<title>School AI — Convert more. Enroll smarter.</title>
 <style>
   /* Thème clair, inspiration HubSpot, palette bleue. Mobile-first. */
   :root {
@@ -197,16 +197,200 @@
     .topbar { padding:14px 26px; }
     .topbar h1 { font-size:20px; }
   }
+
+  /* ================= Page d'accueil (présentation) ================= */
+  #screen-landing { display:none; }
+  body.show-landing #screen-landing { display:block; }
+  body.show-landing #screen-login { display:none; }
+
+  .lp-nav { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:14px;
+    padding:13px clamp(16px,4vw,48px); background:color-mix(in srgb,var(--surface) 88%,transparent);
+    backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  .lp-brand { display:flex; align-items:center; gap:11px; min-width:0; }
+  .lp-brand img { height:38px; width:auto; display:block; }
+  .lp-brand .wordmark { font-weight:800; font-size:22px; letter-spacing:.04em; color:var(--ink); white-space:nowrap; }
+  .lp-brand .wordmark .ia { color:var(--primary); }
+  .lp-brand .tag { display:none; font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); font-weight:700; padding-left:12px; margin-left:2px; border-left:1px solid var(--line); }
+  .lp-nav .sp { margin-left:auto; }
+
+  .hero { text-align:center; padding:clamp(46px,9vw,104px) clamp(16px,5vw,48px) clamp(30px,6vw,64px);
+    background:radial-gradient(1000px 520px at 50% -12%, #dbe8ff, transparent 62%); }
+  .hero .eyebrow { display:inline-block; font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--primary-d); background:var(--primary-bg); padding:6px 13px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(30px,6vw,54px); line-height:1.06; letter-spacing:-.025em; max-width:18ch; margin:0 auto; }
+  .hero h1 .g { background:linear-gradient(90deg,#1a54cc,#63a4ff); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p { color:var(--muted); font-size:clamp(15px,2.3vw,20px); max-width:62ch; margin:18px auto 26px; }
+  .hero .cta { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn.lg { padding:14px 24px; font-size:16px; border-radius:11px; }
+  .hero .trust { color:var(--muted); font-size:13px; margin-top:18px; }
+
+  .lp-section { padding:clamp(34px,6vw,68px) clamp(16px,5vw,48px); max-width:1180px; margin:0 auto; }
+  .lp-eyebrow { text-align:center; color:var(--primary-d); font-weight:700; letter-spacing:.08em; text-transform:uppercase; font-size:12.5px; }
+  .lp-h2 { text-align:center; font-size:clamp(24px,4vw,36px); margin:8px auto 6px; letter-spacing:-.02em; }
+  .lp-sub { text-align:center; color:var(--muted); max-width:62ch; margin:0 auto 34px; font-size:15.5px; }
+
+  .feat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(268px,1fr)); gap:18px; }
+  .feat { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:22px; box-shadow:var(--shadow); transition:.15s; }
+  .feat:hover { border-color:var(--primary); box-shadow:var(--shadow-lg); transform:translateY(-2px); }
+  .feat .fi { width:46px; height:46px; border-radius:12px; display:grid; place-items:center; font-size:22px; background:var(--primary-bg); margin-bottom:13px; }
+  .feat h3 { font-size:17px; margin-bottom:6px; }
+  .feat > p { color:var(--muted); font-size:14px; margin:0 0 11px; }
+  .feat ul { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:6px; }
+  .feat ul li { color:var(--ink); font-size:13.5px; padding-left:20px; position:relative; }
+  .feat ul li::before { content:"✓"; position:absolute; left:0; color:var(--ok); font-weight:800; }
+
+  .lp-cta { text-align:center; background:linear-gradient(135deg,#1a54cc,#2e6ff2); color:#fff; border-radius:22px;
+    padding:clamp(30px,5vw,54px) clamp(20px,4vw,40px); max-width:1100px; margin:0 auto; box-shadow:var(--shadow-lg); }
+  .lp-cta h2 { font-size:clamp(22px,3.6vw,34px); letter-spacing:-.02em; }
+  .lp-cta p { opacity:.92; margin:12px auto 22px; max-width:52ch; font-size:16px; }
+  .lp-cta .btn.ghost { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.4); color:#fff; }
+  .lp-cta .btn.ghost:hover { background:rgba(255,255,255,.22); color:#fff; }
+  .lp-foot { text-align:center; color:var(--muted); font-size:13px; padding:34px 16px 50px; }
+  .lp-back { color:var(--primary); font-weight:650; font-size:13.5px; cursor:pointer; display:inline-block; margin-bottom:14px; }
+
+  @media (min-width:720px){ .lp-brand .tag { display:inline-block; } }
 </style>
+
+<!-- ================= PAGE D'ACCUEIL (présentation) ================= -->
+<div id="screen-landing">
+  <nav class="lp-nav">
+    <div class="lp-brand">
+      <img src="logo.png" alt="School AI" onerror="this.style.display='none';this.nextElementSibling.style.display='inline';">
+      <span class="wordmark" style="display:none;">SCHOOL<span class="ia"> AI</span></span>
+      <span class="tag">Convert more. Enroll smarter.</span>
+    </div>
+    <span class="sp"></span>
+    <button class="btn primary sm" onclick="showDemo()">Voir la démo</button>
+  </nav>
+
+  <header class="hero">
+    <span class="eyebrow">CRM &amp; marketing d'admission propulsé par l'IA</span>
+    <h1>Convertissez plus. <span class="g">Inscrivez plus intelligemment.</span></h1>
+    <p>School AI transforme chaque visiteur en candidat qualifié : un conseiller IA qui répond 24/7, capture et score vos leads, orchestre vos relances et vous donne une vision d'admission à 360°.</p>
+    <div class="cta">
+      <button class="btn primary lg" onclick="showDemo()">Explorer la démo</button>
+      <a class="btn ghost lg" href="#features">Découvrir les fonctionnalités</a>
+    </div>
+    <div class="trust">Déjà utilisé par BEM Conakry · s'installe sur n'importe quel site (WordPress ou non)</div>
+  </header>
+
+  <section class="lp-section" id="features">
+    <div class="lp-eyebrow">Fonctionnalités</div>
+    <h2 class="lp-h2">Tout le tunnel d'admission, dans une seule plateforme</h2>
+    <p class="lp-sub">De la première visite anonyme à l'inscription confirmée — sans changer d'outil.</p>
+    <div class="feat-grid">
+
+      <div class="feat"><div class="fi">💬</div>
+        <h3>Conseiller d'orientation IA</h3>
+        <p>Un conseiller virtuel qui répond, qualifie et engage jour et nuit.</p>
+        <ul>
+          <li>Chatbot IA expert de vos programmes &amp; admissions</li>
+          <li>Base de connaissance auto-construite depuis votre site</li>
+          <li>Réponses personnalisées + relais WhatsApp</li>
+          <li>Escalade vers un conseiller humain</li>
+        </ul>
+      </div>
+
+      <div class="feat"><div class="fi">🎯</div>
+        <h3>Capture &amp; qualification des leads</h3>
+        <p>Chaque visiteur intéressé devient une fiche exploitable.</p>
+        <ul>
+          <li>Capture de tous vos formulaires (Gravity, CF7, WPForms…)</li>
+          <li>Détection intelligente de la formation visée</li>
+          <li>Anti-doublon chat + formulaire</li>
+          <li>Numéro normalisé (indicatif automatique)</li>
+        </ul>
+      </div>
+
+      <div class="feat"><div class="fi">📈</div>
+        <h3>Scoring &amp; intelligence</h3>
+        <p>Sachez qui rappeler en priorité, et quand.</p>
+        <ul>
+          <li>Score comportemental + score d'intention (IA)</li>
+          <li>Classement froid / tiède / chaud / très chaud</li>
+          <li>Détection de désengagement (relance au bon moment)</li>
+          <li>Veille concurrentielle</li>
+        </ul>
+      </div>
+
+      <div class="feat"><div class="fi">🗂️</div>
+        <h3>CRM &amp; pipeline d'admission</h3>
+        <p>Un tunnel clair, du premier contact à l'inscrit.</p>
+        <ul>
+          <li>Pipeline Kanban en glisser-déposer</li>
+          <li>Prise en charge « premier arrivé »</li>
+          <li>Motifs de perte analysés</li>
+          <li>Tâches, rendez-vous, séquences de relance</li>
+        </ul>
+      </div>
+
+      <div class="feat"><div class="fi">✉️</div>
+        <h3>Communication multicanal</h3>
+        <p>Contactez juste, à grande échelle.</p>
+        <ul>
+          <li>E-mails stylisés avec suivi (ouvertures, clics)</li>
+          <li>SMS intégrés</li>
+          <li>Campagnes en masse par lots</li>
+          <li>Modèles &amp; signatures conseillers</li>
+        </ul>
+      </div>
+
+      <div class="feat"><div class="fi">📊</div>
+        <h3>Reporting &amp; pilotage 360°</h3>
+        <p>Décidez avec des chiffres, pas à l'instinct.</p>
+        <ul>
+          <li>Entonnoir de conversion par étape</li>
+          <li>Ventilation par formation, canal &amp; campagne</li>
+          <li>Délais de 1ʳᵉ réponse &amp; de conversion</li>
+          <li>Valeur du pipeline &amp; rapport rédigé par l'IA</li>
+        </ul>
+      </div>
+
+      <div class="feat"><div class="fi">🌍</div>
+        <h3>Canaux d'acquisition automatiques</h3>
+        <p>Mesurez votre ROI marketing sans rien tagger.</p>
+        <ul>
+          <li>Détection auto : Google, Instagram, TikTok, LinkedIn…</li>
+          <li>Identifiants de clic pub + site référent</li>
+          <li>Attribution « premier contact »</li>
+          <li>UTM optionnels pour nommer vos campagnes</li>
+        </ul>
+      </div>
+
+      <div class="feat"><div class="fi">🧩</div>
+        <h3>Conçu pour grandir</h3>
+        <p>Une école aujourd'hui, un réseau demain.</p>
+        <ul>
+          <li>Multi-secteur &amp; multi-établissement</li>
+          <li>Devise &amp; indicatif configurables</li>
+          <li>Données 100 % isolées par école</li>
+          <li>S'embarque sur tout type de site</li>
+        </ul>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="lp-section">
+    <div class="lp-cta">
+      <h2>Prêt à convertir plus de visiteurs en inscrits ?</h2>
+      <p>Découvrez School AI de l'intérieur — espace administrateur et espace école.</p>
+      <button class="btn ghost lg" onclick="showDemo()">Explorer la démo interactive</button>
+    </div>
+  </section>
+
+  <div class="lp-foot">School AI — Convert more. Enroll smarter. · par Maestro Dan</div>
+</div>
 
 <!-- ================= CONNEXION ================= -->
 <div class="login" id="screen-login">
   <div class="login-card">
-    <div class="brand"><b>School<span class="ia"> IA</span></b></div>
-    <p class="sub">Plateforme CRM &amp; marketing d'admission — <em>prototype</em></p>
+    <span class="lp-back" onclick="showLanding()">← Accueil</span>
+    <div class="brand"><b>School<span class="ia"> AI</span></b></div>
+    <p class="sub">Plateforme CRM &amp; marketing d'admission — <em>démo interactive</em></p>
     <button class="role-btn" onclick="enter('admin')"><span class="ic admin">◆</span><span><h4>Espace Administrateur</h4><span class="d">Maestro Dan — clients, utilisateurs, licences, tarifs &amp; paiements</span></span></button>
     <button class="role-btn" onclick="enter('client')"><span class="ic client">★</span><span><h4>Espace Client</h4><span class="d">École — leads, campagnes, e-mails/SMS, documents, équipe, réseaux</span></span></button>
-    <p class="foot">Démo navigable · aucune donnée réelle · School IA par Maestro Dan</p>
+    <p class="foot">Démo navigable · aucune donnée réelle · School AI par Maestro Dan</p>
   </div>
 </div>
 
@@ -214,7 +398,7 @@
 <div id="app">
   <div class="backdrop" id="backdrop" onclick="closeSide()"></div>
   <aside class="side" id="side">
-    <div class="logo"><b>School<span class="ia"> IA</span></b></div>
+    <div class="logo"><b>School<span class="ia"> AI</span></b></div>
     <div data-role-nav="admin">
       <div class="space-tag">Espace Admin</div>
       <nav class="nav">
@@ -310,7 +494,7 @@
 
   <!-- ADMIN LICENSES -->
   <section class="view" id="view-a-licenses" data-title="Licences">
-    <div class="banner">🔑 Chaque licence relie un compte client au plugin School IA installé sur son site WordPress.</div>
+    <div class="banner">🔑 Chaque licence relie un compte client au plugin School AI installé sur son site WordPress.</div>
     <div class="card"><div class="hd"><h3>Licences du plugin</h3><button class="btn primary sm" data-open="modal-license">+ Générer une clé</button></div>
       <div class="table-wrap"><table><thead><tr><th>Clé</th><th>Client</th><th>Domaine</th><th>Expiration</th><th>Statut</th></tr></thead><tbody>
         <tr><td><code>SIA-8F2K-QR3T-9WZ1</code></td><td>BEM Conakry</td><td>bemconakry.com</td><td>12/03/2027</td><td><span class="pill p-ok">Active</span></td></tr>
@@ -349,7 +533,7 @@
   <!-- ADMIN SETTINGS -->
   <section class="view" id="view-a-settings" data-title="Réglages">
     <div class="card"><div class="hd"><h3>Paramètres de la plateforme</h3></div><div class="bd">
-      <div class="field"><label>Nom de la plateforme</label><input value="School IA CRM"></div>
+      <div class="field"><label>Nom de la plateforme</label><input value="School AI CRM"></div>
       <div class="field row2"><div><label>Devise</label><select><option>XOF (Franc CFA)</option><option>EUR</option><option>USD</option></select></div><div><label>Prix / utilisateur suppl.</label><input value="15 000 XOF"></div></div>
       <div class="field"><label>E-mail d'envoi</label><input value="no-reply@maestrodan.art"></div>
       <button class="btn primary">Enregistrer</button>
@@ -533,6 +717,11 @@
   document.getElementById('content').appendChild(document.getElementById('views').content.cloneNode(true));
   var titles = {};
   document.querySelectorAll('.view').forEach(function(v){ titles[v.id.replace('view-','')] = v.dataset.title; });
+
+  // Page d'accueil (présentation) affichée en premier.
+  document.body.classList.add('show-landing');
+  function showDemo(){ document.body.classList.remove('show-landing'); window.scrollTo(0,0); }
+  function showLanding(){ document.body.classList.add('show-landing'); window.scrollTo(0,0); }
 
   function enter(role){
     document.getElementById('screen-login').style.display='none';
