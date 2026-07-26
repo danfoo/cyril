@@ -3,867 +3,538 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="School AI — Convert more. Enroll smarter. Le CRM & marketing d'admission propulsé par l'IA : conseiller conversationnel, capture et scoring des leads, pipeline, campagnes multicanal et reporting 360°.">
+<meta name="description" content="School IA — conseiller d'orientation par IA & CRM d'admission pour les écoles. Édité par Maestro Dan.">
+<meta property="og:title" content="School IA — Conseiller IA & CRM d'admission">
+<meta property="og:description" content="Transformez le site de votre école en conseiller d'orientation intelligent, actif 24h/24, et en moteur de conversion de vos visiteurs en inscrits.">
+<meta property="og:type" content="website">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Ctext%20y='.9em'%20font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
-<title>School AI — Convert more. Enroll smarter.</title>
+<title>School IA — Conseiller IA & CRM d'admission</title>
 <style>
-  /* Thème clair, inspiration HubSpot, palette bleue. Mobile-first. */
   :root {
-    --bg:#f5f8fb; --surface:#ffffff; --surface-2:#f3f6fb;
-    --ink:#2d3e50; --muted:#516f90; --line:#dbe2ea;
-    --primary:#2e6ff2; --primary-d:#1a54cc; --primary-bg:#eaf1ff;
-    --ok:#0a8f5b; --ok-bg:#e4f6ee; --warn:#b7791f; --warn-bg:#fbf1dd;
-    --bad:#d64545; --bad-bg:#fbe9e9; --info:#2e6ff2; --info-bg:#eaf1ff;
-    --r:12px; --r-sm:9px;
-    --shadow:0 1px 3px rgba(45,62,80,.08), 0 1px 2px rgba(45,62,80,.06);
-    --shadow-lg:0 12px 40px rgba(45,62,80,.18);
-    --font:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    /* Neutres à légère bascule bleutée, or affiné */
+    --paper:   #f5f8fd;
+    --paper-2: #ffffff;
+    --ink:     #0c1730;
+    --muted:   #56688c;
+    --line:    #e3e9f5;
+    /* Marque : bandeaux « encre » constants sur les deux thèmes */
+    --navy:    #0a1c3e;
+    --navy-2:  #10254f;
+    --brand:   #1b57cc;
+    --brand-d: #0f3fa0;
+    --gold:    #d6a63a;
+    --gold-br: #f1c85c;
+    --on-navy: #eaf1fd;
+    --on-navy-muted: #9db1d6;
+
+    --r-sm: 11px; --r: 16px; --r-lg: 22px;
+    --shadow:    0 10px 30px rgba(10,25,60,.08);
+    --shadow-lg: 0 26px 64px rgba(10,25,60,.18);
+
+    --font-sans: system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --maxw: 1140px;
   }
-  * { box-sizing:border-box; }
-  html,body { margin:0; }
-  body { background:var(--bg); color:var(--ink); font-family:var(--font); font-size:15px; -webkit-font-smoothing:antialiased; }
-  h1,h2,h3,h4 { margin:0; font-weight:700; letter-spacing:-.01em; }
-  a { color:inherit; text-decoration:none; }
-  button { font-family:inherit; }
-
-  /* ---------- Connexion ---------- */
-  .login { min-height:100vh; display:grid; place-items:center; padding:20px;
-    background:radial-gradient(900px 500px at 80% -10%, #dbe8ff, transparent 60%), var(--bg); }
-  .login-card { width:100%; max-width:440px; background:var(--surface); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow-lg); padding:32px 26px; }
-  .login .brand b { font-size:26px; font-weight:800; letter-spacing:-.02em; }
-  .login .brand .ia { color:var(--primary); }
-  .login p.sub { color:var(--muted); margin:6px 0 24px; font-size:14px; }
-  .role-btn { width:100%; display:flex; align-items:center; gap:13px; padding:15px 16px; border:1px solid var(--line);
-    background:var(--surface); border-radius:var(--r); cursor:pointer; margin-bottom:11px; text-align:left; transition:.15s; }
-  .role-btn:hover { border-color:var(--primary); box-shadow:var(--shadow); transform:translateY(-1px); }
-  .role-btn .ic { width:42px; height:42px; border-radius:10px; display:grid; place-items:center; color:#fff; flex:0 0 auto; font-size:18px; }
-  .role-btn .ic.admin { background:linear-gradient(135deg,#1a54cc,#2e6ff2); }
-  .role-btn .ic.client { background:linear-gradient(135deg,#2e6ff2,#63a4ff); }
-  .role-btn h4 { font-size:15.5px; }
-  .role-btn span.d { color:var(--muted); font-size:12.5px; }
-  .login .foot { margin-top:16px; color:var(--muted); font-size:12px; text-align:center; }
-
-  /* ---------- Shell ---------- */
-  #app { display:none; }
-  #app.on { display:block; }
-  .backdrop { position:fixed; inset:0; background:rgba(20,30,50,.45); z-index:55; display:none; }
-  .backdrop.on { display:block; }
-
-  .side { position:fixed; top:0; left:0; bottom:0; width:270px; max-width:84vw; background:var(--surface); border-right:1px solid var(--line);
-    transform:translateX(-100%); transition:transform .25s ease; z-index:60; display:flex; flex-direction:column; }
-  .side.open { transform:none; }
-  .side .logo { display:flex; align-items:baseline; gap:8px; padding:18px 20px; border-bottom:1px solid var(--line); }
-  .side .logo b { font-size:20px; font-weight:800; letter-spacing:-.02em; }
-  .side .logo .ia { color:var(--primary); }
-  .side .space-tag { margin:16px 20px 8px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
-  .nav { display:flex; flex-direction:column; gap:2px; padding:2px 12px; overflow-y:auto; }
-  .nav-item { display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:9px; color:var(--ink); cursor:pointer; font-weight:550; font-size:14.5px; }
-  .nav-item .gi { width:22px; text-align:center; color:var(--muted); font-size:15px; }
-  .nav-item:hover { background:var(--surface-2); }
-  .nav-item.active { background:var(--primary-bg); color:var(--primary-d); box-shadow:inset 3px 0 0 var(--primary); }
-  .nav-item.active .gi { color:var(--primary); }
-  .side .user { margin-top:auto; padding:13px 16px; border-top:1px solid var(--line); display:flex; align-items:center; gap:10px; }
-  .side .user .av { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#2e6ff2,#63a4ff); display:grid; place-items:center; color:#fff; font-weight:700; }
-  .side .user small { display:block; color:var(--muted); font-size:12px; }
-  .side .user .switch { margin-left:auto; color:var(--muted); cursor:pointer; padding:6px; border-radius:8px; }
-  .side .user .switch:hover { background:var(--surface-2); color:var(--primary); }
-
-  .main { min-height:100vh; display:flex; flex-direction:column; }
-  .topbar { position:sticky; top:0; z-index:20; background:color-mix(in srgb,var(--surface) 90%,transparent); backdrop-filter:blur(8px);
-    border-bottom:1px solid var(--line); padding:12px 16px; display:flex; align-items:center; gap:12px; }
-  .menu-btn { width:38px; height:38px; border-radius:9px; border:1px solid var(--line); background:var(--surface); display:inline-grid; place-items:center; cursor:pointer; font-size:17px; flex:0 0 auto; }
-  .topbar h1 { font-size:18px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .topbar .search { margin-left:auto; display:none; align-items:center; gap:8px; background:var(--surface-2); border:1px solid var(--line); border-radius:9px; padding:8px 12px; color:var(--muted); }
-  .topbar .search input { border:0; background:transparent; outline:none; color:var(--ink); width:180px; font-size:14px; }
-  .topbar .tb-av { margin-left:auto; width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,#2e6ff2,#63a4ff); color:#fff; display:grid; place-items:center; font-weight:700; font-size:13px; }
-  .content { padding:16px; }
-
-  /* ---------- Composants ---------- */
-  .btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid transparent; border-radius:9px; padding:10px 15px; font-weight:650; font-size:14px; cursor:pointer; transition:.15s; }
-  .btn.primary { background:var(--primary); color:#fff; }
-  .btn.primary:hover { background:var(--primary-d); }
-  .btn.ghost { background:var(--surface); border-color:var(--line); color:var(--ink); }
-  .btn.ghost:hover { border-color:var(--primary); color:var(--primary); }
-  .btn.sm { padding:7px 11px; font-size:13px; }
-  .btn.block { width:100%; }
-
-  .kpis { display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:18px; }
-  .kpi { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px; box-shadow:var(--shadow); position:relative; overflow:hidden; }
-  .kpi::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--k,var(--primary)); }
-  .kpi .label { color:var(--muted); font-size:13px; }
-  .kpi .val { font-size:26px; font-weight:800; letter-spacing:-.02em; margin-top:6px; font-variant-numeric:tabular-nums; }
-  .kpi .delta { font-size:12.5px; margin-top:3px; }
-  .up { color:var(--ok); } .down { color:var(--bad); }
-
-  .grid2 { display:grid; grid-template-columns:1fr; gap:16px; }
-  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); }
-  .card .hd { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-  .card .hd h3 { font-size:15px; }
-  .card .hd .btn { margin-left:auto; }
-  .card .bd { padding:16px; }
-
-  .table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-  table { width:100%; border-collapse:collapse; min-width:520px; }
-  th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); padding:10px 14px; border-bottom:1px solid var(--line); white-space:nowrap; }
-  td { padding:12px 14px; border-bottom:1px solid var(--line); font-size:14px; }
-  tr:last-child td { border-bottom:0; }
-  tbody tr:hover { background:var(--surface-2); }
-  code { background:var(--surface-2); padding:2px 6px; border-radius:5px; font-size:12.5px; }
-
-  .pill { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px; font-size:12px; font-weight:650; white-space:nowrap; }
-  .pill::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-  .p-ok{color:var(--ok);background:var(--ok-bg);} .p-warn{color:var(--warn);background:var(--warn-bg);}
-  .p-bad{color:var(--bad);background:var(--bad-bg);} .p-info{color:var(--info);background:var(--info-bg);}
-  .avatar { width:30px; height:30px; border-radius:50%; background:var(--primary-bg); color:var(--primary-d); display:inline-grid; place-items:center; font-size:12px; font-weight:700; }
-
-  .kanban { display:grid; grid-auto-flow:column; grid-auto-columns:82%; gap:12px; overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch; }
-  .col { background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r); padding:11px; }
-  .col-hd { display:flex; align-items:center; gap:8px; font-weight:700; font-size:13.5px; margin-bottom:10px; }
-  .col .count { margin-left:auto; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:1px 8px; font-size:12px; color:var(--muted); }
-  .lead-card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:11px; margin-bottom:9px; cursor:pointer; }
-  .lead-card:hover { border-color:var(--primary); }
-  .lead-card .nm { font-weight:650; font-size:14px; }
-  .lead-card .mt { color:var(--muted); font-size:12.5px; margin-top:3px; }
-  .lead-card .row { display:flex; align-items:center; gap:8px; margin-top:8px; }
-  .score { font-size:11.5px; font-weight:700; padding:2px 7px; border-radius:6px; }
-  .s-hot{color:var(--bad);background:var(--bad-bg);} .s-warm{color:var(--warn);background:var(--warn-bg);} .s-cold{color:var(--muted);background:var(--surface-2);border:1px solid var(--line);}
-
-  .cards { display:grid; grid-template-columns:1fr; gap:14px; }
-  .tile { background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px; box-shadow:var(--shadow); }
-  .tile h3 { font-size:16px; }
-  .tile .price { font-size:26px; font-weight:800; margin:6px 0; letter-spacing:-.02em; }
-  .tile .price small { font-size:13px; font-weight:600; color:var(--muted); }
-  .tile ul { list-style:none; padding:0; margin:12px 0; display:flex; flex-direction:column; gap:7px; color:var(--muted); font-size:13.5px; }
-  .tile ul li::before { content:"✓"; color:var(--ok); font-weight:800; margin-right:7px; }
-  .seat-note { font-size:12.5px; color:var(--primary-d); background:var(--primary-bg); border-radius:8px; padding:7px 10px; margin-top:6px; }
-
-  .pay { display:flex; align-items:center; gap:11px; padding:13px; border:1px solid var(--line); border-radius:11px; background:var(--surface); }
-  .pay .logo { width:44px; height:30px; border-radius:6px; display:grid; place-items:center; font-weight:800; font-size:11px; color:#fff; text-align:center; line-height:1; }
-
-  .doc { display:flex; align-items:center; gap:11px; padding:11px 13px; border:1px solid var(--line); border-radius:11px; background:var(--surface); }
-  .doc .ic { width:38px; height:38px; border-radius:9px; display:grid; place-items:center; background:var(--primary-bg); color:var(--primary); flex:0 0 auto; font-size:12px; font-weight:700; }
-  .dropzone { border:2px dashed var(--line); border-radius:var(--r); padding:24px; text-align:center; color:var(--muted); background:var(--surface); }
-  .section-title { font-size:12.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:22px 0 11px; font-weight:700; }
-  .banner { background:var(--primary-bg); color:var(--primary-d); border:1px solid color-mix(in srgb,var(--primary) 25%,transparent); border-radius:11px; padding:11px 14px; font-size:13.5px; margin-bottom:16px; display:flex; gap:9px; }
-  .banner.warn { background:var(--warn-bg); color:var(--warn); border-color:color-mix(in srgb,var(--warn) 30%,transparent); }
-
-  .toolbar { display:flex; gap:8px; margin-bottom:14px; align-items:center; flex-wrap:wrap; }
-  .toolbar .spacer { margin-left:auto; color:var(--muted); font-size:13px; }
-
-  /* Modale */
-  .modal { position:fixed; inset:0; z-index:100; display:none; }
-  .modal.on { display:block; }
-  .modal .ov { position:absolute; inset:0; background:rgba(20,30,50,.5); }
-  .modal .box { position:relative; z-index:1; width:100%; max-width:560px; margin:0 auto; background:var(--surface); border-radius:0; min-height:100vh; display:flex; flex-direction:column; }
-  .modal .mhd { display:flex; align-items:center; justify-content:space-between; padding:16px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--surface); }
-  .modal .mhd h3 { font-size:16px; }
-  .modal .x { border:0; background:transparent; font-size:24px; color:var(--muted); cursor:pointer; }
-  .modal .mbd { padding:16px; overflow-y:auto; flex:1; }
-  .modal .mft { padding:12px 16px; border-top:1px solid var(--line); display:flex; gap:10px; position:sticky; bottom:0; background:var(--surface); }
-  .modal .mft .btn { flex:1; }
-  .field { margin-bottom:13px; }
-  .field label { display:block; font-size:13px; font-weight:600; margin-bottom:5px; }
-  .field input, .field select, .field textarea { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--ink); font-size:15px; outline:none; }
-  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px var(--primary-bg); }
-  .field.row2 { display:grid; grid-template-columns:1fr; gap:12px; }
-
-  .view { display:none; } .view.on { display:block; }
-  :focus-visible { outline:2px solid var(--primary); outline-offset:2px; }
-
-  /* ================= Tablette ================= */
-  @media (min-width:640px){
-    .content { padding:22px; }
-    .kpis { grid-template-columns:repeat(2,1fr); gap:14px; }
-    .cards { grid-template-columns:repeat(2,1fr); }
-    .field.row2 { grid-template-columns:1fr 1fr; }
-    .modal .box { max-width:560px; margin:6vh auto; min-height:auto; max-height:88vh; border-radius:16px; }
-    .modal .mhd { border-radius:16px 16px 0 0; }
-    .modal .mft .btn { flex:0 0 auto; }
-    .modal .mft { justify-content:flex-end; }
-    .topbar .search { display:flex; }
-    .kanban { grid-auto-columns:minmax(230px,1fr); }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:   #080e1c;
+      --paper-2: #0f1b32;
+      --ink:     #eaf0fc;
+      --muted:   #98a9cb;
+      --line:    #1c2b49;
+      --shadow:    0 10px 30px rgba(0,0,0,.35);
+      --shadow-lg: 0 26px 64px rgba(0,0,0,.5);
+    }
   }
-  /* ================= Bureau ================= */
-  @media (min-width:1024px){
-    #app.on { display:grid; grid-template-columns:270px 1fr; }
-    .side { position:sticky; top:0; height:100vh; transform:none; max-width:none; }
-    .backdrop { display:none !important; }
-    .menu-btn { display:none; }
-    .content { padding:26px 28px 60px; }
-    .kpis { grid-template-columns:repeat(4,1fr); }
-    .grid2 { grid-template-columns:1.6fr 1fr; }
-    .cards { grid-template-columns:repeat(3,1fr); }
-    .cards.four { grid-template-columns:repeat(4,1fr); }
-    .topbar { padding:14px 26px; }
-    .topbar h1 { font-size:20px; }
+  :root[data-theme="dark"] {
+    --paper: #080e1c; --paper-2: #0f1b32; --ink: #eaf0fc; --muted: #98a9cb; --line: #1c2b49;
+    --shadow: 0 10px 30px rgba(0,0,0,.35); --shadow-lg: 0 26px 64px rgba(0,0,0,.5);
+  }
+  :root[data-theme="light"] {
+    --paper: #f5f8fd; --paper-2: #ffffff; --ink: #0c1730; --muted: #56688c; --line: #e3e9f5;
+    --shadow: 0 10px 30px rgba(10,25,60,.08); --shadow-lg: 0 26px 64px rgba(10,25,60,.18);
   }
 
-  /* ================= Page d'accueil — thème FUTURISTE ================= */
-  #screen-landing { display:none; }
-  body.show-landing #screen-landing { display:block; }
-  body.show-landing #screen-login { display:none; }
-  body.show-landing { background:#05070f; }
-
-  #screen-landing{
-    --lp-ink:#eaf1ff; --lp-muted:#93a4c8; --lp-line:rgba(255,255,255,.10);
-    --lp-glass:rgba(255,255,255,.045); --lp-glass-2:rgba(255,255,255,.07);
-    --grad:linear-gradient(100deg,#22d3ee,#3b82f6 45%,#7c5cff);
-    position:relative; color:var(--lp-ink); overflow:hidden;
-    background:#05070f;
-    font-family:var(--font);
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--font-sans); font-size: 17px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   }
-  /* Fond animé : nappes lumineuses + grille */
-  #screen-landing::before{ content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  h1, h2, h3 { margin: 0; font-weight: 800; letter-spacing: -.022em; line-height: 1.06; text-wrap: balance; }
+  p { margin: 0; }
+  a { color: inherit; }
+  img { max-width: 100%; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  .band { padding: clamp(60px, 9vw, 116px) 0; position: relative; }
+  .band--ink { background: var(--navy); color: var(--on-navy); overflow: hidden; }
+  .band--ink h1, .band--ink h2, .band--ink h3 { color: #fff; }
+  .band--tint { background: var(--paper-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+
+  /* Étiquette pastille */
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px 6px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--brand-d); background: color-mix(in srgb, var(--brand) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  }
+  .eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+  .band--ink .eyebrow { color: var(--gold-br); background: rgba(241,200,92,.12); border-color: rgba(241,200,92,.28); }
+
+  .lead { color: var(--muted); font-size: clamp(17px, 1.9vw, 20px); line-height: 1.62; max-width: 60ch; font-weight: 450; }
+  .band--ink .lead { color: var(--on-navy-muted); }
+
+  /* ---------- Barre supérieure ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--navy) 82%, transparent);
+    -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .topbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 14px; height: 64px; }
+  .brandmark { display: inline-flex; align-items: baseline; gap: 10px; color: #fff; text-decoration: none; white-space: nowrap; }
+  .brandmark b { font-size: 22px; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; }
+  .brandmark span { color: var(--on-navy-muted); font-size: 12.5px; letter-spacing: .02em; white-space: nowrap; }
+  .brandmark .ia { color: var(--gold-br); }
+
+  /* ---------- Boutons ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    font-weight: 700; font-size: 15px; white-space: nowrap;
+    padding: 13px 22px; border-radius: var(--r-sm); text-decoration: none; cursor: pointer;
+    border: 1px solid transparent; transition: transform .16s ease, box-shadow .16s ease, background .16s ease, border-color .16s ease;
+  }
+  .btn--gold { background: linear-gradient(180deg, var(--gold-br), var(--gold)); color: #2a1e00; box-shadow: 0 8px 22px rgba(214,166,58,.34); }
+  .btn--gold:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(214,166,58,.42); }
+  .btn--brand { background: linear-gradient(180deg, var(--brand), var(--brand-d)); color: #fff; box-shadow: 0 8px 22px rgba(27,87,204,.32); }
+  .btn--brand:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(27,87,204,.42); }
+  .btn--ghost { background: rgba(255,255,255,.04); color: #fff; border-color: rgba(255,255,255,.28); }
+  .btn--ghost:hover { border-color: var(--gold-br); color: var(--gold-br); transform: translateY(-2px); }
+  .btn--outline { background: transparent; color: var(--ink); border-color: var(--line); }
+  .btn--outline:hover { border-color: var(--brand); color: var(--brand); transform: translateY(-2px); }
+  .btn--sm { padding: 9px 16px; font-size: 13.5px; }
+
+  /* ---------- Héros ---------- */
+  .hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
     background:
-      radial-gradient(60vw 50vh at 15% 0%, rgba(59,130,246,.28), transparent 60%),
-      radial-gradient(55vw 45vh at 92% 8%, rgba(124,92,255,.22), transparent 60%),
-      radial-gradient(50vw 50vh at 70% 100%, rgba(34,211,238,.16), transparent 60%);
-    animation:lp-drift 18s ease-in-out infinite alternate; }
-  #screen-landing::after{ content:""; position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.5;
-    background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);
-    background-size:44px 44px; mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 80%); }
-  @keyframes lp-drift{ from{ transform:translate3d(0,0,0) scale(1);} to{ transform:translate3d(0,-3%,0) scale(1.06);} }
-  #screen-landing > *{ position:relative; z-index:1; }
+      radial-gradient(920px 480px at 82% -10%, rgba(241,200,92,.18), transparent 58%),
+      radial-gradient(720px 520px at -6% 112%, rgba(27,87,204,.5), transparent 60%);
+  }
+  .hero .wrap { position: relative; z-index: 1; }
+  .hero-card {
+    background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+    border: 1px solid rgba(255,255,255,.1); border-radius: var(--r-lg);
+    padding: clamp(30px, 5vw, 62px);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 30px 70px rgba(4,12,30,.4);
+  }
+  .hero h1 { font-size: clamp(38px, 6.6vw, 74px); letter-spacing: -.03em; max-width: 16ch; margin-top: 22px; }
+  .hero .lead { margin-top: 22px; }
+  .hero-cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
+  .hero-contact { margin-top: 22px; font-size: 15px; color: var(--on-navy-muted); }
+  .hero-contact a { color: var(--gold-br); font-weight: 650; text-decoration: none; }
+  .hero-trust {
+    margin-top: 32px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.1);
+    display: flex; flex-wrap: wrap; gap: 10px 26px; color: var(--on-navy-muted); font-size: 13.5px;
+  }
+  .hero-trust span { display: inline-flex; align-items: center; gap: 8px; }
+  .hero-trust span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--gold-br); }
+  .hero-trust b { color: #fff; font-weight: 700; }
 
-  .lp-nav{ position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:14px;
-    padding:14px clamp(16px,4vw,52px); background:rgba(5,7,15,.55); backdrop-filter:blur(14px);
-    border-bottom:1px solid var(--lp-line); }
-  .lp-brand{ display:flex; align-items:center; gap:12px; min-width:0; }
-  .lp-brand img{ height:40px; width:auto; display:block; }
-  .lp-logo-svg{ height:40px; width:auto; display:block; filter:drop-shadow(0 4px 14px rgba(59,130,246,.5)); }
-  .lp-brand .wordmark{ font-weight:800; font-size:22px; letter-spacing:.06em; white-space:nowrap;
-    background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .lp-brand .tag{ display:none; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--lp-muted);
-    font-weight:700; padding-left:13px; border-left:1px solid var(--lp-line); }
-  .lp-nav .sp{ margin-left:auto; }
+  /* ---------- Grilles ---------- */
+  .grid { display: grid; gap: 22px; }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .cols-2 { grid-template-columns: 1.05fr .95fr; align-items: center; gap: 44px; }
+  @media (max-width: 880px) { .cols-3 { grid-template-columns: 1fr; } .cols-2 { grid-template-columns: 1fr; gap: 30px; } }
 
-  .btn.glow{ position:relative; border:0; color:#fff; background:var(--grad); background-size:180% 100%;
-    box-shadow:0 8px 30px rgba(59,130,246,.45); transition:.25s; }
-  .btn.glow:hover{ background-position:100% 0; box-shadow:0 10px 40px rgba(124,92,255,.6); transform:translateY(-2px); }
-  .btn.line{ background:var(--lp-glass); border:1px solid var(--lp-line); color:var(--lp-ink); backdrop-filter:blur(6px); }
-  .btn.line:hover{ border-color:rgba(59,130,246,.7); color:#fff; box-shadow:0 0 0 3px rgba(59,130,246,.14); }
-  .btn.lg{ padding:14px 26px; font-size:16px; border-radius:12px; }
+  .section-head { max-width: 60ch; margin-bottom: 44px; }
+  .section-head .eyebrow { margin-bottom: 18px; }
+  .section-head h2 { font-size: clamp(28px, 4.2vw, 46px); }
+  .section-head p { margin-top: 16px; }
 
-  .hero{ text-align:center; padding:clamp(56px,10vw,120px) clamp(16px,5vw,48px) clamp(30px,6vw,56px); }
-  .hero-badge{ display:inline-flex; align-items:center; gap:9px; font-size:12px; font-weight:650; letter-spacing:.04em;
-    color:#bfe0ff; background:var(--lp-glass); border:1px solid var(--lp-line); padding:8px 15px; border-radius:999px;
-    margin-bottom:22px; backdrop-filter:blur(6px); }
-  .hero-badge .dot{ width:7px; height:7px; border-radius:50%; background:#22d3ee; box-shadow:0 0 10px #22d3ee; animation:lp-pulse 1.8s infinite; }
-  @keyframes lp-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
-  .hero h1{ font-size:clamp(34px,7vw,68px); line-height:1.03; letter-spacing:-.03em; max-width:15ch; margin:0 auto; font-weight:800; }
-  .hero h1 .g{ background:var(--grad); background-size:200% auto; -webkit-background-clip:text; background-clip:text; color:transparent;
-    animation:lp-shine 6s linear infinite; }
-  @keyframes lp-shine{ to{ background-position:200% center; } }
-  .hero p{ color:var(--lp-muted); font-size:clamp(15px,2.3vw,20px); max-width:60ch; margin:20px auto 28px; }
-  .hero .cta{ display:flex; gap:13px; justify-content:center; flex-wrap:wrap; }
-  .hero .trust{ color:var(--lp-muted); font-size:13px; margin-top:20px; opacity:.85; }
-  .hero-mark{ width:min(150px,40vw); height:auto; margin:6px auto 4px; display:block; animation:lp-float 6s ease-in-out infinite; }
-  @keyframes lp-float{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-12px); } }
+  /* Cartes problème */
+  .leak { padding: 28px 26px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+  .band--tint .leak { background: var(--paper); }
+  .leak .tag { display: inline-block; width: 34px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, var(--gold), var(--brand)); margin-bottom: 16px; }
+  .leak h3 { font-size: 20px; margin-bottom: 8px; }
+  .leak p { color: var(--muted); font-size: 15.5px; }
 
-  .lp-section{ padding:clamp(34px,6vw,72px) clamp(16px,5vw,48px); max-width:1200px; margin:0 auto; }
-  .lp-eyebrow{ text-align:center; font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:12px;
-    background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .lp-h2{ text-align:center; font-size:clamp(26px,4.2vw,40px); margin:10px auto 8px; letter-spacing:-.02em; font-weight:800; }
-  .lp-sub{ text-align:center; color:var(--lp-muted); max-width:60ch; margin:0 auto 40px; font-size:16px; }
+  /* Cartes fonctionnalités */
+  .feat { padding: 30px 26px; background: var(--paper-2); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .feat:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: color-mix(in srgb, var(--brand) 40%, var(--line)); }
+  .feat .ico { width: 48px; height: 48px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 18px; color: var(--brand);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 16%, transparent), color-mix(in srgb, var(--gold) 18%, transparent)); }
+  .feat .ico svg { width: 23px; height: 23px; }
+  .feat h3 { font-size: 19px; margin-bottom: 8px; }
+  .feat p { color: var(--muted); font-size: 15px; }
 
-  .feat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:18px; }
-  .feat{ position:relative; background:var(--lp-glass); border:1px solid var(--lp-line); border-radius:18px; padding:24px;
-    backdrop-filter:blur(8px); transition:transform .3s, box-shadow .3s, border-color .3s; overflow:hidden; }
-  .feat::before{ content:""; position:absolute; inset:0; border-radius:18px; padding:1px; background:var(--grad);
-    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude;
-    opacity:0; transition:.3s; }
-  .feat:hover{ transform:translateY(-6px); box-shadow:0 20px 50px rgba(3,8,25,.6); }
-  .feat:hover::before{ opacity:1; }
-  .feat .fi{ width:52px; height:52px; border-radius:14px; display:grid; place-items:center; margin-bottom:15px;
-    background:linear-gradient(135deg,rgba(34,211,238,.18),rgba(124,92,255,.18)); border:1px solid var(--lp-line); }
-  .feat .fi svg{ width:26px; height:26px; stroke:url(#lpg); fill:none; stroke-width:1.8; }
-  .feat h3{ font-size:17.5px; margin-bottom:7px; color:#fff; }
-  .feat > p{ color:var(--lp-muted); font-size:14px; margin:0 0 12px; }
-  .feat ul{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:7px; }
-  .feat ul li{ color:#cdd8f0; font-size:13.5px; padding-left:22px; position:relative; }
-  .feat ul li::before{ content:""; position:absolute; left:2px; top:6px; width:8px; height:8px; border-radius:50%;
-    background:var(--grad); box-shadow:0 0 8px rgba(59,130,246,.7); }
+  /* Étapes (séquence réelle → numérotation justifiée) */
+  .steps { display: grid; gap: 14px; }
+  .step { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start;
+    padding: 26px; border: 1px solid rgba(255,255,255,.1); border-radius: var(--r); background: rgba(255,255,255,.03); }
+  .step .num { font-size: 34px; font-weight: 800; line-height: 1; width: 64px; letter-spacing: -.03em;
+    background: linear-gradient(180deg, var(--gold-br), var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .step h3 { color: #fff; font-size: 21px; margin-bottom: 6px; }
+  .step p { color: var(--on-navy-muted); font-size: 15.5px; max-width: 58ch; }
 
-  /* Réservation de démo */
-  .book-wrap{ max-width:1050px; margin:0 auto; display:grid; grid-template-columns:1fr; gap:26px;
-    background:var(--lp-glass); border:1px solid var(--lp-line); border-radius:24px; padding:clamp(22px,4vw,40px); backdrop-filter:blur(10px); }
-  .book-intro h2{ font-size:clamp(24px,3.6vw,34px); letter-spacing:-.02em; }
-  .book-intro p{ color:var(--lp-muted); margin:12px 0 18px; font-size:15.5px; }
-  .book-perks{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:11px; }
-  .book-perks li{ display:flex; gap:10px; align-items:flex-start; font-size:14px; color:#cdd8f0; }
-  .book-perks li svg{ width:20px; height:20px; flex:0 0 auto; stroke:#22d3ee; fill:none; stroke-width:1.8; margin-top:1px; }
-  .book-form .fld{ margin-bottom:14px; }
-  .book-form label{ display:block; font-size:12.5px; font-weight:600; color:#b9c6e6; margin-bottom:6px; letter-spacing:.01em; }
-  .book-form input,.book-form select,.book-form textarea{ width:100%; padding:12px 14px; border-radius:11px;
-    background:rgba(255,255,255,.05); border:1px solid var(--lp-line); color:var(--lp-ink); font-size:15px; font-family:inherit;
-    outline:none; transition:.2s; }
-  .book-form input::placeholder,.book-form textarea::placeholder{ color:#6b7ba0; }
-  .book-form input:focus,.book-form select:focus,.book-form textarea:focus{ border-color:#3b82f6; box-shadow:0 0 0 4px rgba(59,130,246,.18); background:rgba(255,255,255,.08); }
-  .book-form option{ color:#0b1020; }
-  .book-form .two{ display:grid; grid-template-columns:1fr; gap:14px; }
-  .book-form .err{ border-color:#f87171 !important; box-shadow:0 0 0 4px rgba(248,113,113,.16) !important; }
-  .book-note{ font-size:12px; color:var(--lp-muted); margin-top:10px; text-align:center; }
-  .book-ok{ display:none; text-align:center; padding:20px; }
-  .book-ok.on{ display:block; animation:lp-in .5s ease both; }
-  .book-ok .chk{ width:66px; height:66px; margin:0 auto 14px; border-radius:50%; display:grid; place-items:center;
-    background:linear-gradient(135deg,#22d3ee,#3b82f6); box-shadow:0 10px 34px rgba(59,130,246,.5); }
-  .book-ok .chk svg{ width:34px; height:34px; stroke:#fff; fill:none; stroke-width:3; }
+  /* Distinctions */
+  .diff { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+  @media (max-width: 760px) { .diff { grid-template-columns: 1fr; } }
+  .diff-item { padding: 22px 24px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper-2); box-shadow: var(--shadow); display: grid; grid-template-columns: auto 1fr; gap: 16px; }
+  .diff-item .chk { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: 0 0 auto;
+    background: color-mix(in srgb, var(--gold) 20%, transparent); color: var(--gold); }
+  .diff-item h3 { font-size: 18px; margin-bottom: 4px; }
+  .diff-item p { color: var(--muted); font-size: 15px; }
 
-  .lp-foot{ text-align:center; color:var(--lp-muted); font-size:13px; padding:38px 16px 54px; border-top:1px solid var(--lp-line); margin-top:20px; }
-  .lp-back{ color:#7fb4ff; font-weight:650; font-size:13.5px; cursor:pointer; display:inline-block; margin-bottom:14px; }
+  /* Public */
+  .chips { display: flex; flex-wrap: wrap; gap: 12px; }
+  .chip { padding: 11px 20px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper-2); font-size: 15px; font-weight: 550; box-shadow: var(--shadow); }
+
+  /* Citation */
+  .quote { text-align: center; }
+  .quote blockquote { font-size: clamp(28px, 4.6vw, 52px); font-weight: 800; letter-spacing: -.03em; line-height: 1.12; color: #fff; margin: 0 auto; max-width: 20ch; }
+  .quote blockquote .hl { background: linear-gradient(180deg, var(--gold-br), var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .quote cite { display: block; margin-top: 24px; font-style: normal; color: var(--on-navy-muted); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; }
+
+  /* CTA final */
+  .final { text-align: center; }
+  .final .eyebrow { margin-bottom: 18px; }
+  .final h2 { font-size: clamp(30px, 5vw, 52px); max-width: 18ch; margin: 0 auto; }
+  .final p { color: var(--muted); margin: 18px auto 0; max-width: 52ch; }
+  .final .hero-cta { justify-content: center; }
+  .final .hero-contact { color: var(--muted); }
+  .final .hero-contact a { color: var(--brand); }
+
+  footer { background: var(--navy); color: var(--on-navy-muted); padding: 38px 0; border-top: 1px solid rgba(241,200,92,.22); }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center; justify-content: space-between; }
+  footer b { color: #fff; font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+  footer .ia { color: var(--gold-br); }
+  footer small { font-size: 13px; }
+  footer a { color: var(--gold-br); text-decoration: none; }
 
   /* Révélation au défilement */
-  .reveal{ opacity:0; transform:translateY(26px); transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
-  .reveal.in{ opacity:1; transform:none; }
-  @keyframes lp-in{ from{ opacity:0; transform:scale(.9);} to{ opacity:1; transform:none; } }
-  @media (prefers-reduced-motion:reduce){ .reveal{ opacity:1; transform:none; } #screen-landing::before,.hero-mark,.hero h1 .g{ animation:none; } }
+  .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } .btn, .feat { transition: none; } }
+  :focus-visible { outline: 2px solid var(--gold-br); outline-offset: 3px; }
 
-  @media (min-width:720px){ .lp-brand .tag{ display:inline-block; } .book-form .two{ grid-template-columns:1fr 1fr; } }
-  @media (min-width:900px){ .book-wrap{ grid-template-columns:.85fr 1.15fr; align-items:start; } }
+  /* ---------- Formulaire de réservation ---------- */
+  .dform-wrap { max-width: 720px; margin: 34px auto 0; background: var(--paper-2); border: 1px solid var(--line);
+    border-radius: var(--r-lg); box-shadow: var(--shadow-lg); padding: clamp(22px, 4vw, 40px); text-align: left; }
+  .dform .row2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 620px) { .dform .row2 { grid-template-columns: 1fr 1fr; } }
+  .dform .fld { margin-bottom: 16px; }
+  .dform label { display: block; font-size: 13px; font-weight: 650; color: var(--ink); margin-bottom: 6px; }
+  .dform input, .dform select, .dform textarea { width: 100%; padding: 12px 14px; border: 1px solid var(--line);
+    border-radius: var(--r-sm); background: var(--paper); color: var(--ink); font: inherit; font-size: 15px; outline: none;
+    transition: border-color .15s, box-shadow .15s; }
+  .dform input:focus, .dform select:focus, .dform textarea:focus { border-color: var(--brand);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent); }
+  .dform textarea { resize: vertical; }
+  .dform .err { border-color: #d64545 !important; box-shadow: 0 0 0 3px rgba(214,69,69,.14) !important; }
+  /* Champ téléphone : indicatif + numéro */
+  .phone-grp { display: grid; grid-template-columns: minmax(120px, 44%) 1fr; gap: 8px; }
+  .phone-grp select { padding-left: 10px; }
+  .dform .note { font-size: 12.5px; color: var(--muted); margin-top: 12px; text-align: center; }
+  .dform-ok { display: none; text-align: center; }
+  .dform-ok.on { display: block; }
+  .dform-ok .chk { width: 62px; height: 62px; margin: 4px auto 14px; border-radius: 50%; display: grid; place-items: center;
+    background: linear-gradient(180deg, var(--gold-br), var(--gold)); color: #2a1e00; box-shadow: 0 10px 26px rgba(214,166,58,.4); }
+  .dform-ok .chk svg { width: 30px; height: 30px; }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 560px) {
+    .topbar .wrap { height: 58px; gap: 10px; }
+    .brandmark span { display: none; }
+    .brandmark b { font-size: 19px; }
+    .topbar .btn { padding: 8px 14px; font-size: 13px; }
+    .hero-cta .btn { flex: 1 1 100%; }
+    .phone-grp { grid-template-columns: 1fr; }
+  }
 </style>
 
-<!-- ================= PAGE D'ACCUEIL — FUTURISTE ================= -->
-<div id="screen-landing">
-
-  <!-- Dégradé partagé des icônes -->
-  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
-    <linearGradient id="lpg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#22d3ee"/><stop offset=".55" stop-color="#3b82f6"/><stop offset="1" stop-color="#7c5cff"/>
-    </linearGradient>
-  </defs></svg>
-
-  <nav class="lp-nav">
-    <a class="lp-brand" href="#" onclick="return false;">
-      <img src="SHOOL-AI-LIGHT.png" alt="School AI — Convert more. Enroll smarter." class="lp-brand-img" style="height:46px"
-           onerror="this.remove();document.getElementById('brandFb').style.display='inline-flex';">
-      <span id="brandFb" class="lp-brand-fallback" style="display:none;align-items:center;gap:11px;">
-        <svg class="lp-logo-svg" viewBox="0 0 64 64" aria-hidden="true">
-          <defs><linearGradient id="gm" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#22d3ee"/><stop offset=".5" stop-color="#3b82f6"/><stop offset="1" stop-color="#7c5cff"/>
-          </linearGradient></defs>
-          <path d="M9 13 H55 L38 34 V52 L26 45 V34 Z" fill="url(#gm)" opacity=".16"/>
-          <path d="M9 13 H55 L38 34 V52 L26 45 V34 Z" fill="none" stroke="url(#gm)" stroke-width="2.6" stroke-linejoin="round"/>
-          <path d="M32 47 V26 M25 33 L32 26 L39 33" fill="none" stroke="#22d3ee" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="9" cy="13" r="3.2" fill="#22d3ee"/><circle cx="55" cy="13" r="3.2" fill="#7c5cff"/>
-        </svg>
-        <span class="wordmark">SCHOOL AI</span>
-        <span class="tag">Convert more. Enroll smarter.</span>
-      </span>
+<header class="topbar">
+  <div class="wrap">
+    <a class="brandmark" href="#top">
+      <img src="SHOOL-AI-LIGHT.png" alt="School IA — par Maestro Dan" style="height:40px;width:auto;display:block;"
+           onerror="this.remove();document.getElementById('bmFb').style.display='inline-flex';">
+      <span id="bmFb" style="display:none;align-items:baseline;gap:10px;"><b>School<span class="ia"> IA</span></b><span>par Maestro Dan</span></span>
     </a>
-    <span class="sp"></span>
-    <button class="btn glow sm" onclick="document.getElementById('reserver').scrollIntoView({behavior:'smooth'})">Réserver une démo</button>
-  </nav>
+    <a class="btn btn--gold btn--sm" href="#contact">Réserver une démo</a>
+  </div>
+</header>
 
-  <header class="hero">
-    <span class="hero-badge"><span class="dot"></span> CRM &amp; marketing d'admission propulsé par l'IA</span>
-    <h1>Convertissez plus.<br><span class="g">Inscrivez plus intelligemment.</span></h1>
-    <p>School AI transforme chaque visiteur en candidat qualifié : un conseiller IA qui répond 24/7, capture et score vos leads, orchestre vos relances et vous offre une vision d'admission à 360°.</p>
-    <div class="cta">
-      <button class="btn glow lg" onclick="document.getElementById('reserver').scrollIntoView({behavior:'smooth'})">✦ Réserver une démo</button>
-      <a class="btn line lg" href="#features">Découvrir les fonctionnalités</a>
+<a id="top"></a>
+
+<!-- HÉROS -->
+<section class="band band--ink hero">
+  <div class="wrap">
+    <div class="hero-card reveal">
+      <span class="eyebrow">Conseiller IA &amp; CRM d'admission</span>
+      <h1>Chaque visiteur de votre site est un futur inscrit.</h1>
+      <p class="lead">School IA transforme le site de votre établissement en conseiller d'orientation intelligent, actif jour et nuit — et en véritable moteur de conversion de vos visiteurs en candidats.</p>
+      <div class="hero-cta">
+        <a class="btn btn--gold" href="#contact">Demander une démonstration</a>
+        <a class="btn btn--ghost" href="#solution">Découvrir la solution</a>
+      </div>
+      <p class="hero-contact"><a href="mailto:gilles@maestrodan.art">gilles@maestrodan.art</a> &nbsp;·&nbsp; <a href="tel:+221775003371">+221&nbsp;77&nbsp;500&nbsp;33&nbsp;71</a></p>
+      <div class="hero-trust">
+        <span>Édité par <b>Maestro Dan</b></span>
+        <span>Installation en quelques minutes</span>
+        <span>Entièrement à <b>votre</b> marque</span>
+      </div>
     </div>
-    <div class="trust">Déjà utilisé par BEM Conakry · s'installe sur n'importe quel site (WordPress ou non)</div>
-  </header>
+  </div>
+</section>
 
-  <section class="lp-section" id="features">
-    <div class="lp-eyebrow reveal">Fonctionnalités</div>
-    <h2 class="lp-h2 reveal">Tout le tunnel d'admission, dans une seule plateforme</h2>
-    <p class="lp-sub reveal">De la première visite anonyme à l'inscription confirmée — sans changer d'outil.</p>
-    <div class="feat-grid">
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H9l-4 4V5z" stroke-linejoin="round"/><path d="M8 9h8M8 12h5" stroke-linecap="round"/></svg></div>
-        <h3>Conseiller d'orientation IA</h3>
-        <p>Un conseiller virtuel qui répond, qualifie et engage jour et nuit.</p>
-        <ul><li>Chatbot IA expert de vos programmes &amp; admissions</li><li>Base de connaissance auto-construite depuis votre site</li><li>Réponses personnalisées + relais WhatsApp</li><li>Escalade vers un conseiller humain</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3" stroke-linecap="round"/></svg></div>
-        <h3>Capture &amp; qualification des leads</h3>
-        <p>Chaque visiteur intéressé devient une fiche exploitable.</p>
-        <ul><li>Capture de tous vos formulaires (Gravity, CF7, WPForms…)</li><li>Détection intelligente de la formation visée</li><li>Anti-doublon chat + formulaire</li><li>Numéro normalisé (indicatif automatique)</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><path d="M4 4v16h16" stroke-linecap="round"/><path d="M7 15l4-4 3 3 5-6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8h4v4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <h3>Scoring &amp; intelligence</h3>
-        <p>Sachez qui rappeler en priorité, et quand.</p>
-        <ul><li>Score comportemental + score d'intention (IA)</li><li>Classement froid / tiède / chaud / très chaud</li><li>Détection de désengagement (relance au bon moment)</li><li>Veille concurrentielle</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="13" rx="1"/></svg></div>
-        <h3>CRM &amp; pipeline d'admission</h3>
-        <p>Un tunnel clair, du premier contact à l'inscrit.</p>
-        <ul><li>Pipeline Kanban en glisser-déposer</li><li>Prise en charge « premier arrivé »</li><li>Motifs de perte analysés</li><li>Tâches, rendez-vous, séquences de relance</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><path d="M22 3L3 10l7 3 3 7 9-17z" stroke-linejoin="round"/><path d="M10 13l4-4" stroke-linecap="round"/></svg></div>
-        <h3>Communication multicanal</h3>
-        <p>Contactez juste, à grande échelle.</p>
-        <ul><li>E-mails stylisés avec suivi (ouvertures, clics)</li><li>SMS intégrés</li><li>Campagnes en masse par lots</li><li>Modèles &amp; signatures conseillers</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><path d="M4 20h16" stroke-linecap="round"/><rect x="6" y="11" width="3" height="6" rx="1"/><rect x="11" y="6" width="3" height="11" rx="1"/><rect x="16" y="13" width="3" height="4" rx="1"/></svg></div>
-        <h3>Reporting &amp; pilotage 360°</h3>
-        <p>Décidez avec des chiffres, pas à l'instinct.</p>
-        <ul><li>Entonnoir de conversion par étape</li><li>Ventilation par formation, canal &amp; campagne</li><li>Délais de 1ʳᵉ réponse &amp; de conversion</li><li>Valeur du pipeline &amp; rapport rédigé par l'IA</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/></svg></div>
-        <h3>Canaux d'acquisition automatiques</h3>
-        <p>Mesurez votre ROI marketing sans rien tagger.</p>
-        <ul><li>Détection auto : Google, Instagram, TikTok, LinkedIn…</li><li>Identifiants de clic pub + site référent</li><li>Attribution « premier contact »</li><li>UTM optionnels pour nommer vos campagnes</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><path d="M12 3l9 5-9 5-9-5 9-5z" stroke-linejoin="round"/><path d="M3 12l9 5 9-5M3 16l9 5 9-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <h3>Conçu pour grandir</h3>
-        <p>Une école aujourd'hui, un réseau demain.</p>
-        <ul><li>Multi-secteur &amp; multi-établissement</li><li>Devise &amp; indicatif configurables</li><li>Données 100 % isolées par école</li><li>S'embarque sur tout type de site</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4M18 10v4" stroke-linecap="round"/></svg></div>
-        <h3>Financement &amp; bourses</h3>
-        <p>Rassurez les candidats sur le coût — sans jamais braquer.</p>
-        <ul><li>Simulateur de frais &amp; facilités de paiement</li><li>Mise en avant des bourses d'excellence</li><li>Approche diplomatique du prix par l'IA</li><li>Frais &amp; devise par formation</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z" stroke-linejoin="round"/><path d="M14 3v4h4" stroke-linejoin="round"/><path d="M9 13h6M9 16h4" stroke-linecap="round"/></svg></div>
-        <h3>Documents &amp; brochures</h3>
-        <p>Le bon document, au bon prospect, au bon moment.</p>
-        <ul><li>Bibliothèque de brochures &amp; dossiers</li><li>Envoi en pièce jointe depuis la fiche lead</li><li>Attachés aux e-mails &amp; campagnes</li><li>Partage en un clic</li></ul>
-      </div>
-
-      <div class="feat reveal"><div class="fi"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <h3>Sécurité &amp; confidentialité</h3>
-        <p>Vos données d'admission restent les vôtres.</p>
-        <ul><li>Données financières cloisonnées (jamais exposées au chat)</li><li>Respect du RGPD (export &amp; droit à l'oubli)</li><li>Supervision automatique des tâches (alertes)</li><li>Testé automatiquement (intégration continue)</li></ul>
-      </div>
-
+<!-- LE CONSTAT -->
+<section class="band">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Le constat</span>
+      <h2>Vos futurs étudiants vous rendent visite. Puis ils disparaissent.</h2>
+      <p class="lead">Le trafic ne manque pas. Ce qui manque, c'est le lien : identifier, accompagner et recontacter au bon moment. Sans cela, chaque visite est une opportunité qui s'éteint.</p>
     </div>
-  </section>
+    <div class="grid cols-3">
+      <div class="leak reveal"><span class="tag"></span><h3>Des prospects invisibles</h3><p>Ils consultent vos formations, comparent, hésitent — puis quittent le site. Sans nom, sans trace, sans possibilité de relance.</p></div>
+      <div class="leak reveal"><span class="tag"></span><h3>Une équipe débordée</h3><p>Les mêmes questions, en boucle, aux heures ouvrables. Alors que la majorité des recherches se font le soir et le week-end.</p></div>
+      <div class="leak reveal"><span class="tag"></span><h3>Des inscriptions perdues</h3><p>Faute d'une réponse au moment décisif, le candidat choisit l'établissement qui a su lui répondre le premier.</p></div>
+    </div>
+  </div>
+</section>
 
-  <!-- ===== Réservation de démo ===== -->
-  <section class="lp-section" id="reserver">
-    <div class="lp-eyebrow reveal">Réserver une démo</div>
-    <h2 class="lp-h2 reveal">Voyez School AI en action sur votre école</h2>
-    <p class="lp-sub reveal">Une démo personnalisée de 30 minutes — sans engagement.</p>
-
-    <div class="book-wrap reveal">
-      <div class="book-intro">
-        <h2>Une démo taillée pour vous</h2>
-        <p>Dites-nous en deux mots votre contexte : on prépare une démo centrée sur vos programmes et vos objectifs d'inscription.</p>
-        <ul class="book-perks">
-          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> 30 min, en visio, à votre rythme</li>
-          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Cas concrets sur vos formations</li>
-          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Estimation du ROI pour votre établissement</li>
-          <li><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg> Aucune installation requise pour tester</li>
-        </ul>
+<!-- LA SOLUTION -->
+<section class="band band--tint" id="solution">
+  <div class="wrap">
+    <div class="grid cols-2">
+      <div class="reveal">
+        <span class="eyebrow">La réponse</span>
+        <h2 style="font-size:clamp(28px,4.2vw,46px);margin-top:18px;">Un conseiller par IA. Un CRM d'admission complet. Dans votre site.</h2>
+        <p class="lead" style="margin-top:18px;">School IA accueille chaque visiteur, répond à partir de <strong style="color:var(--ink);">vos vraies formations</strong>, mesure son intérêt réel, capture ses coordonnées et transmet le tout à votre équipe — prêt à convertir.</p>
       </div>
-
-      <div>
-        <form class="book-form" id="bookForm" novalidate>
-          <div class="two">
-            <div class="fld"><label>Nom complet *</label><input name="nom" placeholder="Prénom Nom" required></div>
-            <div class="fld"><label>Établissement</label><input name="ecole" placeholder="Nom de votre école"></div>
-          </div>
-          <div class="two">
-            <div class="fld"><label>E-mail *</label><input type="email" name="email" placeholder="vous@ecole.com" required></div>
-            <div class="fld"><label>Téléphone / WhatsApp</label><input name="tel" placeholder="+224 …"></div>
-          </div>
-          <div class="two">
-            <div class="fld"><label>Votre rôle</label><select name="role">
-              <option value="">— Sélectionner —</option><option>Direction</option><option>Responsable admissions</option><option>Marketing / Communication</option><option>Informatique</option><option>Autre</option>
-            </select></div>
-            <div class="fld"><label>Créneau souhaité</label><input type="datetime-local" name="creneau"></div>
-          </div>
-          <div class="fld"><label>Programmes / secteur</label><input name="programmes" placeholder="Ex. Bachelor, MBA, Prépa Ingénieur…"></div>
-          <div class="fld"><label>Votre besoin (facultatif)</label><textarea name="message" rows="3" placeholder="Ce que vous aimeriez voir en priorité…"></textarea></div>
-          <button type="submit" class="btn glow lg" style="width:100%;">✦ Réserver ma démo</button>
-          <div class="book-note">Vos informations sont envoyées à l'équipe School AI (gilles@maestrodan.art). Réponse sous 24 h.</div>
-        </form>
-
-        <div class="book-ok" id="bookOk">
-          <div class="chk"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-          <h3 style="color:#fff;font-size:20px;">Demande envoyée 🎉</h3>
-          <p style="color:var(--lp-muted);margin-top:8px;" id="bookOkMsg">Merci ! L'équipe School AI vous recontacte sous 24 h pour caler votre démo.</p>
+      <div class="reveal">
+        <div class="diff" style="grid-template-columns:1fr;">
+          <div class="diff-item"><span class="chk" aria-hidden="true">◆</span><div><h3>Répond 24h/24</h3><p>À partir du contenu réel de votre site — jamais de généralités approximatives.</p></div></div>
+          <div class="diff-item"><span class="chk" aria-hidden="true">◆</span><div><h3>Note chaque prospect</h3><p>Comportement + intention, pour prioriser les candidats les plus chauds.</p></div></div>
+          <div class="diff-item"><span class="chk" aria-hidden="true">◆</span><div><h3>Bascule vers l'humain</h3><p>Conseiller ou WhatsApp, d'un clic, au moment décisif.</p></div></div>
         </div>
       </div>
     </div>
-  </section>
-
-  <div class="lp-foot">
-    <div style="margin-bottom:6px;"><span class="wordmark" style="font-size:16px;">SCHOOL AI</span></div>
-    Convert more. Enroll smarter. · par Maestro Dan
   </div>
-</div>
+</section>
 
-<!-- ================= CONNEXION ================= -->
-<div class="login" id="screen-login">
-  <div class="login-card">
-    <span class="lp-back" onclick="showLanding()">← Accueil</span>
-    <div class="brand"><b>School<span class="ia"> AI</span></b></div>
-    <p class="sub">Plateforme CRM &amp; marketing d'admission — <em>démo interactive</em></p>
-    <button class="role-btn" onclick="enter('admin')"><span class="ic admin">◆</span><span><h4>Espace Administrateur</h4><span class="d">Maestro Dan — clients, utilisateurs, licences, tarifs &amp; paiements</span></span></button>
-    <button class="role-btn" onclick="enter('client')"><span class="ic client">★</span><span><h4>Espace Client</h4><span class="d">École — leads, campagnes, e-mails/SMS, documents, équipe, réseaux</span></span></button>
-    <p class="foot">Démo navigable · aucune donnée réelle · School AI par Maestro Dan</p>
+<!-- FONCTIONNALITÉS -->
+<section class="band">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Ce que School IA fait pour vous</span>
+      <h2>Une plateforme d'admission complète, prête à l'emploi.</h2>
+    </div>
+    <div class="grid cols-3">
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></div><h3>Conseiller IA ancré dans vos formations</h3><p>Le chatbot puise ses réponses dans votre catalogue réel : programmes, frais, admissions, liens officiels.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div><h3>Lead scoring comportemental &amp; IA</h3><p>Chaque prospect est noté selon ce qu'il fait et ce qu'il exprime. Vous contactez les plus motivés en premier.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg></div><h3>CRM d'admission natif</h3><p>Pipeline, notes, tâches de suivi et relances — sans outil externe, directement dans votre WordPress.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3.08 4.18 2 2 0 0 1 5.08 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L9.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div><h3>Passerelle WhatsApp intégrée</h3><p>Le canal préféré de vos candidats, sans API compliquée : un clic, la conversation continue.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></div><h3>Capture multi-formulaires</h3><p>Gravity Forms, Contact Form 7, WPForms, Ninja Forms : chaque soumission devient un lead qualifié.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></div><h3>Veille concurrentielle</h3><p>Le plugin repère quand un prospect évoque une école concurrente — une information stratégique pour votre argumentaire.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><h3>Communication multicanal</h3><p>E-mails stylisés avec suivi des ouvertures et clics, SMS, et campagnes en masse par lots — modèles et signatures inclus.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></div><h3>Reporting &amp; pilotage 360°</h3><p>Entonnoir de conversion, ventilation par formation, délais de réponse et de conversion, valeur du pipeline — et rapport rédigé par l'IA.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/><line x1="15.4" y1="6.5" x2="8.6" y2="10.5"/></svg></div><h3>Canaux d'acquisition automatiques</h3><p>Chaque lead est rattaché à son canal (Google, Instagram, TikTok, LinkedIn…) sans rien tagguer — pour mesurer votre ROI marketing.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></div><h3>Financement &amp; bourses</h3><p>Simulateur de frais, facilités de paiement et bourses d'excellence — l'IA aborde le prix avec diplomatie, sans braquer le candidat.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg></div><h3>Documents &amp; brochures</h3><p>Bibliothèque de brochures et dossiers, envoyés en pièce jointe depuis la fiche lead ou attachés à vos campagnes.</p></div>
+      <div class="feat reveal"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div><h3>Sécurité &amp; confidentialité</h3><p>Données financières cloisonnées (jamais exposées au chat), respect du RGPD, supervision des tâches et tests automatisés.</p></div>
+    </div>
   </div>
-</div>
+</section>
 
-<!-- ================= APP ================= -->
-<div id="app">
-  <div class="backdrop" id="backdrop" onclick="closeSide()"></div>
-  <aside class="side" id="side">
-    <div class="logo"><b>School<span class="ia"> AI</span></b></div>
-    <div data-role-nav="admin">
-      <div class="space-tag">Espace Admin</div>
-      <nav class="nav">
-        <div class="nav-item active" data-view="a-dash"><span class="gi">▤</span> Tableau de bord</div>
-        <div class="nav-item" data-view="a-clients"><span class="gi">◈</span> Clients</div>
-        <div class="nav-item" data-view="a-users"><span class="gi">◔</span> Utilisateurs</div>
-        <div class="nav-item" data-view="a-licenses"><span class="gi">⬢</span> Licences</div>
-        <div class="nav-item" data-view="a-plans"><span class="gi">▦</span> Tarifs &amp; abonnements</div>
-        <div class="nav-item" data-view="a-pay"><span class="gi">₵</span> Paiements</div>
-        <div class="nav-item" data-view="a-settings"><span class="gi">⚙</span> Réglages</div>
-      </nav>
+<!-- COMMENT ÇA MARCHE -->
+<section class="band band--ink">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Comment ça marche</span>
+      <h2 style="color:#fff;">Du visiteur anonyme à l'étudiant inscrit, en quatre temps.</h2>
     </div>
-    <div data-role-nav="client" style="display:none;">
-      <div class="space-tag">Espace Client</div>
-      <nav class="nav">
-        <div class="nav-item active" data-view="c-dash"><span class="gi">▤</span> Tableau de bord</div>
-        <div class="nav-item" data-view="c-leads"><span class="gi">◈</span> Leads &amp; pipeline</div>
-        <div class="nav-item" data-view="c-camp"><span class="gi">✉</span> Campagnes</div>
-        <div class="nav-item" data-view="c-tpl"><span class="gi">▦</span> Modèles e-mail / SMS</div>
-        <div class="nav-item" data-view="c-team"><span class="gi">◔</span> Équipe</div>
-        <div class="nav-item" data-view="c-docs"><span class="gi">▣</span> Documents</div>
-        <div class="nav-item" data-view="c-social"><span class="gi">◑</span> Réseaux sociaux</div>
-        <div class="nav-item" data-view="c-settings"><span class="gi">⚙</span> Réglages</div>
-      </nav>
+    <div class="steps">
+      <div class="step reveal"><div class="num">01</div><div><h3>Le visiteur discute</h3><p>L'IA l'accueille et répond instantanément, à partir de vos vraies formations, sur le programme, les frais ou l'admission.</p></div></div>
+      <div class="step reveal"><div class="num">02</div><div><h3>School IA qualifie</h3><p>En temps réel, le plugin évalue son comportement et son intention, et attribue un score de chaleur.</p></div></div>
+      <div class="step reveal"><div class="num">03</div><div><h3>Le lead est capturé</h3><p>Coordonnées et contexte de la conversation atterrissent automatiquement dans votre CRM d'admission.</p></div></div>
+      <div class="step reveal"><div class="num">04</div><div><h3>Votre équipe convertit</h3><p>Relances, WhatsApp, suivi et tâches guident le candidat jusqu'à l'inscription — sans jamais le perdre.</p></div></div>
     </div>
-    <div class="user">
-      <span class="av" id="u-av">M</span>
-      <div><strong id="u-name">Maestro Dan</strong><small id="u-role">Administrateur</small></div>
-      <span class="switch" title="Changer d'espace" onclick="logout()">⇄</span>
-    </div>
-  </aside>
-
-  <div class="main">
-    <div class="topbar">
-      <button class="menu-btn" onclick="openSide()">☰</button>
-      <h1 id="page-title">Tableau de bord</h1>
-      <div class="search">🔎<input placeholder="Rechercher…"></div>
-      <span class="tb-av" id="tb-av">M</span>
-    </div>
-    <div class="content" id="content"></div>
   </div>
-</div>
+</section>
 
-<template id="views">
-
-  <!-- ADMIN DASH -->
-  <section class="view" id="view-a-dash" data-title="Tableau de bord">
-    <div class="kpis">
-      <div class="kpi" style="--k:#2e6ff2"><div class="label">Clients actifs</div><div class="val">18</div><div class="delta up">▲ +3 ce mois</div></div>
-      <div class="kpi" style="--k:#0a8f5b"><div class="label">Revenu mensuel (MRR)</div><div class="val">4,25 M <small style="font-size:13px">XOF</small></div><div class="delta up">▲ +12%</div></div>
-      <div class="kpi" style="--k:#63a4ff"><div class="label">Utilisateurs facturés</div><div class="val">47</div><div class="delta">dont 11 suppl.</div></div>
-      <div class="kpi" style="--k:#d64545"><div class="label">Paiements en attente</div><div class="val">2</div><div class="delta down">à relancer</div></div>
+<!-- DISTINCTIONS -->
+<section class="band">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <span class="eyebrow">Ce qui nous distingue</span>
+      <h2>Pensé pour les écoles, pas adapté à la va-vite.</h2>
     </div>
-    <div class="grid2">
-      <div class="card"><div class="hd"><h3>Derniers clients</h3><button class="btn primary sm" data-open="modal-client">+ Créer un client</button></div>
-        <div class="table-wrap"><table><thead><tr><th>École</th><th>Formule</th><th>Users</th><th>Statut</th><th>MRR</th></tr></thead><tbody>
-          <tr><td><span class="avatar">B</span> BEM Conakry</td><td>Business</td><td>5 <small style="color:var(--muted)">(+2)</small></td><td><span class="pill p-ok">Actif</span></td><td>380 000</td></tr>
-          <tr><td><span class="avatar">I</span> ISM Dakar</td><td>Pro</td><td>3</td><td><span class="pill p-ok">Actif</span></td><td>250 000</td></tr>
-          <tr><td><span class="avatar">S</span> Sup'Management</td><td>Pro</td><td>2</td><td><span class="pill p-warn">Essai</span></td><td>—</td></tr>
-          <tr><td><span class="avatar">A</span> IAM Abidjan</td><td>Starter</td><td>1</td><td><span class="pill p-bad">Impayé</span></td><td>120 000</td></tr>
-        </tbody></table></div></div>
-      <div class="card"><div class="hd"><h3>Activité récente</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:13px;font-size:14px;">
-        <div>✅ <strong>BEM Conakry</strong> a ajouté 2 utilisateurs (+30 000 XOF/mois)</div>
-        <div>🧾 Facture <strong>#2041</strong> payée via <strong>Wave</strong></div>
-        <div>🆕 Nouveau client : <strong>Sup'Management</strong> (essai 14 j)</div>
-        <div>⚠️ <strong>IAM Abidjan</strong> — paiement Orange Money échoué</div>
-      </div></div>
+    <div class="diff">
+      <div class="diff-item reveal"><span class="chk" aria-hidden="true">✓</span><div><h3>L'IA ne « déraille » pas</h3><p>Elle parle de vos programmes, vos frais et vos liens officiels. Rien d'inventé.</p></div></div>
+      <div class="diff-item reveal"><span class="chk" aria-hidden="true">✓</span><div><h3>Zéro prospect gaspillé</h3><p>Le scoring concentre l'énergie de votre équipe sur les candidats réellement prêts.</p></div></div>
+      <div class="diff-item reveal"><span class="chk" aria-hidden="true">✓</span><div><h3>Tout-en-un</h3><p>Chatbot, CRM, WhatsApp et relances réunis : pas d'abonnements multiples à empiler.</p></div></div>
+      <div class="diff-item reveal"><span class="chk" aria-hidden="true">✓</span><div><h3>À votre image</h3><p>Nom, couleurs, logo, messages : la solution porte votre marque, pas la nôtre.</p></div></div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ADMIN CLIENTS -->
-  <section class="view" id="view-a-clients" data-title="Clients">
-    <div class="card"><div class="hd"><h3>Comptes clients (écoles)</h3><button class="btn primary sm" data-open="modal-client">+ Créer un client</button></div>
-      <div class="table-wrap"><table><thead><tr><th>École</th><th>Contact admin</th><th>Formule</th><th>Utilisateurs</th><th>Statut</th><th></th></tr></thead><tbody>
-        <tr><td><span class="avatar">B</span> BEM Conakry</td><td>gilles@bemconakry.com</td><td>Business</td><td>5 / 3 inclus <span class="pill p-info">+2 facturés</span></td><td><span class="pill p-ok">Actif</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-        <tr><td><span class="avatar">I</span> ISM Dakar</td><td>admin@ism.sn</td><td>Pro</td><td>3 / 3 inclus</td><td><span class="pill p-ok">Actif</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-        <tr><td><span class="avatar">S</span> Sup'Management</td><td>contact@supm.gn</td><td>Pro</td><td>2 / 3 inclus</td><td><span class="pill p-warn">Essai</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-        <tr><td><span class="avatar">A</span> IAM Abidjan</td><td>info@iam.ci</td><td>Starter</td><td>1 / 1 inclus</td><td><span class="pill p-bad">Impayé</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-      </tbody></table></div></div>
-  </section>
-
-  <!-- ADMIN USERS -->
-  <section class="view" id="view-a-users" data-title="Utilisateurs">
-    <div class="banner">◔ Chaque compte client possède ses utilisateurs. Les utilisateurs au-delà du quota de la formule sont <strong>&nbsp;facturés automatiquement</strong>.</div>
-    <div class="card"><div class="hd"><h3>Tous les utilisateurs</h3><button class="btn primary sm" data-open="modal-user">+ Ajouter un utilisateur</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Utilisateur</th><th>École</th><th>Rôle</th><th>Facturation</th><th>Statut</th></tr></thead><tbody>
-        <tr><td><span class="avatar">GA</span> Gilles A.</td><td>BEM Conakry</td><td>Admin</td><td>Inclus</td><td><span class="pill p-ok">Actif</span></td></tr>
-        <tr><td><span class="avatar">FS</span> Fatou S.</td><td>BEM Conakry</td><td>Agent d'admission</td><td>Inclus</td><td><span class="pill p-ok">Actif</span></td></tr>
-        <tr><td><span class="avatar">MK</span> Mamadou K.</td><td>BEM Conakry</td><td>Agent d'admission</td><td><span class="pill p-info">+15 000 XOF/mois</span></td><td><span class="pill p-ok">Actif</span></td></tr>
-        <tr><td><span class="avatar">AD</span> Aïcha D.</td><td>ISM Dakar</td><td>Admin</td><td>Inclus</td><td><span class="pill p-ok">Actif</span></td></tr>
-      </tbody></table></div></div>
-  </section>
-
-  <!-- ADMIN LICENSES -->
-  <section class="view" id="view-a-licenses" data-title="Licences">
-    <div class="banner">🔑 Chaque licence relie un compte client au plugin School AI installé sur son site WordPress.</div>
-    <div class="card"><div class="hd"><h3>Licences du plugin</h3><button class="btn primary sm" data-open="modal-license">+ Générer une clé</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Clé</th><th>Client</th><th>Domaine</th><th>Expiration</th><th>Statut</th></tr></thead><tbody>
-        <tr><td><code>SIA-8F2K-QR3T-9WZ1</code></td><td>BEM Conakry</td><td>bemconakry.com</td><td>12/03/2027</td><td><span class="pill p-ok">Active</span></td></tr>
-        <tr><td><code>SIA-3B9Q-LM2X-4KP8</code></td><td>ISM Dakar</td><td>ism.sn</td><td>01/09/2026</td><td><span class="pill p-ok">Active</span></td></tr>
-        <tr><td><code>SIA-7T1M-VV8N-2QD5</code></td><td>Sup'Management</td><td>supm.gn</td><td>04/08/2026</td><td><span class="pill p-warn">Essai</span></td></tr>
-      </tbody></table></div></div>
-  </section>
-
-  <!-- ADMIN PLANS -->
-  <section class="view" id="view-a-plans" data-title="Tarifs & abonnements">
-    <div class="cards">
-      <div class="tile"><h3>Starter</h3><div class="price">120 000 <small>XOF/mois</small></div><ul><li>Chatbot IA + capture de leads</li><li>CRM d'admission</li><li>1 site</li></ul><div class="seat-note">1 utilisateur inclus · +15 000 XOF / utilisateur suppl.</div><button class="btn ghost block" style="margin-top:12px;">Modifier</button></div>
-      <div class="tile" style="border-color:var(--primary); box-shadow:var(--shadow-lg);"><h3>Pro <span class="pill p-info" style="margin-left:6px;">Populaire</span></h3><div class="price">250 000 <small>XOF/mois</small></div><ul><li>Tout Starter +</li><li>Campagnes e-mail &amp; SMS</li><li>WhatsApp &amp; réseaux sociaux</li></ul><div class="seat-note">3 utilisateurs inclus · +15 000 XOF / suppl.</div><button class="btn ghost block" style="margin-top:12px;">Modifier</button></div>
-      <div class="tile"><h3>Business</h3><div class="price">350 000 <small>XOF/mois</small></div><ul><li>Tout Pro +</li><li>Automatisations avancées</li><li>Support prioritaire</li></ul><div class="seat-note">3 utilisateurs inclus · +15 000 XOF / suppl.</div><button class="btn ghost block" style="margin-top:12px;">Modifier</button></div>
+<!-- POUR QUI -->
+<section class="band band--tint">
+  <div class="wrap">
+    <div class="section-head reveal" style="margin-bottom:26px;">
+      <span class="eyebrow">Pour qui</span>
+      <h2>Conçu pour tout établissement qui recrute en ligne.</h2>
     </div>
-    <div style="margin-top:16px;"><button class="btn primary">+ Nouvelle formule</button></div>
-  </section>
-
-  <!-- ADMIN PAY -->
-  <section class="view" id="view-a-pay" data-title="Paiements">
-    <div class="section-title">Moyens de paiement acceptés</div>
-    <div class="cards four">
-      <div class="pay"><span class="logo" style="background:#0070ba">Pay<br>Pal</span><div><strong>PayPal</strong><br><span class="pill p-ok">Connecté</span></div></div>
-      <div class="pay"><span class="logo" style="background:#1dc8ff">Wave</span><div><strong>Wave</strong><br><span class="pill p-ok">Connecté</span></div></div>
-      <div class="pay"><span class="logo" style="background:#635bff">Stripe</span><div><strong>Stripe</strong><br><span class="pill p-ok">Connecté</span></div></div>
-      <div class="pay"><span class="logo" style="background:#ff7900">OM</span><div><strong>Orange Money</strong><br><span class="pill p-warn">À config.</span></div></div>
+    <div class="chips reveal">
+      <span class="chip">Écoles de commerce</span>
+      <span class="chip">Universités privées</span>
+      <span class="chip">Instituts supérieurs</span>
+      <span class="chip">Centres de formation</span>
+      <span class="chip">Écoles techniques &amp; d'ingénieurs</span>
+      <span class="chip">Groupes scolaires</span>
     </div>
-    <div class="card" style="margin-top:20px;"><div class="hd"><h3>Factures récentes</h3><button class="btn ghost sm">Exporter</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Facture</th><th>Client</th><th>Détail</th><th>Montant</th><th>Moyen</th><th>Statut</th></tr></thead><tbody>
-        <tr><td>#2041</td><td>BEM Conakry</td><td>Business + 2 users</td><td>380 000</td><td>Stripe</td><td><span class="pill p-ok">Payée</span></td></tr>
-        <tr><td>#2040</td><td>ISM Dakar</td><td>Pro</td><td>250 000</td><td>Wave</td><td><span class="pill p-ok">Payée</span></td></tr>
-        <tr><td>#2039</td><td>IAM Abidjan</td><td>Starter</td><td>120 000</td><td>Orange Money</td><td><span class="pill p-bad">Échouée</span></td></tr>
-      </tbody></table></div></div>
-  </section>
+  </div>
+</section>
 
-  <!-- ADMIN SETTINGS -->
-  <section class="view" id="view-a-settings" data-title="Réglages">
-    <div class="card"><div class="hd"><h3>Paramètres de la plateforme</h3></div><div class="bd">
-      <div class="field"><label>Nom de la plateforme</label><input value="School AI CRM"></div>
-      <div class="field row2"><div><label>Devise</label><select><option>XOF (Franc CFA)</option><option>EUR</option><option>USD</option></select></div><div><label>Prix / utilisateur suppl.</label><input value="15 000 XOF"></div></div>
-      <div class="field"><label>E-mail d'envoi</label><input value="no-reply@maestrodan.art"></div>
-      <button class="btn primary">Enregistrer</button>
-    </div></div>
-  </section>
+<!-- CITATION -->
+<section class="band band--ink quote hero">
+  <div class="wrap reveal" style="position:relative;z-index:1;">
+    <blockquote>Vous transformez votre trafic en <span class="hl">inscriptions.</span> 24&nbsp;heures sur&nbsp;24.</blockquote>
+    <cite>School IA · par Maestro Dan</cite>
+  </div>
+</section>
 
-  <!-- CLIENT DASH -->
-  <section class="view" id="view-c-dash" data-title="Tableau de bord">
-    <div class="kpis">
-      <div class="kpi" style="--k:#2e6ff2"><div class="label">Leads ce mois</div><div class="val">176</div><div class="delta up">▲ +24</div></div>
-      <div class="kpi" style="--k:#d64545"><div class="label">Leads chauds</div><div class="val">12</div><div class="delta">à contacter</div></div>
-      <div class="kpi" style="--k:#0a8f5b"><div class="label">Taux de conversion</div><div class="val">8,4%</div><div class="delta up">▲ +1,2 pt</div></div>
-      <div class="kpi" style="--k:#63a4ff"><div class="label">Campagnes actives</div><div class="val">3</div><div class="delta">1 programmée</div></div>
-    </div>
-    <div class="grid2">
-      <div class="card"><div class="hd"><h3>Entonnoir d'admission</h3></div><div class="bd" style="display:flex;flex-direction:column;gap:11px;">
-        <div>Nouveaux <strong style="float:right">176</strong><div style="height:9px;background:var(--primary-bg);border-radius:6px;margin-top:4px;"><div style="width:100%;height:9px;background:#2e6ff2;border-radius:6px;"></div></div></div>
-        <div>Contactés <strong style="float:right">98</strong><div style="height:9px;background:var(--primary-bg);border-radius:6px;margin-top:4px;"><div style="width:56%;height:9px;background:#4f86f5;border-radius:6px;"></div></div></div>
-        <div>Qualifiés <strong style="float:right">41</strong><div style="height:9px;background:var(--primary-bg);border-radius:6px;margin-top:4px;"><div style="width:23%;height:9px;background:#63a4ff;border-radius:6px;"></div></div></div>
-        <div>Candidatures <strong style="float:right">22</strong><div style="height:9px;background:var(--primary-bg);border-radius:6px;margin-top:4px;"><div style="width:13%;height:9px;background:#0a8f5b;border-radius:6px;"></div></div></div>
-        <div>Inscrits <strong style="float:right">15</strong><div style="height:9px;background:var(--primary-bg);border-radius:6px;margin-top:4px;"><div style="width:8%;height:9px;background:#087a4d;border-radius:6px;"></div></div></div>
-      </div></div>
-      <div class="card"><div class="hd"><h3>Leads à traiter</h3><button class="btn primary sm" data-view-jump="c-leads">Voir tout</button></div><div class="bd" style="display:flex;flex-direction:column;gap:10px;">
-        <div class="lead-card"><div class="nm">Aïssatou D.</div><div class="mt">Prépa Ingénieur · web + whatsapp</div><div class="row"><span class="score s-hot">86</span><span class="pill p-bad">Chaud</span></div></div>
-        <div class="lead-card"><div class="nm">Mamadou S.</div><div class="mt">MBA · web</div><div class="row"><span class="score s-warm">54</span><span class="pill p-warn">Tiède</span></div></div>
-      </div></div>
-    </div>
-  </section>
+<!-- CTA FINAL — FORMULAIRE -->
+<section class="band final" id="contact">
+  <div class="wrap reveal">
+    <span class="eyebrow">Réserver une démo</span>
+    <h2>Prêt à ne plus perdre un seul candidat&nbsp;?</h2>
+    <p>Réservez une démonstration de 30 minutes et voyez, sur votre propre site, comment vos visiteurs deviennent des inscrits.</p>
 
-  <!-- CLIENT LEADS -->
-  <section class="view" id="view-c-leads" data-title="Leads & pipeline">
-    <div class="toolbar"><button class="btn primary">+ Ajouter un lead</button><button class="btn ghost sm">Importer</button><button class="btn ghost sm">Exporter CSV</button><span class="spacer">341 leads · 12 chauds</span></div>
-    <div class="kanban">
-      <div class="col"><div class="col-hd">🔵 Nouveau <span class="count">176</span></div>
-        <div class="lead-card"><div class="nm">Aïssatou D.</div><div class="mt">Prépa Ingénieur</div><div class="row"><span class="score s-hot">86</span></div></div>
-        <div class="lead-card"><div class="nm">Ousmane K.</div><div class="mt">Bachelor Marketing</div><div class="row"><span class="score s-cold">28</span></div></div>
+    <div class="dform-wrap">
+      <form class="dform" id="demoForm" novalidate>
+        <div class="row2">
+          <div class="fld"><label>Nom complet *</label><input name="nom" placeholder="Prénom Nom" required></div>
+          <div class="fld"><label>Établissement</label><input name="ecole" placeholder="Nom de votre école"></div>
+        </div>
+        <div class="row2">
+          <div class="fld"><label>E-mail *</label><input type="email" name="email" placeholder="vous@ecole.com" required></div>
+          <div class="fld"><label>Téléphone / WhatsApp</label>
+            <div class="phone-grp">
+              <select name="dial" id="dialCode" aria-label="Indicatif pays"></select>
+              <input name="phone" type="tel" inputmode="tel" placeholder="77 500 33 71">
+            </div>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fld"><label>Votre rôle</label><select name="role"><option value="">— Sélectionner —</option><option>Direction</option><option>Responsable admissions</option><option>Marketing / Communication</option><option>Informatique</option><option>Autre</option></select></div>
+          <div class="fld"><label>Créneau souhaité</label><input type="datetime-local" name="creneau"></div>
+        </div>
+        <div class="fld"><label>Programmes / secteur</label><input name="programmes" placeholder="Ex. Bachelor, MBA, Prépa Ingénieur…"></div>
+        <div class="fld"><label>Votre besoin (facultatif)</label><textarea name="message" rows="3" placeholder="Ce que vous aimeriez voir en priorité…"></textarea></div>
+        <button type="submit" class="btn btn--gold" style="width:100%;">Réserver ma démonstration</button>
+        <p class="note">Vos informations sont envoyées à l'équipe School IA (gilles@maestrodan.art) · réponse sous 24 h.
+          Ou écrivez-nous sur <a href="https://wa.me/221775003371" target="_blank" rel="noopener" style="color:var(--brand);font-weight:650;">WhatsApp</a>.</p>
+      </form>
+
+      <div class="dform-ok" id="demoOk">
+        <div class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h3 style="font-size:22px;">Demande envoyée&nbsp;🎉</h3>
+        <p style="color:var(--muted);margin-top:8px;" id="demoOkMsg">Merci&nbsp;! L'équipe School IA vous recontacte sous 24&nbsp;h pour caler votre démonstration.</p>
       </div>
-      <div class="col"><div class="col-hd">🟡 Contacté <span class="count">98</span></div>
-        <div class="lead-card"><div class="nm">Mamadou S.</div><div class="mt">MBA</div><div class="row"><span class="score s-warm">54</span></div></div></div>
-      <div class="col"><div class="col-hd">🟢 Qualifié <span class="count">41</span></div>
-        <div class="lead-card"><div class="nm">Fatou B.</div><div class="mt">Bachelor TG</div><div class="row"><span class="score s-hot">79</span></div></div></div>
-      <div class="col"><div class="col-hd">🟣 Candidature <span class="count">22</span></div>
-        <div class="lead-card"><div class="nm">Ibrahima T.</div><div class="mt">Prépa Ingénieur</div><div class="row"><span class="score s-hot">91</span></div></div></div>
-      <div class="col"><div class="col-hd">✅ Inscrit <span class="count">15</span></div>
-        <div class="lead-card"><div class="nm">Mariama C.</div><div class="mt">MBA</div><div class="row"><span class="pill p-ok">Inscrite</span></div></div></div>
     </div>
-  </section>
-
-  <!-- CLIENT CAMP -->
-  <section class="view" id="view-c-camp" data-title="Campagnes">
-    <div class="banner">📣 Planifiez des campagnes e-mail, SMS et WhatsApp vers des segments de vos leads.</div>
-    <div class="card"><div class="hd"><h3>Vos campagnes</h3><button class="btn primary sm" data-open="modal-camp">+ Nouvelle campagne</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Campagne</th><th>Canal</th><th>Audience</th><th>Envoyés</th><th>Ouvertures</th><th>Statut</th></tr></thead><tbody>
-        <tr><td>Relance Prépa Ingénieur</td><td>✉ E-mail</td><td>Tièdes · Prépa</td><td>320</td><td>41%</td><td><span class="pill p-ok">Envoyée</span></td></tr>
-        <tr><td>Journée portes ouvertes</td><td>✉ + 📱</td><td>Tous</td><td>1 240</td><td>38%</td><td><span class="pill p-ok">Envoyée</span></td></tr>
-        <tr><td>Derniers jours</td><td>📱 SMS</td><td>Candidatures</td><td>—</td><td>—</td><td><span class="pill p-warn">Programmée</span></td></tr>
-      </tbody></table></div></div>
-  </section>
-
-  <!-- CLIENT TPL -->
-  <section class="view" id="view-c-tpl" data-title="Modèles e-mail / SMS">
-    <div class="section-title">Modèles e-mail</div>
-    <div class="cards">
-      <div class="tile"><h3>✉ Relance douce</h3><p style="color:var(--muted);font-size:14px;">« Bonjour {prenom}, vous vous intéressiez à {formation}… »</p><button class="btn ghost sm">Modifier</button></div>
-      <div class="tile"><h3>✉ Portes ouvertes</h3><p style="color:var(--muted);font-size:14px;">Invitation avec date &amp; lieu.</p><button class="btn ghost sm">Modifier</button></div>
-      <div class="tile"><h3>✉ Confirmation</h3><p style="color:var(--muted);font-size:14px;">Bienvenue + prochaines étapes.</p><button class="btn ghost sm">Modifier</button></div>
-    </div>
-    <div class="section-title">Modèles SMS</div>
-    <div class="cards">
-      <div class="tile"><h3>📱 Rappel échéance</h3><p style="color:var(--muted);font-size:14px;">« Plus que 3 jours pour candidater. »</p><button class="btn ghost sm">Modifier</button></div>
-      <div class="tile"><h3>📱 Confirmation RDV</h3><p style="color:var(--muted);font-size:14px;">« RDV confirmé le {date}. »</p><button class="btn ghost sm">Modifier</button></div>
-    </div>
-  </section>
-
-  <!-- CLIENT TEAM -->
-  <section class="view" id="view-c-team" data-title="Équipe">
-    <div class="banner"><span>👥 Votre formule <strong>Business</strong> inclut <strong>3 utilisateurs</strong>. Vous en avez <strong>5</strong> → <strong>2 utilisateurs facturés</strong> à 15 000 XOF/mois chacun.</span></div>
-    <div class="card"><div class="hd"><h3>Utilisateurs de l'établissement</h3><button class="btn primary sm" data-open="modal-user">+ Inviter un utilisateur</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Utilisateur</th><th>E-mail</th><th>Rôle</th><th>Facturation</th><th>Statut</th><th></th></tr></thead><tbody>
-        <tr><td><span class="avatar">GA</span> Gilles A.</td><td>gilles@bemconakry.com</td><td>Admin</td><td>Inclus</td><td><span class="pill p-ok">Actif</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-        <tr><td><span class="avatar">FS</span> Fatou S.</td><td>fatou@bemconakry.com</td><td>Agent d'admission</td><td>Inclus</td><td><span class="pill p-ok">Actif</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-        <tr><td><span class="avatar">MB</span> Moussa B.</td><td>moussa@bemconakry.com</td><td>Agent d'admission</td><td>Inclus</td><td><span class="pill p-ok">Actif</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-        <tr><td><span class="avatar">MK</span> Mariam K.</td><td>mariam@bemconakry.com</td><td>Agent d'admission</td><td><span class="pill p-info">+15 000 XOF/mois</span></td><td><span class="pill p-ok">Actif</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-        <tr><td><span class="avatar">SD</span> Sékou D.</td><td>sekou@bemconakry.com</td><td>Marketing</td><td><span class="pill p-info">+15 000 XOF/mois</span></td><td><span class="pill p-warn">Invité</span></td><td><button class="btn ghost sm">Gérer</button></td></tr>
-      </tbody></table></div></div>
-  </section>
-
-  <!-- CLIENT DOCS -->
-  <section class="view" id="view-c-docs" data-title="Documents">
-    <div class="dropzone" style="margin-bottom:16px;">📤 Déposez vos fichiers ici ou <a href="#" style="color:var(--primary);font-weight:650;">parcourez</a> — brochures, plaquettes, contrats…</div>
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      <div class="doc"><span class="ic">PDF</span><div><strong>Brochure_Prepa_2026.pdf</strong><br><small style="color:var(--muted)">2,4 Mo · 15/07/2026</small></div><button class="btn ghost sm" style="margin-left:auto;">Partager</button></div>
-      <div class="doc"><span class="ic">PDF</span><div><strong>Dossier_Candidature.pdf</strong><br><small style="color:var(--muted)">860 Ko · 10/07/2026</small></div><button class="btn ghost sm" style="margin-left:auto;">Partager</button></div>
-      <div class="doc"><span class="ic">IMG</span><div><strong>Affiche_Portes_Ouvertes.png</strong><br><small style="color:var(--muted)">1,1 Mo · 04/07/2026</small></div><button class="btn ghost sm" style="margin-left:auto;">Partager</button></div>
-    </div>
-  </section>
-
-  <!-- CLIENT SOCIAL -->
-  <section class="view" id="view-c-social" data-title="Réseaux sociaux">
-    <div class="banner">🔗 Connectez vos comptes pour publier et suivre vos campagnes depuis un seul endroit.</div>
-    <div class="cards four">
-      <div class="tile" style="text-align:center;"><div style="font-size:24px;">📘</div><h3>Facebook</h3><span class="pill p-ok" style="margin:8px auto;">Connecté</span><br><button class="btn ghost sm">Gérer</button></div>
-      <div class="tile" style="text-align:center;"><div style="font-size:24px;">📸</div><h3>Instagram</h3><span class="pill p-ok" style="margin:8px auto;">Connecté</span><br><button class="btn ghost sm">Gérer</button></div>
-      <div class="tile" style="text-align:center;"><div style="font-size:24px;">💼</div><h3>LinkedIn</h3><span class="pill p-warn" style="margin:8px auto;">Non connecté</span><br><button class="btn primary sm">Connecter</button></div>
-      <div class="tile" style="text-align:center;"><div style="font-size:24px;">✖</div><h3>X</h3><span class="pill p-warn" style="margin:8px auto;">Non connecté</span><br><button class="btn primary sm">Connecter</button></div>
-    </div>
-    <div class="card" style="margin-top:18px;"><div class="hd"><h3>Publications</h3><button class="btn primary sm" data-open="modal-post">+ Nouvelle publication</button></div>
-      <div class="table-wrap"><table><thead><tr><th>Publication</th><th>Réseaux</th><th>Programmée</th><th>Statut</th></tr></thead><tbody>
-        <tr><td>Journée portes ouvertes 📅</td><td>📘 📸</td><td>22/07 09:00</td><td><span class="pill p-warn">Programmée</span></td></tr>
-        <tr><td>Félicitations aux admis 🎓</td><td>📘 📸 💼</td><td>—</td><td><span class="pill p-ok">Publiée</span></td></tr>
-      </tbody></table></div></div>
-  </section>
-
-  <!-- CLIENT SETTINGS -->
-  <section class="view" id="view-c-settings" data-title="Réglages">
-    <div class="card"><div class="hd"><h3>Profil de l'établissement</h3></div><div class="bd">
-      <div class="field"><label>Nom de l'école</label><input value="BEM Conakry"></div>
-      <div class="field row2"><div><label>E-mail admissions</label><input value="admissions@bemconakry.com"></div><div><label>WhatsApp</label><input value="+224 620 00 00 00"></div></div>
-      <div class="field"><label>Couleur de marque</label><input type="color" value="#0b3d91" style="width:80px;height:42px;padding:4px;"></div>
-      <button class="btn primary">Enregistrer</button>
-    </div></div>
-  </section>
-
-</template>
-
-<!-- ================= MODALES ================= -->
-<div class="modal" id="modal-client"><div class="ov" data-close></div><div class="box">
-  <div class="mhd"><h3>Créer un compte client</h3><button class="x" data-close>&times;</button></div>
-  <div class="mbd">
-    <div class="field"><label>Nom de l'école</label><input placeholder="ex. BEM Conakry"></div>
-    <div class="field row2"><div><label>Nom de l'administrateur</label><input placeholder="Prénom Nom"></div><div><label>E-mail administrateur</label><input placeholder="admin@ecole.com"></div></div>
-    <div class="field row2"><div><label>Formule</label><select><option>Starter — 120 000 (1 user)</option><option selected>Pro — 250 000 (3 users)</option><option>Business — 350 000 (3 users)</option></select></div><div><label>Facturation</label><select><option>Mensuelle</option><option>Annuelle</option></select></div></div>
-    <div class="field"><label>Domaine du site (licence plugin)</label><input placeholder="ecole.com"></div>
-    <div class="banner" style="margin:0;">👤 Un <strong>&nbsp;utilisateur administrateur</strong>&nbsp; est créé automatiquement. Les utilisateurs suppl. seront facturés 15 000 XOF/mois.</div>
   </div>
-  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Créer le compte &amp; l'admin</button></div>
-</div></div>
+</section>
 
-<div class="modal" id="modal-user"><div class="ov" data-close></div><div class="box">
-  <div class="mhd"><h3>Inviter un utilisateur</h3><button class="x" data-close>&times;</button></div>
-  <div class="mbd">
-    <div class="field row2"><div><label>Prénom &amp; nom</label><input placeholder="Prénom Nom"></div><div><label>E-mail</label><input placeholder="user@ecole.com"></div></div>
-    <div class="field"><label>Rôle</label><select><option>Admin (accès complet)</option><option>Agent d'admission</option><option>Marketing</option><option>Lecture seule</option></select></div>
-    <div class="banner warn" style="margin:0;">⚠️ Cet utilisateur dépasse le quota inclus → <strong>&nbsp;+15 000 XOF/mois</strong>&nbsp; ajoutés à la facture.</div>
+<footer>
+  <div class="wrap">
+    <b>School<span class="ia"> IA</span></b>
+    <small>Édité par Maestro Dan ·
+      <a href="mailto:gilles@maestrodan.art">gilles@maestrodan.art</a> ·
+      <a href="tel:+221775003371">+221&nbsp;77&nbsp;500&nbsp;33&nbsp;71</a> ·
+      <span id="year"></span></small>
   </div>
-  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Envoyer l'invitation</button></div>
-</div></div>
-
-<div class="modal" id="modal-license"><div class="ov" data-close></div><div class="box">
-  <div class="mhd"><h3>Générer une clé de licence</h3><button class="x" data-close>&times;</button></div>
-  <div class="mbd">
-    <div class="field"><label>Client</label><select><option>BEM Conakry</option><option>ISM Dakar</option></select></div>
-    <div class="field row2"><div><label>Durée</label><select><option>1 an</option><option>2 ans</option><option>À vie</option></select></div><div><label>Sites autorisés</label><input type="number" value="1"></div></div>
-    <div class="field"><label>Clé générée</label><input value="SIA-9K3M-PT7Q-2XB4" readonly></div>
-  </div>
-  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Enregistrer</button></div>
-</div></div>
-
-<div class="modal" id="modal-camp"><div class="ov" data-close></div><div class="box">
-  <div class="mhd"><h3>Nouvelle campagne</h3><button class="x" data-close>&times;</button></div>
-  <div class="mbd">
-    <div class="field"><label>Nom</label><input placeholder="ex. Relance Prépa Ingénieur"></div>
-    <div class="field row2"><div><label>Canal</label><select><option>E-mail</option><option>SMS</option><option>E-mail + SMS</option><option>WhatsApp</option></select></div><div><label>Modèle</label><select><option>Relance douce</option><option>Portes ouvertes</option></select></div></div>
-    <div class="field"><label>Audience</label><select><option>Tous les leads</option><option>Leads chauds</option><option>Tièdes · Prépa Ingénieur</option></select></div>
-    <div class="field row2"><div><label>Envoi</label><select><option>Immédiat</option><option>Programmé</option></select></div><div><label>Date</label><input type="date"></div></div>
-  </div>
-  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Planifier</button></div>
-</div></div>
-
-<div class="modal" id="modal-post"><div class="ov" data-close></div><div class="box">
-  <div class="mhd"><h3>Nouvelle publication</h3><button class="x" data-close>&times;</button></div>
-  <div class="mbd">
-    <div class="field"><label>Message</label><textarea rows="4" placeholder="Rédigez votre publication…"></textarea></div>
-    <div class="field"><label>Réseaux</label><div style="display:flex;gap:14px;flex-wrap:wrap;"><label style="font-weight:500;"><input type="checkbox" checked> 📘 Facebook</label><label style="font-weight:500;"><input type="checkbox" checked> 📸 Instagram</label><label style="font-weight:500;"><input type="checkbox"> 💼 LinkedIn</label></div></div>
-    <div class="field row2"><div><label>Publication</label><select><option>Immédiate</option><option>Programmée</option></select></div><div><label>Date &amp; heure</label><input type="datetime-local"></div></div>
-  </div>
-  <div class="mft"><button class="btn ghost" data-close>Annuler</button><button class="btn primary" data-close>Programmer</button></div>
-</div></div>
+</footer>
 
 <script>
-  document.getElementById('content').appendChild(document.getElementById('views').content.cloneNode(true));
-  var titles = {};
-  document.querySelectorAll('.view').forEach(function(v){ titles[v.id.replace('view-','')] = v.dataset.title; });
+  (function () {
+    document.getElementById('year').textContent = new Date().getFullYear();
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var els = document.querySelectorAll('.reveal');
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach(function (e) { e.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.12 });
+    els.forEach(function (e) { io.observe(e); });
+  })();
+</script>
 
-  // Page d'accueil (présentation) affichée en premier.
-  document.body.classList.add('show-landing');
-  function showDemo(){ document.body.classList.remove('show-landing'); window.scrollTo(0,0); }
-  function showLanding(){ document.body.classList.add('show-landing'); window.scrollTo(0,0); }
+<script>
+  /* ================= Bibliothèque des indicatifs téléphoniques ================= */
+  // [code ISO, nom, indicatif]. Le drapeau est déduit du code ISO.
+  var COUNTRIES = [
+    ['SN','Sénégal','221'],['GN','Guinée','224'],['CI',"Côte d'Ivoire",'225'],['ML','Mali','223'],['BF','Burkina Faso','226'],
+    ['BJ','Bénin','229'],['TG','Togo','228'],['NE','Niger','227'],['GM','Gambie','220'],['GW','Guinée-Bissau','245'],
+    ['MR','Mauritanie','222'],['CV','Cap-Vert','238'],['SL','Sierra Leone','232'],['LR','Liberia','231'],['GH','Ghana','233'],
+    ['NG','Nigeria','234'],['CM','Cameroun','237'],['GA','Gabon','241'],['CG','Congo','242'],['CD','RD Congo','243'],
+    ['CF','Centrafrique','236'],['TD','Tchad','235'],['GQ','Guinée équatoriale','240'],['ST','Sao Tomé-et-Principe','239'],
+    ['MA','Maroc','212'],['DZ','Algérie','213'],['TN','Tunisie','216'],['LY','Libye','218'],['EG','Égypte','20'],
+    ['SD','Soudan','249'],['SS','Soudan du Sud','211'],['ET','Éthiopie','251'],['ER','Érythrée','291'],['DJ','Djibouti','253'],
+    ['SO','Somalie','252'],['KE','Kenya','254'],['UG','Ouganda','256'],['TZ','Tanzanie','255'],['RW','Rwanda','250'],
+    ['BI','Burundi','257'],['AO','Angola','244'],['ZM','Zambie','260'],['ZW','Zimbabwe','263'],['MW','Malawi','265'],
+    ['MZ','Mozambique','258'],['MG','Madagascar','261'],['MU','Maurice','230'],['SC','Seychelles','248'],['KM','Comores','269'],
+    ['ZA','Afrique du Sud','27'],['NA','Namibie','264'],['BW','Botswana','267'],['LS','Lesotho','266'],['SZ','Eswatini','268'],
+    ['FR','France','33'],['BE','Belgique','32'],['CH','Suisse','41'],['LU','Luxembourg','352'],['MC','Monaco','377'],
+    ['DE','Allemagne','49'],['GB','Royaume-Uni','44'],['IE','Irlande','353'],['ES','Espagne','34'],['PT','Portugal','351'],
+    ['IT','Italie','39'],['NL','Pays-Bas','31'],['AT','Autriche','43'],['SE','Suède','46'],['NO','Norvège','47'],
+    ['DK','Danemark','45'],['FI','Finlande','358'],['IS','Islande','354'],['PL','Pologne','48'],['CZ','Tchéquie','420'],
+    ['SK','Slovaquie','421'],['HU','Hongrie','36'],['RO','Roumanie','40'],['BG','Bulgarie','359'],['GR','Grèce','30'],
+    ['HR','Croatie','385'],['RS','Serbie','381'],['SI','Slovénie','386'],['UA','Ukraine','380'],['RU','Russie','7'],
+    ['TR','Turquie','90'],['CY','Chypre','357'],['MT','Malte','356'],
+    ['US','États-Unis','1'],['CA','Canada','1'],['MX','Mexique','52'],['BR','Brésil','55'],['AR','Argentine','54'],
+    ['CL','Chili','56'],['CO','Colombie','57'],['PE','Pérou','51'],['VE','Venezuela','58'],['EC','Équateur','593'],
+    ['BO','Bolivie','591'],['PY','Paraguay','595'],['UY','Uruguay','598'],['HT','Haïti','509'],['DO','Rép. dominicaine','1'],
+    ['CN','Chine','86'],['JP','Japon','81'],['KR','Corée du Sud','82'],['IN','Inde','91'],['PK','Pakistan','92'],
+    ['BD','Bangladesh','880'],['ID','Indonésie','62'],['MY','Malaisie','60'],['SG','Singapour','65'],['TH','Thaïlande','66'],
+    ['VN','Viêt Nam','84'],['PH','Philippines','63'],['LK','Sri Lanka','94'],['NP','Népal','977'],
+    ['SA','Arabie saoudite','966'],['AE','Émirats arabes unis','971'],['QA','Qatar','974'],['KW','Koweït','965'],
+    ['BH','Bahreïn','973'],['OM','Oman','968'],['JO','Jordanie','962'],['LB','Liban','961'],['IL','Israël','972'],
+    ['IQ','Irak','964'],['IR','Iran','98'],['SY','Syrie','963'],['YE','Yémen','967'],['AF','Afghanistan','93'],
+    ['AU','Australie','61'],['NZ','Nouvelle-Zélande','64']
+  ];
+  function flagEmoji(cc){ return cc.toUpperCase().replace(/./g, function(ch){ return String.fromCodePoint(0x1F1E6 - 65 + ch.charCodeAt(0)); }); }
+  (function(){
+    var sel = document.getElementById('dialCode');
+    if (!sel) return;
+    COUNTRIES.sort(function(a,b){ return a[1].localeCompare(b[1],'fr'); });
+    COUNTRIES.forEach(function(c){
+      var o = document.createElement('option');
+      o.value = '+' + c[2];
+      o.textContent = flagEmoji(c[0]) + '  ' + c[1] + '  (+' + c[2] + ')';
+      if (c[0] === 'SN') o.selected = true;   // Défaut : Sénégal +221
+      sel.appendChild(o);
+    });
+  })();
 
-  /* ===== Réservation de démo ===== */
-  // Réception automatique : collez ici l'URL d'un service de formulaire (ex.
-  // Formspree pointant vers gilles@maestrodan.art). Laissé VIDE, le formulaire
-  // ouvre un e-mail pré-rempli vers cette adresse — fonctionne sans configuration.
+  /* ================= Envoi du formulaire ================= */
+  // Réception automatique : renseignez un endpoint (Formspree/WP vers
+  // gilles@maestrodan.art). Vide = e-mail pré-rempli vers cette adresse.
   var BOOKING_ENDPOINT = '';
   var BOOKING_INBOX = 'gilles@maestrodan.art';
 
-  function bookOpenMail(d){
-    var subject = 'Réservation de démo School AI — ' + (d.ecole || d.nom || '');
-    var body = [
-      'Nouvelle demande de démo School AI', '',
-      'Nom : ' + (d.nom || ''),
-      'Établissement : ' + (d.ecole || ''),
-      'E-mail : ' + (d.email || ''),
-      'Téléphone : ' + (d.tel || ''),
-      'Rôle : ' + (d.role || ''),
-      'Créneau souhaité : ' + (d.creneau || ''),
-      'Programmes / secteur : ' + (d.programmes || ''),
-      '', 'Message :', (d.message || '—')
-    ].join('\n');
-    window.location.href = 'mailto:' + BOOKING_INBOX + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-  }
-
-  var bookForm = document.getElementById('bookForm');
-  if (bookForm) {
-    bookForm.addEventListener('submit', function(e){
+  (function(){
+    var f = document.getElementById('demoForm');
+    if (!f) return;
+    f.addEventListener('submit', function(e){
       e.preventDefault();
-      var f = e.target;
       var okNom = f.nom.value.trim() !== '';
       var okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.value.trim());
       f.nom.classList.toggle('err', !okNom);
@@ -872,68 +543,39 @@
 
       var d = {};
       Array.prototype.forEach.call(f.elements, function(el){ if (el.name) d[el.name] = el.value.trim(); });
+      d.telephone = d.phone ? (d.dial + ' ' + d.phone) : '';
 
       function done(msg){
         f.style.display = 'none';
-        if (msg) document.getElementById('bookOkMsg').textContent = msg;
-        var ok = document.getElementById('bookOk'); ok.classList.add('on');
+        if (msg) document.getElementById('demoOkMsg').textContent = msg;
+        var ok = document.getElementById('demoOk'); ok.classList.add('on');
         ok.scrollIntoView({ behavior:'smooth', block:'center' });
       }
       var mailMsg = 'Votre messagerie va s’ouvrir avec un e-mail pré-rempli — cliquez sur « Envoyer » pour finaliser votre demande.';
-
+      function openMail(){
+        var subject = 'Réservation de démo School IA — ' + (d.ecole || d.nom || '');
+        var body = [
+          'Nouvelle demande de démonstration School IA', '',
+          'Nom : ' + (d.nom || ''),
+          'Établissement : ' + (d.ecole || ''),
+          'E-mail : ' + (d.email || ''),
+          'Téléphone : ' + (d.telephone || ''),
+          'Rôle : ' + (d.role || ''),
+          'Créneau souhaité : ' + (d.creneau || ''),
+          'Programmes / secteur : ' + (d.programmes || ''),
+          '', 'Message :', (d.message || '—')
+        ].join('\n');
+        window.location.href = 'mailto:' + BOOKING_INBOX + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+      }
       if (BOOKING_ENDPOINT) {
         fetch(BOOKING_ENDPOINT, { method:'POST', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' }, body: JSON.stringify(d) })
           .then(function(r){ if(!r.ok) throw 0; done(); })
-          .catch(function(){ bookOpenMail(d); done(mailMsg); });
+          .catch(function(){ openMail(); done(mailMsg); });
       } else {
-        bookOpenMail(d); done(mailMsg);
+        openMail(); done(mailMsg);
       }
     });
-  }
-
-  /* ===== Révélation au défilement ===== */
-  if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function(entries){
-      entries.forEach(function(en){ if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
-    }, { threshold:.12, rootMargin:'0px 0px -8% 0px' });
-    document.querySelectorAll('#screen-landing .reveal').forEach(function(el, i){
-      el.style.transitionDelay = ((i % 4) * 70) + 'ms';
-      io.observe(el);
-    });
-  } else {
-    document.querySelectorAll('#screen-landing .reveal').forEach(function(el){ el.classList.add('in'); });
-  }
-
-  function enter(role){
-    document.getElementById('screen-login').style.display='none';
-    document.getElementById('app').classList.add('on');
-    document.querySelectorAll('[data-role-nav]').forEach(function(n){ n.style.display = n.dataset.roleNav===role ? '' : 'none'; });
-    var admin = role==='admin';
-    var name = admin ? 'Maestro Dan' : 'BEM Conakry', ini = admin ? 'M' : 'B';
-    document.getElementById('u-name').textContent = name;
-    document.getElementById('u-role').textContent = admin ? 'Administrateur' : 'Responsable admissions';
-    document.getElementById('u-av').textContent = ini;
-    document.getElementById('tb-av').textContent = ini;
-    go(admin ? 'a-dash' : 'c-dash');
-  }
-  function go(view){
-    document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('on'); });
-    var el = document.getElementById('view-'+view); if(el) el.classList.add('on');
-    document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.toggle('active', n.dataset.view===view); });
-    document.getElementById('page-title').textContent = titles[view] || '';
-    closeSide(); window.scrollTo(0,0);
-  }
-  function openSide(){ document.getElementById('side').classList.add('open'); document.getElementById('backdrop').classList.add('on'); }
-  function closeSide(){ document.getElementById('side').classList.remove('open'); document.getElementById('backdrop').classList.remove('on'); }
-  function logout(){ document.getElementById('app').classList.remove('on'); document.getElementById('screen-login').style.display='grid'; }
-
-  document.addEventListener('click', function(e){
-    var nav = e.target.closest('.nav-item'); if(nav && nav.dataset.view){ go(nav.dataset.view); }
-    var jump = e.target.closest('[data-view-jump]'); if(jump){ go(jump.dataset.viewJump); }
-    var open = e.target.closest('[data-open]'); if(open){ var m=document.getElementById(open.dataset.open); if(m) m.classList.add('on'); }
-    if(e.target.closest('[data-close]')){ document.querySelectorAll('.modal.on').forEach(function(m){ m.classList.remove('on'); }); }
-  });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ document.querySelectorAll('.modal.on').forEach(function(m){ m.classList.remove('on'); }); closeSide(); } });
+  })();
 </script>
 
 </body>
