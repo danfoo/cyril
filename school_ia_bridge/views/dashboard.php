@@ -90,11 +90,11 @@
 
     <div class="row sia-kpi-grid">
       <?php
-      echo $kpi('Leads au total',        (int) $stats['total'],    'linear-gradient(135deg,#6366f1,#4f46e5)', 'fa-users');
+      echo $kpi($isGlobal ? 'Leads au total' : 'Mes leads', (int) $stats['total'], 'linear-gradient(135deg,#6366f1,#4f46e5)', 'fa-users');
       echo $kpi('Leads chauds (≥ 60)',   (int) $sd['chaud'],       'linear-gradient(135deg,#fb7185,#e11d48)', 'fa-fire');
       echo $kpi('Leads tièdes (40-59)',  (int) $sd['tiede'],       'linear-gradient(135deg,#fbbf24,#d97706)', 'fa-thermometer-half');
       echo $kpi('Leads froids (< 40)',   (int) $sd['froid'],       'linear-gradient(135deg,#38bdf8,#2563eb)', 'fa-snowflake-o');
-      echo $kpi('Inscrits',              (int) $stats['inscrits'], 'linear-gradient(135deg,#34d399,#059669)', 'fa-graduation-cap');
+      echo $kpi($isGlobal ? 'Inscrits' : 'Mes inscrits', (int) $stats['inscrits'], 'linear-gradient(135deg,#34d399,#059669)', 'fa-graduation-cap');
       echo $kpi('Taux de conversion',    $stats['conversion'] . ' %', 'linear-gradient(135deg,#2dd4bf,#0d9488)', 'fa-line-chart');
       echo $kpi('Délai moyen 1ᵉʳ contact', $delayLabel,           'linear-gradient(135deg,#64748b,#334155)', 'fa-hourglass-half');
       // Vivier commun : visible par TOUS les conseillers — c'est là qu'ils
@@ -103,6 +103,60 @@
       ?>
     </div>
 
+    <?php if (!$isGlobal && $schoolScope) {
+        // Repères de l'établissement : sans cela, un conseiller sans lead
+        // assigné voit un tableau entièrement à zéro et croit que le CRM ne
+        // reçoit rien. Ses KPIs ci-dessus restent strictement les siens.
+        $scDelay = '—';
+        if ($schoolScope['first_contact_hours'] !== null) {
+            $h = (float) $schoolScope['first_contact_hours'];
+            $scDelay = $h < 48 ? number_format($h, 1, ',', ' ') . ' h' : number_format($h / 24, 1, ',', ' ') . ' j';
+        } ?>
+      <div class="panel_s"><div class="panel-body">
+        <div class="clearfix" style="margin-bottom:4px;">
+          <h5 class="bold pull-left" style="margin-top:0;">
+            <span class="sia-panel-icon sia-ic-info"><i class="fa fa-building-o"></i></span>
+            Repères de l'établissement
+            <span class="text-muted" style="font-weight:400;font-size:12.5px;">— sur la même période, tous conseillers confondus</span>
+          </h5>
+          <?php if ($unassignedCount > 0) { ?>
+            <a href="<?php echo admin_url('school_ia_bridge') . '?unassigned=1'; ?>" class="btn btn-primary btn-sm pull-right">
+              <i class="fa fa-hand-paper-o"></i> Prendre des leads en charge
+            </a>
+          <?php } ?>
+        </div>
+        <div class="sia-stat-row">
+          <div class="sia-stat">
+            <div class="sia-stat-value" style="color:#4f46e5;"><?php echo (int) $schoolScope['total']; ?></div>
+            <div class="sia-stat-label">Leads reçus</div>
+          </div>
+          <div class="sia-stat">
+            <div class="sia-stat-value" style="color:#e11d48;"><?php echo (int) $schoolScope['chaud']; ?></div>
+            <div class="sia-stat-label">Chauds (≥ 60)</div>
+          </div>
+          <div class="sia-stat">
+            <div class="sia-stat-value" style="color:#d97706;"><?php echo (int) $schoolScope['tiede']; ?></div>
+            <div class="sia-stat-label">Tièdes (40-59)</div>
+          </div>
+          <div class="sia-stat">
+            <div class="sia-stat-value" style="color:#2563eb;"><?php echo (int) $schoolScope['froid']; ?></div>
+            <div class="sia-stat-label">Froids (&lt; 40)</div>
+          </div>
+          <div class="sia-stat">
+            <div class="sia-stat-value" style="color:#059669;"><?php echo (int) $schoolScope['inscrits']; ?> <span style="font-size:.55em;font-weight:600;opacity:.75;"><?php echo $schoolScope['conversion']; ?> %</span></div>
+            <div class="sia-stat-label">Inscrits</div>
+          </div>
+          <div class="sia-stat">
+            <div class="sia-stat-value" style="color:#334155;"><?php echo $scDelay; ?></div>
+            <div class="sia-stat-label">Délai moyen 1ᵉʳ contact</div>
+          </div>
+          <div class="sia-stat">
+            <div class="sia-stat-value" style="color:<?php echo $unassignedCount > 0 ? '#ea580c' : '#64748b'; ?>;"><?php echo (int) $unassignedCount; ?></div>
+            <div class="sia-stat-label">Sans responsable</div>
+          </div>
+        </div>
+      </div></div>
+    <?php } ?>
 
     <!-- Financier & objectif -->
     <?php if ($hasFees || $hasTarget) {

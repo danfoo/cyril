@@ -44,20 +44,11 @@ class School_ia_bridge extends AdminController
             $filters['owner_id'] = $scopeOwner;
         }
 
-        // Les INDICATEURS CLÉS sont une photographie de l'établissement, lisible
-        // par tous les conseillers : volume, maturité des leads (chaud/tiède/
-        // froid), conversion et réactivité. Sans cela, un conseiller sans lead
-        // assigné voyait un tableau entièrement à zéro et croyait que le CRM ne
-        // recevait rien. Le détail nominatif (ses leads, ses tâches, ses
-        // activités) reste, lui, cadré plus bas.
-        $globalFilters = $filters;
-        unset($globalFilters['owner_id']);
-
         $data['title']     = 'School IA — Tableau de bord';
         $data['isGlobal']  = $scopeOwner === null;
         $data['filters']   = $filters;
         $data['rentrees']  = $this->school_ia_bridge_model->rentrees();
-        $data['stats']     = $this->school_ia_bridge_model->stats(60, $globalFilters);
+        $data['stats']     = $this->school_ia_bridge_model->stats(60, $filters);
         $data['byFormation'] = $this->school_ia_bridge_model->by_formation($filters);
         $data['byStaff']   = $this->school_ia_bridge_model->by_staff($filters);
         // Les leads non assignés sont le VIVIER commun : visible par tous les
@@ -65,8 +56,12 @@ class School_ia_bridge extends AdminController
         // vue « Mes données ».
         $data['unassignedCount'] = $this->school_ia_bridge_model->unassigned_count($filters);
         $data['unassignedLeads'] = $this->school_ia_bridge_model->unassigned_leads($filters, 6);
+        // Repères de l'établissement, pour situer ses propres chiffres.
+        $data['schoolScope'] = $scopeOwner !== null
+            ? $this->school_ia_bridge_model->school_scope($filters)
+            : null;
         $data['recentLeads']     = $this->school_ia_bridge_model->recent_leads($filters, 8);
-        $data['avgFirstContact'] = $this->school_ia_bridge_model->avg_first_contact_hours($globalFilters);
+        $data['avgFirstContact'] = $this->school_ia_bridge_model->avg_first_contact_hours($filters);
         $data['finance']   = $this->school_ia_bridge_model->finance_summary($filters);
         $data['target']    = (int) get_option('sia_target_inscrits');
         $data['currency']  = (string) (get_option('sia_currency') ?: 'GNF');
