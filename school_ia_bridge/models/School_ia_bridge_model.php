@@ -669,41 +669,6 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
-    /**
-     * Volumétrie de l'établissement, hors cadrage par conseiller : sert à
-     * donner du contexte au conseiller qui ne voit que ses propres leads
-     * (sans cela, un conseiller sans lead assigné voit un tableau de bord
-     * entièrement à zéro et croit que le CRM ne reçoit rien).
-     */
-    public function school_scope(array $filters = [], int $hotThreshold = 60): array
-    {
-        unset($filters['owner_id']);
-        $t = $this->table();
-
-        $this->applyLeadFilters($filters);
-        $total = (int) $this->db->count_all_results($t);
-
-        $this->applyLeadFilters($filters);
-        $inscrits = (int) $this->db->where('stage', 'inscrit')->count_all_results($t);
-
-        // Mêmes seuils que stats() : chaud ≥ 60, froid < 40, tiède = le reste.
-        $this->applyLeadFilters($filters);
-        $hot = (int) $this->db->where('score >=', $hotThreshold)->count_all_results($t);
-
-        $this->applyLeadFilters($filters);
-        $cold = (int) $this->db->where('score <', 40)->count_all_results($t);
-
-        return [
-            'total'    => $total,
-            'inscrits' => $inscrits,
-            'chaud'    => $hot,
-            'froid'    => $cold,
-            'tiede'    => max(0, $total - $hot - $cold),
-            'conversion' => $total > 0 ? round($inscrits * 100 / $total, 1) : 0.0,
-            'first_contact_hours' => $this->avg_first_contact_hours($filters),
-        ];
-    }
-
     /** Derniers leads reçus (aperçu sur le dashboard). */
     public function recent_leads(array $filters = [], int $limit = 8): array
     {
