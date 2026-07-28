@@ -46,6 +46,9 @@ class School_ia_bridge extends AdminController
 
         $data['title']     = 'School IA — Tableau de bord';
         $data['isGlobal']  = $scopeOwner === null;
+        $currentStaff = $this->db->select('firstname')->where('staffid', get_staff_user_id())->get(db_prefix() . 'staff')->row();
+        $data['staffFirstName'] = $currentStaff ? trim((string) $currentStaff->firstname) : '';
+        $data['greeting']  = $this->school_ia_bridge_model->dashboard_greeting($filters, $scopeOwner);
         $data['filters']   = $filters;
         $data['rentrees']  = $this->school_ia_bridge_model->rentrees();
         $data['stats']     = $this->school_ia_bridge_model->stats(60, $filters);

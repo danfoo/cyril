@@ -81,6 +81,7 @@ function sia_help(string $key): string
         'dashboard' => ['Tableau de bord',
             '<p>Vue d\'ensemble de votre activité d\'admission.</p>
              <ul>
+               <li><strong>Message de bienvenue</strong> : change automatiquement selon l\'urgence du moment — tâches en retard, leads chauds sans responsable, silence prolongé, ou dynamique positive s\'il n\'y a rien à signaler.</li>
                <li><strong>Leads au total</strong> : tous les leads reçus (plugin, saisie, import).</li>
                <li><strong>Leads chauds</strong> : score ≥ 60 (prospects les plus engagés).</li>
                <li><strong>Inscrits</strong> et <strong>taux de conversion</strong> : leads en étape « Inscrit » / total.</li>

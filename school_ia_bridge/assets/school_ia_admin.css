@@ -274,6 +274,14 @@
 #wrapper .content .sia-ic-danger  { background: var(--sia-danger-bg);  color: var(--sia-danger);  }
 #wrapper .content .sia-ic-muted   { background: var(--sia-surface-2);  color: var(--sia-muted);   }
 
+/* ---- Message de bienvenue dynamique (tableau de bord) ---- */
+#wrapper .content .sia-greeting { margin: 4px 0 0; font-size: 13.5px; font-weight: 500; }
+#wrapper .content .sia-greeting i { margin-right: 5px; }
+#wrapper .content .sia-greeting-danger  { color: var(--sia-danger);  }
+#wrapper .content .sia-greeting-warning { color: var(--sia-warning); }
+#wrapper .content .sia-greeting-info    { color: var(--sia-info);    }
+#wrapper .content .sia-greeting-success { color: var(--sia-success); }
+
 /* ---- Notes (fiche lead) : fond teinté, pas de contour ---- */
 #wrapper .content .sia-note-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
 #wrapper .content .sia-note-card {

@@ -606,6 +606,77 @@ class School_ia_bridge_model extends App_Model
         return compact('total', 'hot', 'inscrits', 'conversion', 'byStage', 'scoreDist');
     }
 
+    /**
+     * Message de bienvenue personnalisé selon l'urgence du moment : remplace
+     * un « bonjour » statique par un repère d'action (tâches en retard, leads
+     * chauds sans responsable, silence prolongé) ou, à défaut, une dynamique
+     * positive. Une seule urgence à la fois, la plus importante en premier.
+     */
+    public function dashboard_greeting(array $filters, ?int $scopeOwner): array
+    {
+        $this->ensure_schema();
+
+        // 1. Tâches en retard (cadrées par conseiller en vue « Mes données »).
+        $this->db->from($this->tasksTable())->where('done', 0)
+            ->where('due_at IS NOT NULL', null, false)
+            ->where('due_at <=', date('Y-m-d H:i:s'));
+        if ($scopeOwner !== null) { $this->db->where('staff_id', $scopeOwner); }
+        $overdue = (int) $this->db->count_all_results();
+        if ($overdue > 0) {
+            return ['level' => 'danger', 'icon' => 'fa-exclamation-triangle', 'text' =>
+                $overdue === 1
+                    ? 'Vous avez 1 relance en retard — un prospect attend une réponse.'
+                    : "Vous avez {$overdue} relances en retard — des prospects attendent une réponse."];
+        }
+
+        // 2. Leads chauds sans responsable (vivier commun : peu importe la vue).
+        $unassignedFilters = $filters;
+        unset($unassignedFilters['owner_id']);
+        $this->applyLeadFilters($unassignedFilters);
+        $this->db->where('owner_id IS NULL', null, false)->where('score >=', 60);
+        $hotUnassigned = (int) $this->db->count_all_results($this->table());
+        if ($hotUnassigned > 0) {
+            return ['level' => 'warning', 'icon' => 'fa-fire', 'text' =>
+                $hotUnassigned === 1
+                    ? "1 lead chaud n'a pas encore de responsable — prenez-le en charge avant qu'il refroidisse !"
+                    : "{$hotUnassigned} leads chauds n'ont pas encore de responsable — prenez-les en charge avant qu'ils refroidissent !"];
+        }
+
+        // 3. Silence prolongé : leads reçus depuis plus de 24 h sans la moindre activité.
+        $sql = 'SELECT COUNT(*) AS n FROM `' . $this->table() . '` l
+                WHERE l.received_at <= ? AND NOT EXISTS (
+                    SELECT 1 FROM `' . $this->activityTable() . '` a WHERE a.lead_id = l.id
+                )';
+        $params = [date('Y-m-d H:i:s', strtotime('-24 hours'))];
+        if ($scopeOwner !== null) {
+            $sql .= ' AND l.owner_id = ?';
+            $params[] = $scopeOwner;
+        }
+        $stale = (int) ($this->db->query($sql, $params)->row()->n ?? 0);
+        if ($stale > 0) {
+            return ['level' => 'info', 'icon' => 'fa-clock-o', 'text' =>
+                $stale === 1
+                    ? "1 lead n'a reçu aucun suivi depuis plus de 24 h."
+                    : "{$stale} leads n'ont reçu aucun suivi depuis plus de 24 h."];
+        }
+
+        // 4. Rien d'urgent : dynamique positive (nouveaux leads chauds du jour).
+        $todayFilters = $filters;
+        $todayFilters['date_from'] = date('Y-m-d');
+        $todayFilters['date_to']   = date('Y-m-d');
+        $this->applyLeadFilters($todayFilters);
+        $this->db->where('score >=', 60);
+        $hotToday = (int) $this->db->count_all_results($this->table());
+        if ($hotToday > 0) {
+            return ['level' => 'success', 'icon' => 'fa-check-circle', 'text' =>
+                $hotToday === 1
+                    ? "1 nouveau lead chaud aujourd'hui — belle dynamique, continuez !"
+                    : "{$hotToday} nouveaux leads chauds aujourd'hui — belle dynamique, continuez !"];
+        }
+
+        return ['level' => 'success', 'icon' => 'fa-check-circle', 'text' => "Aucune urgence pour l'instant. Bonne journée !"];
+    }
+
     /** Répartition des leads par source (site plugin, saisie, import). */
     public function by_source(array $filters = []): array
     {

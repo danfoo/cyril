@@ -4,13 +4,21 @@
   <div class="content">
 
     <div class="clearfix" style="margin-bottom:15px;">
-      <h4 class="no-margin pull-left"><i class="fa fa-dashboard"></i> Tableau de bord — Admissions <?php echo sia_help("dashboard"); ?>
-        <?php if ($isGlobal) { ?>
-          <span class="label label-primary" style="margin-left:8px;font-weight:600;" title="Vous voyez les données de tous les conseillers"><i class="fa fa-globe"></i> Vue globale</span>
-        <?php } else { ?>
-          <span class="label label-default" style="margin-left:8px;font-weight:600;" title="Vous voyez uniquement vos propres leads"><i class="fa fa-user"></i> Mes données</span>
-        <?php } ?>
-      </h4>
+      <div class="pull-left">
+        <h4 class="no-margin">
+          Bienvenue sur School IA<?php echo $staffFirstName !== '' ? ', <strong>' . htmlspecialchars($staffFirstName, ENT_QUOTES) . '</strong>' : ''; ?> !
+          <?php echo sia_help("dashboard"); ?>
+          <?php if ($isGlobal) { ?>
+            <span class="label label-primary" style="margin-left:8px;font-weight:600;" title="Vous voyez les données de tous les conseillers"><i class="fa fa-globe"></i> Vue globale</span>
+          <?php } else { ?>
+            <span class="label label-default" style="margin-left:8px;font-weight:600;" title="Vous voyez uniquement vos propres leads"><i class="fa fa-user"></i> Mes données</span>
+          <?php } ?>
+        </h4>
+        <p class="sia-greeting sia-greeting-<?php echo htmlspecialchars($greeting['level'], ENT_QUOTES); ?>">
+          <i class="fa <?php echo htmlspecialchars($greeting['icon'], ENT_QUOTES); ?>"></i>
+          <?php echo htmlspecialchars($greeting['text'], ENT_QUOTES); ?>
+        </p>
+      </div>
       <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-primary pull-right">
         <i class="fa fa-columns"></i> Pipeline
       </a>
