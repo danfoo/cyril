@@ -1122,8 +1122,8 @@ function school_ia_bridge_admin_menu()
     $canManage           = staff_can('manage_settings', 'school_ia_bridge');
     $canConfig           = staff_can('manage_config', 'school_ia_bridge');
     $canReports          = staff_can('view_reports', 'school_ia_bridge');
-    $canCampaignsCreate  = $can('campaigns_create', 'send');
-    $canCampaignsView    = $can('campaigns_view', 'send');
+    $canCampaignsCreate  = staff_can('campaigns_create', 'school_ia_bridge');
+    $canCampaignsView    = staff_can('campaigns_view', 'school_ia_bridge');
     $canSequencesView    = $can('sequences_view', 'manage_settings');
     $canDocumentsView    = $can('documents_view', 'manage_settings');
 
