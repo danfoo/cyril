@@ -60,13 +60,14 @@
             </div>
           </div>
           <div class="sia-lead-head-actions">
-            <?php if (empty($lead->owner_id)) { ?>
+            <?php if (empty($lead->owner_id) && $canEdit) { ?>
               <?php echo form_open(admin_url('school_ia_bridge/assign/' . (int) $lead->id), ['style' => 'display:inline;']); ?>
                 <input type="hidden" name="owner_id" value="<?php echo (int) get_staff_user_id(); ?>">
                 <input type="hidden" name="claim" value="1">
                 <button type="submit" class="btn btn-primary"><i class="fa fa-hand-paper-o"></i> Prendre en charge</button>
               <?php echo form_close(); ?>
             <?php } ?>
+            <?php if ($canEdit) { ?>
             <div class="dropdown">
               <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
                 <i class="fa fa-random"></i> Changer d'étape <span class="caret"></span>
@@ -86,12 +87,17 @@
                 <?php } ?>
               </ul>
             </div>
+            <?php } ?>
+            <?php if ($canEdit) { ?>
             <a href="<?php echo admin_url('school_ia_bridge/edit_lead/' . (int) $lead->id); ?>" class="btn btn-default"><i class="fa fa-pencil"></i> Modifier</a>
+            <?php } ?>
             <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-default"><i class="fa fa-columns"></i> Pipeline</a>
+            <?php if ($canDelete) { ?>
             <a href="<?php echo admin_url('school_ia_bridge/lead_delete/' . (int) $lead->id); ?>" class="btn btn-default"
                onclick="return confirm('Supprimer définitivement ce lead et tout son historique ?');" title="Supprimer ce lead">
               <i class="fa fa-trash text-danger"></i>
             </a>
+            <?php } ?>
           </div>
         </div>
         <?php if (!empty($lead->description)) { ?>
@@ -250,6 +256,7 @@
                 <span class="sia-panel-icon sia-ic-danger"><i class="fa fa-check-square-o"></i></span>
                 Tâches, rendez-vous &amp; relances
               </h5>
+              <?php if ($canEdit) { ?>
               <?php echo form_open(admin_url('school_ia_bridge/task_add/' . (int) $lead->id)); ?>
                 <div class="row">
                   <div class="col-sm-5" style="margin-bottom:6px;">
@@ -270,16 +277,21 @@
                   </div>
                 </div>
               <?php echo form_close(); ?>
+              <?php } ?>
 
               <?php if (!empty($tasks)) { ?>
                 <div class="sia-task-list">
                   <?php foreach ($tasks as $t) {
                       $overdue = (!$t->done && $t->due_at && strtotime($t->due_at) < time()); ?>
                     <div class="sia-task-item">
+                      <?php if ($canEdit) { ?>
                       <a href="<?php echo admin_url('school_ia_bridge/task_toggle/' . (int) $t->id); ?>"
                          title="<?php echo $t->done ? 'Marquer à faire' : 'Marquer fait'; ?>">
                         <i class="fa <?php echo $t->done ? 'fa-check-square-o text-success' : 'fa-square-o'; ?>"></i>
                       </a>
+                      <?php } else { ?>
+                        <i class="fa <?php echo $t->done ? 'fa-check-square-o text-success' : 'fa-square-o'; ?>"></i>
+                      <?php } ?>
                       <div style="flex:1 1 auto;">
                         <span style="<?php echo $t->done ? 'text-decoration:line-through;color:#999;' : ''; ?>">
                           <?php echo htmlspecialchars((string) $t->title, ENT_QUOTES); ?>
@@ -290,8 +302,10 @@
                           </span>
                         <?php } ?>
                       </div>
+                      <?php if ($canEdit) { ?>
                       <a href="<?php echo admin_url('school_ia_bridge/task_delete/' . (int) $t->id); ?>"
                          class="text-muted" style="margin-left:8px;" onclick="return confirm('Supprimer cette tâche ?');"><i class="fa fa-trash"></i></a>
+                      <?php } ?>
                     </div>
                   <?php } ?>
                 </div>
@@ -308,6 +322,7 @@
                 <span class="sia-panel-icon sia-ic-success"><i class="fa fa-user"></i></span>
                 Responsable
               </h5>
+              <?php if ($canEdit) { ?>
               <?php echo form_open(admin_url('school_ia_bridge/assign/' . (int) $lead->id)); ?>
                 <div class="input-group">
                   <select name="owner_id" class="form-control">
@@ -321,6 +336,9 @@
                   <span class="input-group-btn"><button type="submit" class="btn btn-primary">OK</button></span>
                 </div>
               <?php echo form_close(); ?>
+              <?php } else { ?>
+                <p class="text-muted" style="margin:0;"><?php echo $lead->owner_id ? htmlspecialchars(get_staff_full_name((int) $lead->owner_id), ENT_QUOTES) : '— Aucun —'; ?></p>
+              <?php } ?>
             </div></div>
 
             <?php if (!empty($competitors)) { ?>
@@ -345,6 +363,7 @@
                 <span class="sia-panel-icon sia-ic-info"><i class="fa fa-calendar"></i></span>
                 Rentrée / année académique
               </h5>
+              <?php if ($canEdit) { ?>
               <?php echo form_open(admin_url('school_ia_bridge/set_rentree/' . (int) $lead->id)); ?>
                 <div class="input-group">
                   <input type="text" name="rentree" class="form-control" list="sia-rentrees"
@@ -352,6 +371,9 @@
                   <span class="input-group-btn"><button type="submit" class="btn btn-primary">OK</button></span>
                 </div>
               <?php echo form_close(); ?>
+              <?php } else { ?>
+                <p class="text-muted" style="margin:0;"><?php echo htmlspecialchars((string) ($lead->rentree ?: '—'), ENT_QUOTES); ?></p>
+              <?php } ?>
             </div></div>
 
           </div>
@@ -368,10 +390,12 @@
                 <span class="sia-panel-icon sia-ic-primary"><i class="fa fa-sticky-note"></i></span>
                 Notes
               </h5>
+              <?php if ($canEdit) { ?>
               <?php echo form_open(admin_url('school_ia_bridge/note/' . (int) $lead->id)); ?>
                 <textarea name="content" class="form-control" rows="3" placeholder="Compte-rendu d'appel, remarque…"></textarea>
                 <button type="submit" class="btn btn-primary" style="margin-top:8px;">Enregistrer la note</button>
               <?php echo form_close(); ?>
+              <?php } ?>
               <?php if (!empty($notes)) { ?>
                 <div class="sia-note-list">
                   <?php foreach ($notes as $n) {
@@ -426,7 +450,7 @@
                 <span class="sia-panel-icon sia-ic-primary"><i class="fa fa-refresh"></i></span>
                 Séquences de relance
               </h5>
-              <?php if (!empty($sequences)) { ?>
+              <?php if ($canEdit && !empty($sequences)) { ?>
                 <?php echo form_open(admin_url('school_ia_bridge/enroll/' . (int) $lead->id)); ?>
                   <div class="input-group">
                     <select name="sequence_id" class="form-control">
@@ -437,7 +461,7 @@
                     <span class="input-group-btn"><button type="submit" class="btn btn-primary">Inscrire</button></span>
                   </div>
                 <?php echo form_close(); ?>
-              <?php } else { ?>
+              <?php } elseif ($canEdit) { ?>
                 <p class="text-muted">Aucune séquence active. Créez-en dans l'onglet <a href="<?php echo admin_url('school_ia_bridge/sequences'); ?>">Séquences</a>.</p>
               <?php } ?>
               <?php if (!empty($enrollments)) { ?>
@@ -447,7 +471,7 @@
                     <li style="padding:4px 0;">
                       <span class="label <?php echo $badge; ?>"><?php echo $en->status; ?></span>
                       <?php echo htmlspecialchars((string) $en->sequence_name, ENT_QUOTES); ?>
-                      <?php if ($en->status === 'active') { ?>
+                      <?php if ($en->status === 'active' && $canEdit) { ?>
                         <a href="<?php echo admin_url('school_ia_bridge/unenroll/' . (int) $en->id); ?>"
                            class="pull-right text-muted" onclick="return confirm('Arrêter la séquence pour ce lead ?');">arrêter</a>
                       <?php } ?>

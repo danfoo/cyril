@@ -39,17 +39,22 @@ class School_ia_bridge extends AdminController
         'documents_delete' => 'manage_settings',
     ];
 
+    /** Vrai si le membre a la capacité demandée, ou son équivalent large historique. */
+    private function can(string $cap): bool
+    {
+        if (staff_can($cap, 'school_ia_bridge')) {
+            return true;
+        }
+        $legacy = self::LEGACY_FALLBACK[$cap] ?? null;
+        return $legacy !== null && staff_can($legacy, 'school_ia_bridge');
+    }
+
     /** Refuse l'accès si le membre n'a ni la capacité demandée, ni son équivalent large historique. */
     private function need(string $cap): void
     {
-        if (staff_can($cap, 'school_ia_bridge')) {
-            return;
+        if (!$this->can($cap)) {
+            access_denied('School IA CRM');
         }
-        $legacy = self::LEGACY_FALLBACK[$cap] ?? null;
-        if ($legacy !== null && staff_can($legacy, 'school_ia_bridge')) {
-            return;
-        }
-        access_denied('School IA CRM');
     }
 
     /** Tableau de bord : indicateurs, entonnoir, segmentation et suivi opérationnel. */
@@ -133,6 +138,10 @@ class School_ia_bridge extends AdminController
         $data['feesIndex'] = $this->school_ia_bridge_model->fees_index();
         $data['currency']  = (string) (get_option('sia_currency') ?: 'GNF');
         $data['model']    = $this->school_ia_bridge_model;
+        $data['canCreate']           = $this->can('leads_create');
+        $data['canEdit']             = $this->can('leads_edit');
+        $data['canDelete']           = $this->can('leads_delete');
+        $data['canCampaignsCreate']  = $this->can('campaigns_create');
         $this->load->view('school_ia_bridge/leads', $data);
     }
 
@@ -1124,6 +1133,8 @@ class School_ia_bridge extends AdminController
         $data['title']   = 'School IA — Pipeline';
         $data['grouped'] = $this->school_ia_bridge_model->by_stage();
         $data['model']   = $this->school_ia_bridge_model;
+        $data['canCreate'] = $this->can('leads_create');
+        $data['canEdit']   = $this->can('leads_edit');
         $this->load->view('school_ia_bridge/pipeline', $data);
     }
 
@@ -1419,6 +1430,8 @@ class School_ia_bridge extends AdminController
         $data['ai_ready']   = trim((string) get_option('sia_ai_api_key')) !== '';
         $data['aiSummary']  = json_decode((string) get_option('sia_lead_summary_' . (int) $lead->id), true) ?: null;
         $data['model']      = $this->school_ia_bridge_model;
+        $data['canEdit']    = $this->can('leads_edit');
+        $data['canDelete']  = $this->can('leads_delete');
         $this->load->view('school_ia_bridge/lead', $data);
     }
 

@@ -30,9 +30,11 @@
             <small class="text-muted">— glissez-déposez les cartes</small>
             <?php echo sia_help('pipeline'); ?>
           </h4>
+          <?php if ($canCreate) { ?>
           <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
             <i class="fa fa-user-plus"></i> Ajouter un lead
           </a>
+          <?php } ?>
           <a href="<?php echo admin_url('school_ia_bridge'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
             <i class="fa fa-inbox"></i> Contacts
           </a>
@@ -55,9 +57,11 @@
 
                 <div class="sia-col" data-stage="<?php echo $slug; ?>">
                 <?php foreach ($leads as $lead) { ?>
-                  <div class="panel_s sia-card" draggable="true" data-id="<?php echo (int) $lead->id; ?>" style="margin-bottom:8px;">
+                  <div class="panel_s sia-card" draggable="<?php echo $canEdit ? 'true' : 'false'; ?>" data-id="<?php echo (int) $lead->id; ?>" style="margin-bottom:8px;">
                     <div class="panel-body" style="padding:10px 12px;">
+                      <?php if ($canEdit) { ?>
                       <span class="sia-drag-handle" title="Glissez la carte pour changer d'étape"><i class="fa fa-arrows"></i></span>
+                      <?php } ?>
                       <a href="<?php echo admin_url('school_ia_bridge/lead/' . (int) $lead->id); ?>" class="bold" style="padding-right:18px; display:inline-block;">
                         <?php echo htmlspecialchars((string) ($lead->name ?: ('Lead #' . $lead->id)), ENT_QUOTES); ?>
                       </a>
@@ -68,6 +72,7 @@
                       <span class="sia-stage-badge" style="background:<?php echo $color; ?>1a; color:<?php echo $color; ?>;">
                         <?php echo htmlspecialchars($model->stageLabel($slug), ENT_QUOTES); ?>
                       </span>
+                      <?php if ($canEdit) { ?>
                       <div class="btn-group btn-group-xs" style="margin-top:6px;">
                         <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
                           Déplacer <span class="caret"></span>
@@ -83,6 +88,7 @@
                           <?php } ?>
                         </ul>
                       </div>
+                      <?php } ?>
                     </div>
                   </div>
                 <?php } ?>

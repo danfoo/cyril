@@ -26,9 +26,11 @@
           <div class="panel-body">
             <div class="clearfix">
               <h4 class="no-margin pull-left"><i class="fa fa-graduation-cap"></i> School IA — Contacts <?php echo sia_help('inbox'); ?></h4>
+              <?php if ($canCreate) { ?>
               <a href="<?php echo admin_url('school_ia_bridge/new_lead'); ?>" class="btn btn-primary pull-right">
                 <i class="fa fa-user-plus"></i> Ajouter un lead
               </a>
+              <?php } ?>
               <div class="btn-group pull-right" style="margin-right:6px;">
                 <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
                   <i class="fa fa-download"></i> Exporter <span class="caret"></span>
@@ -38,9 +40,11 @@
                   <li><a href="<?php echo admin_url('school_ia_bridge/export') . '?format=xlsx' . ($qs ? '&' . $qs : ''); ?>">Excel (.xlsx)</a></li>
                 </ul>
               </div>
+              <?php if ($canCreate) { ?>
               <a href="<?php echo admin_url('school_ia_bridge/import'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
                 <i class="fa fa-upload"></i> Importer
               </a>
+              <?php } ?>
               <a href="<?php echo admin_url('school_ia_bridge/pipeline'); ?>" class="btn btn-default pull-right" style="margin-right:6px;">
                 <i class="fa fa-columns"></i> Voir le pipeline
               </a>
@@ -111,9 +115,11 @@
         <input type="hidden" name="return" value="<?php echo htmlspecialchars($returnUrl, ENT_QUOTES); ?>">
 
         <!-- Barre d'actions groupées -->
+        <?php if ($canEdit || $canDelete || $canCampaignsCreate) { ?>
         <div class="panel_s sia-no-print"><div class="panel-body" style="padding:12px 16px;">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
             <span class="text-muted" style="font-size:12.5px;"><i class="fa fa-hand-o-up"></i> Sélection :</span>
+            <?php if ($canEdit) { ?>
             <span style="display:inline-flex;gap:4px;align-items:center;">
               <select name="assign_staff" class="form-control input-sm" style="height:30px;width:160px;">
                 <option value="0">— Conseiller —</option>
@@ -132,11 +138,17 @@
               </select>
               <button type="submit" name="do" value="stage" class="btn btn-sm btn-default"><i class="fa fa-random"></i> Changer d'étape</button>
             </span>
+            <?php } ?>
+            <?php if ($canDelete) { ?>
             <button type="submit" name="do" value="delete" class="btn btn-sm btn-default" onclick="return confirm('Supprimer définitivement les leads sélectionnés et tout leur historique ?');"><i class="fa fa-trash text-danger"></i> Supprimer</button>
+            <?php } ?>
+            <?php if ($canCampaignsCreate) { ?>
             <a href="<?php echo admin_url('school_ia_bridge/bulk'); ?>" class="btn btn-sm btn-default" style="margin-left:auto;"><i class="fa fa-paper-plane"></i> Campagne e-mail / SMS →</a>
+            <?php } ?>
           </div>
           <p class="text-muted" style="margin:8px 0 0;font-size:11.5px;">Cochez des leads puis choisissez une action. L'envoi de campagne ciblée par filtres se fait sur la page <strong>Envoi groupé</strong>.</p>
         </div></div>
+        <?php } ?>
 
         <div class="panel_s">
           <div class="panel-body">
@@ -208,10 +220,12 @@
                   </td>
                   <td><?php echo htmlspecialchars((string) ($lead->rentree ?? ''), ENT_QUOTES); ?></td>
                   <td class="text-right">
+                    <?php if ($canDelete) { ?>
                     <a href="<?php echo admin_url('school_ia_bridge/lead_delete/' . (int) $lead->id); ?>" class="text-muted"
                        onclick="return confirm('Supprimer définitivement ce lead et tout son historique ?');" title="Supprimer">
                       <i class="fa fa-trash"></i>
                     </a>
+                    <?php } ?>
                   </td>
                 </tr>
               <?php }
