@@ -1073,13 +1073,31 @@ function school_ia_bridge_admin_init()
     // --- Permissions (visibles dans Setup → Rôles) ---
     register_staff_capabilities('school_ia_bridge', [
         'capabilities' => [
-            'view'            => _l('Accéder au CRM School IA'),
-            'view_global'     => _l('Voir les données globales (tableau de bord : tous les conseillers, sinon seulement les siennes)'),
-            'manage_leads'    => _l('Gérer les leads (ajout, import, étapes, tâches, notes)'),
-            'send'            => _l('Envoyer e-mails / SMS (individuels et groupés)'),
-            'view_reports'    => _l('Consulter les rapports & le journal d\'activité'),
-            'manage_settings' => _l('Configurer (modèles, documents, séquences)'),
-            'manage_config'   => _l('Réglages & diagnostic (connexion, clé IA, SMS, objectifs)'),
+            'view'             => _l('Accéder au CRM School IA'),
+            'view_global'      => _l('Voir les données globales (tableau de bord : tous les conseillers, sinon seulement les siennes)'),
+            // Raccourcis larges (historiques) : cochés, ils continuent de tout
+            // couvrir même sans cocher les capacités fines ci-dessous.
+            'manage_leads'     => _l('Gérer les leads — raccourci large (équivaut à créer + modifier + supprimer)'),
+            'manage_settings'  => _l('Configurer — raccourci large (modèles, veille, + séquences/documents ci-dessous)'),
+            // Leads : granularité fine.
+            'leads_create'     => _l('Leads — créer (ajout manuel, import CSV/Excel)'),
+            'leads_edit'       => _l('Leads — modifier (étapes, tâches, notes, assignation, rentrée)'),
+            'leads_delete'     => _l('Leads — supprimer'),
+            // Campagnes (envoi groupé).
+            'campaigns_view'   => _l('Campagnes — voir la liste & les statistiques'),
+            'campaigns_create' => _l('Campagnes — créer (envoi groupé e-mail/SMS)'),
+            'campaigns_edit'   => _l('Campagnes — modifier (relancer, supprimer)'),
+            // Séquences de relance automatiques.
+            'sequences_view'   => _l('Séquences — voir'),
+            'sequences_create' => _l('Séquences — créer'),
+            'sequences_edit'   => _l('Séquences — modifier / supprimer'),
+            // Documents (pièces jointes par programme).
+            'documents_view'   => _l('Documents — voir'),
+            'documents_create' => _l('Documents — ajouter'),
+            'documents_delete' => _l('Documents — supprimer'),
+            'send'             => _l('Envoyer e-mails / SMS individuels (fiche lead)'),
+            'view_reports'     => _l('Consulter les rapports & le journal d\'activité'),
+            'manage_config'    => _l('Réglages & diagnostic (connexion, clé IA, SMS, objectifs)'),
         ],
     ], _l('School IA CRM'));
 
@@ -1096,10 +1114,18 @@ function school_ia_bridge_admin_menu()
         return;
     }
 
-    $canSend   = staff_can('send', 'school_ia_bridge');
-    $canManage  = staff_can('manage_settings', 'school_ia_bridge');
-    $canConfig  = staff_can('manage_config', 'school_ia_bridge');
-    $canReports = staff_can('view_reports', 'school_ia_bridge');
+    $can = static function (string $cap, ?string $legacy = null) {
+        return staff_can($cap, 'school_ia_bridge') || ($legacy !== null && staff_can($legacy, 'school_ia_bridge'));
+    };
+
+    $canSend            = staff_can('send', 'school_ia_bridge');
+    $canManage           = staff_can('manage_settings', 'school_ia_bridge');
+    $canConfig           = staff_can('manage_config', 'school_ia_bridge');
+    $canReports          = staff_can('view_reports', 'school_ia_bridge');
+    $canCampaignsCreate  = $can('campaigns_create', 'send');
+    $canCampaignsView    = $can('campaigns_view', 'send');
+    $canSequencesView    = $can('sequences_view', 'manage_settings');
+    $canDocumentsView    = $can('documents_view', 'manage_settings');
 
     // 1. Tableau de bord (onglet de premier plan)
     $CI->app_menu->add_sidebar_menu_item('sia_dashboard', [
@@ -1148,26 +1174,30 @@ function school_ia_bridge_admin_menu()
         'icon'     => 'sia-mi sia-mi-campaign',
         'position' => 34,
     ]);
-    if ($canSend) {
+    if ($canCampaignsCreate) {
         $CI->app_menu->add_sidebar_children_item('sia_campaign', [
             'slug' => 'sia_bulk', 'name' => 'Nouvelle campagne',
             'href' => admin_url('school_ia_bridge/bulk'), 'position' => 1,
         ]);
     }
-    $CI->app_menu->add_sidebar_children_item('sia_campaign', [
-        'slug' => 'sia_campaigns_list', 'name' => 'Campagnes',
-        'href' => admin_url('school_ia_bridge/campaigns_list'), 'position' => 2,
-    ]);
-    if ($canManage) {
+    if ($canCampaignsView) {
+        $CI->app_menu->add_sidebar_children_item('sia_campaign', [
+            'slug' => 'sia_campaigns_list', 'name' => 'Campagnes',
+            'href' => admin_url('school_ia_bridge/campaigns_list'), 'position' => 2,
+        ]);
+    }
+    if ($canSequencesView) {
         $CI->app_menu->add_sidebar_children_item('sia_campaign', [
             'slug' => 'sia_sequences', 'name' => 'Séquences de relance',
             'href' => admin_url('school_ia_bridge/sequences'), 'position' => 3,
         ]);
     }
-    $CI->app_menu->add_sidebar_children_item('sia_campaign', [
-        'slug' => 'sia_stats', 'name' => 'Statistiques',
-        'href' => admin_url('school_ia_bridge/campaigns'), 'position' => 4,
-    ]);
+    if ($canCampaignsView) {
+        $CI->app_menu->add_sidebar_children_item('sia_campaign', [
+            'slug' => 'sia_stats', 'name' => 'Statistiques',
+            'href' => admin_url('school_ia_bridge/campaigns'), 'position' => 4,
+        ]);
+    }
     if ($canSend) {
         // Signature e-mail personnelle (réglage propre à chaque expéditeur).
         $CI->app_menu->add_sidebar_children_item('sia_campaign', [
@@ -1192,6 +1222,8 @@ function school_ia_bridge_admin_menu()
             'icon'     => 'sia-mi sia-mi-templates',
             'position' => 36,
         ]);
+    }
+    if ($canDocumentsView) {
         // 8. Documents
         $CI->app_menu->add_sidebar_menu_item('sia_documents', [
             'name'     => 'Documents',
