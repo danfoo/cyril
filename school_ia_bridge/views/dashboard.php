@@ -7,7 +7,6 @@
       <div class="pull-left">
         <h4 class="no-margin">
           Bienvenue sur School IA<?php echo $staffFirstName !== '' ? ', <strong>' . htmlspecialchars($staffFirstName, ENT_QUOTES) . '</strong>' : ''; ?> !
-          <?php echo sia_help("dashboard"); ?>
           <?php if ($isGlobal) { ?>
             <span class="label label-primary" style="margin-left:8px;font-weight:600;" title="Vous voyez les données de tous les conseillers"><i class="fa fa-globe"></i> Vue globale</span>
           <?php } else { ?>
@@ -36,6 +35,19 @@
         $delayLabel = $avgFirstContact < 48
             ? number_format($avgFirstContact, 1, ',', ' ') . ' h'
             : number_format($avgFirstContact / 24, 1, ',', ' ') . ' j';
+    }
+
+    // En vue « Mes données », le score (chaud/tiède/froid) et le délai moyen
+    // de 1er contact restent ceux de TOUT l'établissement sur les cartes :
+    // un conseiller sans lead assigné doit pouvoir situer son établissement,
+    // pas juste voir une rangée de zéros.
+    if (!$isGlobal && $schoolScope) {
+        $sd = ['chaud' => $schoolScope['chaud'], 'tiede' => $schoolScope['tiede'], 'froid' => $schoolScope['froid']];
+        $delayLabel = '—';
+        if ($schoolScope['first_contact_hours'] !== null) {
+            $h = (float) $schoolScope['first_contact_hours'];
+            $delayLabel = $h < 48 ? number_format($h, 1, ',', ' ') . ' h' : number_format($h / 24, 1, ',', ' ') . ' j';
+        }
     }
 
     // Rendu d'une carte KPI premium (dégradé + grande icône estompée).
