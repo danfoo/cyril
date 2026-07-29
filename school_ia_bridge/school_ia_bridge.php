@@ -1183,12 +1183,26 @@ function school_ia_bridge_admin_menu()
     ]);
 
     // 1bis. Inbox conseiller : conversations en attente de prise en charge humaine.
-    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
-    $inboxScope = staff_can('view_global', 'school_ia_bridge') ? null : (int) get_staff_user_id();
-    $inboxCount = $CI->school_ia_bridge_model->active_handoffs_count($inboxScope);
+    // Ce menu est construit sur CHAQUE page admin (hook admin_init, toutes
+    // pages Perfex confondues) : on ne doit JAMAIS y faire une requête sur une
+    // colonne qui pourrait ne pas encore exister, sous peine de casser toute
+    // la plateforme. handoff_active n'existe que si ensure_schema() a déjà
+    // tourné (visite d'une page du module, ou appel API) ; si ce n'est pas
+    // encore le cas, on migre ici même (auto-guérison dès la page suivante),
+    // sans attendre qu'un admin visite spécifiquement le module.
     $inboxName  = 'Inbox';
-    if ($inboxCount > 0) {
-        $inboxName .= ' <span class="label label-danger" style="margin-left:4px;">' . $inboxCount . '</span>';
+    $leadsTable = db_prefix() . 'school_ia_leads';
+    if (!$CI->db->field_exists('handoff_active', $leadsTable)) {
+        $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+        $CI->school_ia_bridge_model->ensure_schema();
+    }
+    if ($CI->db->field_exists('handoff_active', $leadsTable)) {
+        $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+        $inboxScope = staff_can('view_global', 'school_ia_bridge') ? null : (int) get_staff_user_id();
+        $inboxCount = $CI->school_ia_bridge_model->active_handoffs_count($inboxScope);
+        if ($inboxCount > 0) {
+            $inboxName .= ' <span class="label label-danger" style="margin-left:4px;">' . $inboxCount . '</span>';
+        }
     }
     $CI->app_menu->add_sidebar_menu_item('sia_inbox', [
         'name'     => $inboxName,
