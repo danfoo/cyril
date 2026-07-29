@@ -37,6 +37,10 @@ class School_ia_bridge extends AdminController
         'documents_view'   => 'manage_settings',
         'documents_create' => 'manage_settings',
         'documents_delete' => 'manage_settings',
+        // Chat conseiller introduit après « send » (envoi e-mail/SMS) : un rôle
+        // qui pouvait déjà envoyer des e-mails/SMS garde la possibilité de
+        // répondre au chat tant que l'administrateur ne l'a pas dissocié.
+        'chat_reply'       => 'send',
     ];
 
     /** Vrai si le membre a la capacité demandée, ou son équivalent large historique. */
@@ -120,6 +124,7 @@ class School_ia_bridge extends AdminController
         $data['handoffs'] = $this->school_ia_bridge_model->active_handoffs($scopeOwner);
         $data['feesIndex'] = $this->school_ia_bridge_model->fees_index();
         $data['currency']  = (string) (get_option('sia_currency') ?: 'GNF');
+        $data['canReply']  = $this->can('chat_reply');
         $data['model']    = $this->school_ia_bridge_model;
         $this->load->view('school_ia_bridge/inbox', $data);
     }
@@ -127,7 +132,7 @@ class School_ia_bridge extends AdminController
     /** Clôture une prise en main humaine : l'IA reprend la main sur le fil. */
     public function close_handoff($id = 0)
     {
-        $this->need('send');
+        $this->need('chat_reply');
         $id = (int) $id;
         $lead = $this->school_ia_bridge_model->get_lead($id);
         if (!$lead) {
@@ -1060,7 +1065,7 @@ class School_ia_bridge extends AdminController
      */
     public function send_chat_reply($id = 0)
     {
-        $this->need('send');
+        $this->need('chat_reply');
         $id = (int) $id;
         $lead = $this->school_ia_bridge_model->get_lead($id);
         $message = trim((string) $this->input->post('message'));
@@ -1489,6 +1494,7 @@ class School_ia_bridge extends AdminController
         $data['model']      = $this->school_ia_bridge_model;
         $data['canEdit']    = $this->can('leads_edit');
         $data['canDelete']  = $this->can('leads_delete');
+        $data['canReply']   = $this->can('chat_reply');
         $this->load->view('school_ia_bridge/lead', $data);
     }
 

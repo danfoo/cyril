@@ -1143,6 +1143,10 @@ function school_ia_bridge_admin_init()
             'documents_create' => _l('Documents — ajouter'),
             'documents_delete' => _l('Documents — supprimer'),
             'send'             => _l('Envoyer e-mails / SMS individuels (fiche lead)'),
+            // Chat conseiller : capacité dédiée, distincte de l'envoi d'e-mails/SMS
+            // — un conseiller peut avoir l'un sans l'autre. Un rôle qui avait déjà
+            // « send » garde l'accès (repli historique), configurable ensuite.
+            'chat_reply'       => _l('Chat — répondre en direct au prospect (Inbox conseiller + fiche lead) et clôturer une prise en charge'),
             'view_reports'     => _l('Consulter les rapports & le journal d\'activité'),
             'manage_config'    => _l('Réglages & diagnostic (connexion, clé IA, SMS, objectifs)'),
         ],

@@ -535,7 +535,7 @@
             </div>
           <?php } ?>
 
-          <?php if ($canEdit) { ?>
+          <?php if ($canReply) { ?>
             <?php if (!empty($lead->source_site) && !empty($lead->external_id)) { ?>
               <?php echo form_open(admin_url('school_ia_bridge/send_chat_reply/' . (int) $lead->id), ['class' => 'sia-chat-reply-form', 'style' => 'margin-top:14px;border-top:1px solid var(--sia-border);padding-top:14px;']); ?>
                 <label class="control-label" style="display:flex;align-items:center;gap:6px;">

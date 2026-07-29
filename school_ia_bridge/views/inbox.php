@@ -81,7 +81,7 @@
             </div>
           <?php } ?>
 
-          <?php if (!empty($lead->source_site) && !empty($lead->external_id)) { ?>
+          <?php if ($canReply && !empty($lead->source_site) && !empty($lead->external_id)) { ?>
             <?php echo form_open(admin_url('school_ia_bridge/send_chat_reply/' . (int) $lead->id), ['style' => 'margin-top:12px;']); ?>
               <div class="input-group">
                 <textarea name="message" class="form-control" rows="2" required placeholder="Votre réponse au prospect…"
@@ -91,14 +91,16 @@
                 </span>
               </div>
             <?php echo form_close(); ?>
-          <?php } else { ?>
+          <?php } elseif ($canReply) { ?>
             <p class="text-muted" style="margin-top:12px;">Ce lead n'est pas rattaché à un site — réponse directe indisponible.</p>
           <?php } ?>
 
           <div style="margin-top:10px;">
-            <?php echo form_open(admin_url('school_ia_bridge/close_handoff/' . (int) $lead->id), ['style' => 'display:inline;']); ?>
-              <button type="submit" class="btn btn-default btn-sm"><i class="fa fa-check-circle-o"></i> Clôturer — l'IA reprend la main</button>
-            <?php echo form_close(); ?>
+            <?php if ($canReply) { ?>
+              <?php echo form_open(admin_url('school_ia_bridge/close_handoff/' . (int) $lead->id), ['style' => 'display:inline;']); ?>
+                <button type="submit" class="btn btn-default btn-sm"><i class="fa fa-check-circle-o"></i> Clôturer — l'IA reprend la main</button>
+              <?php echo form_close(); ?>
+            <?php } ?>
             <a href="<?php echo $leadUrl; ?>#tab-ia" class="btn btn-default btn-sm"><i class="fa fa-external-link"></i> Ouvrir la fiche</a>
           </div>
         </div></div>
