@@ -114,6 +114,14 @@ class School_ia_bridge_model extends App_Model
                 $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `' . $col . '` VARCHAR(' . $len . ') NULL DEFAULT NULL');
             }
         }
+        // Prise en main humaine (chat conseiller) : état répercuté depuis
+        // WordPress (escalade IA / clôture) ou déclenché depuis la fiche lead.
+        if (!$this->db->field_exists('handoff_active', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `handoff_active` TINYINT(1) NOT NULL DEFAULT 0');
+        }
+        if (!$this->db->field_exists('handoff_motif', $this->table())) {
+            $this->db->query('ALTER TABLE `' . $this->table() . '` ADD `handoff_motif` VARCHAR(191) NULL DEFAULT NULL');
+        }
         if (!$this->db->table_exists(db_prefix() . 'school_ia_tasks')) {
             $this->db->query('CREATE TABLE `' . db_prefix() . "school_ia_tasks` (
                 `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -2455,7 +2463,113 @@ class School_ia_bridge_model extends App_Model
             !empty($data['message_id']) ? (string) $data['message_id'] : null
         );
 
+        // Le conseiller vient de prendre la main : pas besoin d'attendre un
+        // aller-retour WordPress pour le savoir, on l'affiche tout de suite.
+        $this->set_handoff_status((int) $lead->id, true, 'Prise en charge manuelle par un conseiller');
+
         return [true, ''];
+    }
+
+    /**
+     * Clôture la prise en main humaine côté WordPress (l'IA reprend la main
+     * sur le fil), puis localement. Le lead doit être rattaché à un site.
+     *
+     * @return array{0: bool, 1: string} [succès, message d'erreur éventuel]
+     */
+    public function close_chat_handoff(object $lead): array
+    {
+        $site = rtrim((string) $lead->source_site, '/');
+        $externalId = (string) $lead->external_id;
+        if ($site === '' || $externalId === '') {
+            $this->close_handoff_local((int) $lead->id);
+            return [true, ''];
+        }
+
+        $secret = (string) get_option('school_ia_bridge_secret');
+        $body = json_encode(['lead_id' => $externalId, 'secret' => $secret], JSON_UNESCAPED_UNICODE);
+
+        $ch = curl_init($site . '/wp-json/bem-lead-ai/v1/handoff/close-from-crm');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/json', 'X-SIA-Secret: ' . $secret],
+        ]);
+        $resp = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+
+        // On clôture localement même si le site est injoignable : le
+        // conseiller doit pouvoir faire disparaître l'entrée de son inbox
+        // sans rester bloqué par un problème réseau côté WordPress.
+        $this->close_handoff_local((int) $lead->id);
+
+        if ($resp === false) {
+            return [false, 'Clôturé côté Perfex, mais site injoignable : ' . $cerr];
+        }
+        if ($code < 200 || $code >= 300) {
+            return [false, 'Clôturé côté Perfex, mais le site a répondu ' . $code . '.'];
+        }
+        return [true, ''];
+    }
+
+    /**
+     * Enregistre l'état de la prise en main humaine pour un lead (répercuté
+     * depuis WordPress, ou déclenché localement par une réponse conseiller).
+     *
+     * @return bool true si la conversation VIENT de passer active (transition
+     *              inactive → active), utile pour ne notifier qu'une fois.
+     */
+    public function set_handoff_status(int $leadId, bool $active, string $motif = ''): bool
+    {
+        $current = $this->db->select('handoff_active')->where('id', $leadId)->get($this->table())->row();
+        $wasActive = $current && (int) $current->handoff_active === 1;
+
+        $this->db->where('id', $leadId)->update($this->table(), [
+            'handoff_active' => $active ? 1 : 0,
+            'handoff_motif'  => $active ? mb_substr($motif, 0, 191) : null,
+        ]);
+
+        return $active && !$wasActive;
+    }
+
+    /** Clôture locale (bouton « Clôturer » de l'inbox Perfex) — ne notifie pas WordPress. */
+    public function close_handoff_local(int $leadId): void
+    {
+        $this->set_handoff_status($leadId, false);
+    }
+
+    /**
+     * Conversations à prendre en charge (prise en main humaine active),
+     * les plus anciennes en premier — comme l'inbox conseiller de WordPress.
+     * $ownerId restreint aux leads assignés à ce conseiller + non assignés
+     * (mêmes règles de cadrage que le tableau de bord en vue « Mes données »).
+     */
+    public function active_handoffs(?int $ownerId = null): array
+    {
+        $q = $this->db->where('handoff_active', 1);
+        if ($ownerId !== null) {
+            $q->group_start()
+                ->where('owner_id', $ownerId)
+                ->or_where('owner_id IS NULL', null, false)
+                ->group_end();
+        }
+        return $q->order_by('id', 'asc')->get($this->table())->result();
+    }
+
+    /** Nombre de conversations à prendre en charge (badge de menu). */
+    public function active_handoffs_count(?int $ownerId = null): int
+    {
+        $q = $this->db->where('handoff_active', 1);
+        if ($ownerId !== null) {
+            $q->group_start()
+                ->where('owner_id', $ownerId)
+                ->or_where('owner_id IS NULL', null, false)
+                ->group_end();
+        }
+        return (int) $q->count_all_results($this->table());
     }
 
     /** Nombre de messages de conversation d'un lead (une conversation existe si > 0). */

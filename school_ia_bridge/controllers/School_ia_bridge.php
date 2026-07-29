@@ -106,6 +106,38 @@ class School_ia_bridge extends AdminController
         $this->load->view('school_ia_bridge/dashboard', $data);
     }
 
+    /**
+     * Inbox conseiller : conversations en prise en main humaine (escalade IA
+     * depuis WordPress, ou réponse manuelle) qui attendent un conseiller.
+     * Mêmes règles de cadrage que le tableau de bord en vue « Mes données ».
+     */
+    public function inbox()
+    {
+        $scopeOwner = staff_can('view_global', 'school_ia_bridge') ? null : (int) get_staff_user_id();
+
+        $data['title']    = 'School IA — Inbox conseiller';
+        $data['isGlobal'] = $scopeOwner === null;
+        $data['handoffs'] = $this->school_ia_bridge_model->active_handoffs($scopeOwner);
+        $data['feesIndex'] = $this->school_ia_bridge_model->fees_index();
+        $data['currency']  = (string) (get_option('sia_currency') ?: 'GNF');
+        $data['model']    = $this->school_ia_bridge_model;
+        $this->load->view('school_ia_bridge/inbox', $data);
+    }
+
+    /** Clôture une prise en main humaine : l'IA reprend la main sur le fil. */
+    public function close_handoff($id = 0)
+    {
+        $this->need('send');
+        $id = (int) $id;
+        $lead = $this->school_ia_bridge_model->get_lead($id);
+        if (!$lead) {
+            show_404();
+        }
+        [$ok, $error] = $this->school_ia_bridge_model->close_chat_handoff($lead);
+        set_alert($ok ? 'success' : 'warning', $ok ? 'Conversation clôturée — l\'IA reprend la main.' : $error);
+        redirect(admin_url('school_ia_bridge/inbox'));
+    }
+
     /** Boîte de réception : leads reçus, avec recherche + filtres. */
     public function index()
     {

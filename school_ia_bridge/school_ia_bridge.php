@@ -721,6 +721,52 @@ function school_ia_notify_new_conversation(int $leadId): void
 }
 
 /**
+ * Notification Perfex (cloche) : une conversation vient de passer en prise en
+ * main humaine (escalade IA depuis WordPress, ou réponse manuelle) et attend
+ * un conseiller. Best-effort : ne doit jamais faire échouer l'appelant si le
+ * cœur Perfex change de schéma un jour.
+ */
+function school_ia_notify_handoff(int $leadId, string $motif = ''): void
+{
+    if (!function_exists('add_notification')) {
+        return;
+    }
+    $CI = &get_instance();
+    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+    $lead = $CI->school_ia_bridge_model->get_lead($leadId);
+    if (!$lead) {
+        return;
+    }
+
+    $name = trim((string) ($lead->name ?? '')) ?: ('Lead #' . $leadId);
+    $desc = 'Conversation à prendre en charge — ' . $name . ($motif !== '' ? ' (' . $motif . ')' : '');
+
+    // Conseiller déjà assigné : lui seul est notifié. Sinon, tous les admins
+    // actifs (même repli que l'alerte e-mail « nouvelle conversation »).
+    $recipients = [];
+    if (!empty($lead->owner_id)) {
+        $recipients[] = (int) $lead->owner_id;
+    } else {
+        foreach ($CI->db->where('admin', 1)->where('active', 1)->get(db_prefix() . 'staff')->result() as $st) {
+            $recipients[] = (int) $st->staffid;
+        }
+    }
+
+    foreach (array_unique($recipients) as $staffId) {
+        try {
+            add_notification([
+                'description' => $desc,
+                'touserid'    => $staffId,
+                'fromcompany' => true,
+                'link'        => 'school_ia_bridge/inbox',
+            ]);
+        } catch (\Throwable $e) {
+            error_log('[school_ia_bridge] Notification handoff impossible : ' . $e->getMessage());
+        }
+    }
+}
+
+/**
  * Envoie un e-mail à un lead AVEC suivi : enregistre le message, insère un
  * pixel d'ouverture invisible et réécrit les liens pour tracer les clics.
  */
@@ -1052,6 +1098,7 @@ function school_ia_bridge_menu_icons()
         . '#sidebar .menu li a .sia-mi,#sidebar .sia-mi{width:22px;text-align:center;}'
         . '.sia-mi::before{display:inline-block;}'
         . '.sia-mi-dashboard::before{content:"\e871";}'
+        . '.sia-mi-inbox::before{content:"\e0b7";}'
         . '.sia-mi-contacts::before{content:"\e7ef";}'
         . '.sia-mi-tasks::before{content:"\e862";}'
         . '.sia-mi-reports::before{content:"\e85c";}'
@@ -1135,12 +1182,27 @@ function school_ia_bridge_admin_menu()
         'position' => 30,
     ]);
 
+    // 1bis. Inbox conseiller : conversations en attente de prise en charge humaine.
+    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+    $inboxScope = staff_can('view_global', 'school_ia_bridge') ? null : (int) get_staff_user_id();
+    $inboxCount = $CI->school_ia_bridge_model->active_handoffs_count($inboxScope);
+    $inboxName  = 'Inbox';
+    if ($inboxCount > 0) {
+        $inboxName .= ' <span class="label label-danger" style="margin-left:4px;">' . $inboxCount . '</span>';
+    }
+    $CI->app_menu->add_sidebar_menu_item('sia_inbox', [
+        'name'     => $inboxName,
+        'href'     => admin_url('school_ia_bridge/inbox'),
+        'icon'     => 'sia-mi sia-mi-inbox',
+        'position' => 31,
+    ]);
+
     // 2. Contact
     $CI->app_menu->add_sidebar_menu_item('sia_contacts', [
         'name'     => 'Contact',
         'href'     => admin_url('school_ia_bridge'),
         'icon'     => 'sia-mi sia-mi-contacts',
-        'position' => 31,
+        'position' => 32,
     ]);
 
     // 3. Tâches
@@ -1148,7 +1210,7 @@ function school_ia_bridge_admin_menu()
         'name'     => 'Tâches',
         'href'     => admin_url('school_ia_bridge/tasks'),
         'icon'     => 'sia-mi sia-mi-tasks',
-        'position' => 32,
+        'position' => 33,
     ]);
 
     // 4. Rapports (groupe) : Reporting + Journal — permission dédiée et restreinte
@@ -1156,7 +1218,7 @@ function school_ia_bridge_admin_menu()
         $CI->app_menu->add_sidebar_menu_item('sia_reports', [
             'name'     => 'Rapports',
             'icon'     => 'sia-mi sia-mi-reports',
-            'position' => 33,
+            'position' => 34,
         ]);
         $CI->app_menu->add_sidebar_children_item('sia_reports', [
             'slug' => 'sia_reporting', 'name' => 'Reporting',
@@ -1172,7 +1234,7 @@ function school_ia_bridge_admin_menu()
     $CI->app_menu->add_sidebar_menu_item('sia_campaign', [
         'name'     => 'Campagne',
         'icon'     => 'sia-mi sia-mi-campaign',
-        'position' => 34,
+        'position' => 35,
     ]);
     if ($canCampaignsCreate) {
         $CI->app_menu->add_sidebar_children_item('sia_campaign', [
@@ -1211,7 +1273,7 @@ function school_ia_bridge_admin_menu()
         'name'     => 'Veille',
         'href'     => admin_url('school_ia_bridge/competitors'),
         'icon'     => 'sia-mi sia-mi-veille',
-        'position' => 35,
+        'position' => 36,
     ]);
 
     if ($canManage) {
@@ -1220,7 +1282,7 @@ function school_ia_bridge_admin_menu()
             'name'     => 'Modèles',
             'href'     => admin_url('school_ia_bridge/templates'),
             'icon'     => 'sia-mi sia-mi-templates',
-            'position' => 36,
+            'position' => 37,
         ]);
     }
     if ($canDocumentsView) {
@@ -1229,7 +1291,7 @@ function school_ia_bridge_admin_menu()
             'name'     => 'Documents',
             'href'     => admin_url('school_ia_bridge/documents'),
             'icon'     => 'sia-mi sia-mi-documents',
-            'position' => 37,
+            'position' => 38,
         ]);
     }
     // 9. Configuration (groupe) : Réglages + Diagnostic — permission dédiée et restreinte
@@ -1237,7 +1299,7 @@ function school_ia_bridge_admin_menu()
         $CI->app_menu->add_sidebar_menu_item('sia_config', [
             'name'     => 'Configuration',
             'icon'     => 'sia-mi sia-mi-config',
-            'position' => 38,
+            'position' => 39,
         ]);
         $CI->app_menu->add_sidebar_children_item('sia_config', [
             'slug' => 'sia_settings', 'name' => 'Réglages',

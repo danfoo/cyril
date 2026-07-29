@@ -91,6 +91,12 @@ final class RestController
             'permission_callback' => '__return_true',
         ]);
 
+        register_rest_route($ns, '/handoff/close-from-crm', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handoffCloseFromCrm'],
+            'permission_callback' => '__return_true',
+        ]);
+
         register_rest_route($ns, '/crm-status-webhook', [
             'methods' => 'POST',
             'callback' => [$this, 'crmStatusWebhook'],
@@ -547,6 +553,27 @@ final class RestController
         return $messageId > 0
             ? rest_ensure_response(['ok' => true, 'message_id' => $messageId])
             : new WP_Error('bem_not_found', 'Lead introuvable.', ['status' => 404]);
+    }
+
+    /** Clôture d'un handoff (l'IA reprend la main), demandée depuis le module Perfex. */
+    public function handoffCloseFromCrm(WP_REST_Request $request): WP_REST_Response|WP_Error
+    {
+        $secret = (string) Options::get('perfex_bridge_secret');
+        $provided = (string) $request->get_header('X-SIA-Secret');
+        if ($provided === '') {
+            $provided = (string) $request->get_param('secret');
+        }
+        if ($secret === '' || !hash_equals($secret, $provided)) {
+            return new WP_Error('bem_forbidden', 'Secret invalide.', ['status' => 401]);
+        }
+
+        $leadId = (int) $request->get_param('lead_id');
+        if ($leadId <= 0) {
+            return new WP_Error('bem_bad_request', 'Paramètres invalides.', ['status' => 400]);
+        }
+
+        (new HandoffManager())->closeByLead($leadId);
+        return rest_ensure_response(['ok' => true]);
     }
 
     /**

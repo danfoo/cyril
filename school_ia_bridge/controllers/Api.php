@@ -184,6 +184,51 @@ class Api extends App_Controller
         $this->respond(['ok' => true]);
     }
 
+    /**
+     * Reçoit l'état de la prise en main humaine (escalade IA vers un
+     * conseiller, ou clôture) pour un lead connu. Même authentification que
+     * receive_message. Alimente l'inbox conseiller du module et déclenche une
+     * notification Perfex si la conversation vient de devenir active.
+     */
+    public function receive_handoff()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $secret   = (string) get_option('school_ia_bridge_secret');
+        $provided = $this->input->get_request_header('X-SIA-Secret', true);
+        if ($provided === null || $provided === '') {
+            $provided = (string) ($this->input->get('secret') ?: $this->input->post('secret'));
+        }
+        if ($secret === '' || !hash_equals($secret, (string) $provided)) {
+            $this->respond(['ok' => false, 'error' => 'unauthorized'], 401);
+            return;
+        }
+
+        $externalId = (string) ($this->input->get('external_id') ?: $this->input->post('external_id'));
+        $sourceSite = (string) ($this->input->get('source_site') ?: $this->input->post('source_site'));
+        $active     = (bool) ((int) ($this->input->get('active') ?: $this->input->post('active')));
+        $motif      = (string) ($this->input->get('motif') ?: $this->input->post('motif'));
+
+        if ($externalId === '' || $sourceSite === '') {
+            $this->respond(['ok' => false, 'error' => 'invalid_payload'], 400);
+            return;
+        }
+
+        $this->load->model('school_ia_bridge/school_ia_bridge_model');
+        $lead = $this->school_ia_bridge_model->find_by_external($externalId, $sourceSite);
+        if (!$lead) {
+            $this->respond(['ok' => false, 'error' => 'lead_not_found'], 404);
+            return;
+        }
+
+        $justActivated = $this->school_ia_bridge_model->set_handoff_status((int) $lead->id, $active, $motif);
+        if ($justActivated) {
+            school_ia_notify_handoff((int) $lead->id, $motif);
+        }
+
+        $this->respond(['ok' => true]);
+    }
+
     /** Décodage base64url (sans +, /, = : rien qui déclenche un pare-feu). */
     private function b64url_decode(string $s): string
     {

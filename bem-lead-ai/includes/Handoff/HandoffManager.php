@@ -4,6 +4,7 @@ namespace BemLeadAi\Handoff;
 
 use BemLeadAi\Chat\ConversationRepository;
 use BemLeadAi\Core\Options;
+use BemLeadAi\Crm\PerfexBridgeConnector;
 use BemLeadAi\Leads\LeadRepository;
 
 defined('ABSPATH') || exit;
@@ -37,6 +38,7 @@ final class HandoffManager
         ]);
 
         (new LeadRepository())->update((int) $lead->id, ['handoff_active' => 1]);
+        $this->syncToPerfex((int) $lead->id, true, $motif);
 
         // Message de transition côté prospect : rassurer, pas de vide.
         $transition = __("Je vous mets en relation avec un conseiller de l'équipe admissions qui va prendre le relais tout de suite. Un instant…", 'bem-lead-ai');
@@ -104,6 +106,12 @@ final class HandoffManager
         }
         (new LeadRepository())->update($leadId, ['handoff_active' => 1]);
 
+        // Si la réponse vient d'un conseiller WordPress (pas du pont retour
+        // Perfex, qui connaît déjà l'état côté Perfex — inutile de le renvoyer).
+        if ($agentUserId > 0) {
+            $this->syncToPerfex($leadId, true);
+        }
+
         return (new ConversationRepository())->add($leadId, 'agent', $message, 'web');
     }
 
@@ -121,5 +129,39 @@ final class HandoffManager
             'closed_at' => current_time('mysql'),
         ], ['id' => $handoffId]);
         (new LeadRepository())->update((int) $handoff->lead_id, ['handoff_active' => 0]);
+        $this->syncToPerfex((int) $handoff->lead_id, false);
+    }
+
+    /** Clôture par id de lead (utilisé par le pont retour Perfex, qui ne connaît que le lead). */
+    public function closeByLead(int $leadId): bool
+    {
+        global $wpdb;
+        $p = $wpdb->prefix;
+        $handoffId = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$p}bem_handoffs WHERE lead_id = %d AND statut IN ('open','assigned')",
+            $leadId
+        ));
+        if (!$handoffId) {
+            // Pas d'escalade formelle ouverte : on désactive quand même la
+            // prise en main humaine si elle l'était (réponse manuelle sans
+            // handoff), pour que l'IA reprenne la main.
+            (new LeadRepository())->update($leadId, ['handoff_active' => 0]);
+            return true;
+        }
+        $wpdb->update("{$p}bem_handoffs", [
+            'statut' => 'closed',
+            'closed_at' => current_time('mysql'),
+        ], ['id' => $handoffId]);
+        (new LeadRepository())->update($leadId, ['handoff_active' => 0]);
+        return true;
+    }
+
+    /** Répercute l'état de la prise en main humaine côté Perfex (pont retour), si configuré. */
+    private function syncToPerfex(int $leadId, bool $active, string $motif = ''): void
+    {
+        $bridge = new PerfexBridgeConnector();
+        if ($bridge->isConfigured()) {
+            $bridge->syncHandoffStatus($leadId, $active, $motif);
+        }
     }
 }
