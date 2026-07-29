@@ -156,6 +156,29 @@ final class HandoffManager
         return true;
     }
 
+    /**
+     * Filet de sécurité (cron horaire) : renvoie l'état de TOUTES les
+     * escalades actuellement ouvertes/assignées vers Perfex. Rattrape les
+     * handoffs déjà en cours au moment de l'installation du pont retour, une
+     * coupure réseau ponctuelle, ou un pont mal configuré au moment exact de
+     * l'escalade (ex. secret changé entre-temps puis corrigé).
+     */
+    public function resyncActiveToPerfex(): void
+    {
+        $bridge = new PerfexBridgeConnector();
+        if (!$bridge->isConfigured()) {
+            return;
+        }
+        global $wpdb;
+        $p = $wpdb->prefix;
+        $rows = $wpdb->get_results(
+            "SELECT lead_id, motif FROM {$p}bem_handoffs WHERE statut IN ('open','assigned')"
+        ) ?: [];
+        foreach ($rows as $row) {
+            $bridge->syncHandoffStatus((int) $row->lead_id, true, (string) $row->motif);
+        }
+    }
+
     /** Répercute l'état de la prise en main humaine côté Perfex (pont retour), si configuré. */
     private function syncToPerfex(int $leadId, bool $active, string $motif = ''): void
     {

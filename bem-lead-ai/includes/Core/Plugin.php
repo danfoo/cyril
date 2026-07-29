@@ -5,6 +5,7 @@ namespace BemLeadAi\Core;
 use BemLeadAi\Admin\AdminMenu;
 use BemLeadAi\Ai\SignalClassifier;
 use BemLeadAi\Api\RestController;
+use BemLeadAi\Handoff\HandoffManager;
 use BemLeadAi\Knowledge\KnowledgeBaseBuilder;
 use BemLeadAi\Leads\LeadRepository;
 use BemLeadAi\Learning\VariantBandit;
@@ -88,6 +89,7 @@ final class Plugin
         add_action('bem_lead_ai_cron_rebuild_kb', fn() => (new KnowledgeBaseBuilder())->rebuild());
         add_action('bem_lead_ai_cron_bandit', fn() => (new VariantBandit())->sweepConversions());
         add_action('bem_lead_ai_cron_crm_tasks', ['\BemLeadAi\Crm\TaskReminder', 'run']);
+        add_action('bem_lead_ai_cron_handoff_resync', fn() => (new HandoffManager())->resyncActiveToPerfex());
 
         // Heartbeat : chaque tâche surveillée horodate son passage (priorité tardive,
         // donc après l'exécution réelle — un cron qui fatale ne s'enregistre pas).

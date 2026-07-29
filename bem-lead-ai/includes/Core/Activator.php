@@ -52,6 +52,13 @@ final class Activator
             // Revalidation quotidienne de la licence (expiration, révocation).
             wp_schedule_event(time() + 1500, 'daily', 'bem_lead_ai_cron_license');
         }
+        if (!wp_next_scheduled('bem_lead_ai_cron_handoff_resync')) {
+            // Filet de sécurité : réenvoie périodiquement l'état des escalades
+            // actives vers Perfex (rattrape un envoi manqué — pont mal
+            // configuré au moment de l'escalade, coupure réseau, ou handoff
+            // déjà ouvert avant l'installation du pont retour).
+            wp_schedule_event(time() + 400, 'hourly', 'bem_lead_ai_cron_handoff_resync');
+        }
 
         // (Re)construction du catalogue différée : à `plugins_loaded` les CPT
         // (ex. « formation ») ne sont pas encore enregistrés. On la planifie ;
