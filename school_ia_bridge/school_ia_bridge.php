@@ -767,9 +767,9 @@ function school_ia_notify_new_lead(int $leadId): void
 
 /**
  * Envoie la notification Perfex (cloche) au conseiller assigné au lead, ou à
- * tous les admins actifs si aucun conseiller n'est encore assigné (même repli
- * que l'alerte e-mail « nouvelle conversation »). Best-effort : ne doit
- * jamais faire échouer l'appelant si le cœur Perfex change de schéma un jour.
+ * tous les utilisateurs actifs si aucun conseiller n'est encore assigné.
+ * Best-effort : ne doit jamais faire échouer l'appelant si le cœur Perfex
+ * change de schéma un jour.
  */
 function school_ia_push_notification(object $lead, string $description, string $link): void
 {
@@ -780,9 +780,12 @@ function school_ia_push_notification(object $lead, string $description, string $
 
     $recipients = [];
     if (!empty($lead->owner_id)) {
+        // Un conseiller est déjà responsable : lui seul est notifié.
         $recipients[] = (int) $lead->owner_id;
     } else {
-        foreach ($CI->db->where('admin', 1)->where('active', 1)->get(db_prefix() . 'staff')->result() as $st) {
+        // Pas encore assigné : tous les utilisateurs actifs, pour que le
+        // premier disponible puisse le prendre en charge.
+        foreach ($CI->db->where('active', 1)->get(db_prefix() . 'staff')->result() as $st) {
             $recipients[] = (int) $st->staffid;
         }
     }
