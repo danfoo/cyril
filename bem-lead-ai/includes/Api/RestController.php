@@ -82,6 +82,15 @@ final class RestController
             'permission_callback' => fn() => current_user_can('edit_posts'),
         ]);
 
+        // Réponse d'un conseiller depuis le module Perfex (School IA Bridge) :
+        // authentifiée par le secret partagé du pont (le même que celui utilisé
+        // par PerfexBridgeConnector, saisi côté Perfex → « School IA — Réglages »).
+        register_rest_route($ns, '/handoff/reply-from-crm', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handoffReplyFromCrm'],
+            'permission_callback' => '__return_true',
+        ]);
+
         register_rest_route($ns, '/crm-status-webhook', [
             'methods' => 'POST',
             'callback' => [$this, 'crmStatusWebhook'],
@@ -510,6 +519,34 @@ final class RestController
     {
         (new HandoffManager())->close((int) $request['handoff_id']);
         return rest_ensure_response(['ok' => true]);
+    }
+
+    /**
+     * Réponse d'un conseiller envoyée depuis la fiche lead du module Perfex
+     * (School IA Bridge), authentifiée par le secret partagé du pont plutôt
+     * que par une session WordPress connectée.
+     */
+    public function handoffReplyFromCrm(WP_REST_Request $request): WP_REST_Response|WP_Error
+    {
+        $secret = (string) Options::get('perfex_bridge_secret');
+        $provided = (string) $request->get_header('X-SIA-Secret');
+        if ($provided === '') {
+            $provided = (string) $request->get_param('secret');
+        }
+        if ($secret === '' || !hash_equals($secret, $provided)) {
+            return new WP_Error('bem_forbidden', 'Secret invalide.', ['status' => 401]);
+        }
+
+        $leadId = (int) $request->get_param('lead_id');
+        $message = trim(wp_strip_all_tags((string) $request->get_param('message')));
+        if ($leadId <= 0 || $message === '') {
+            return new WP_Error('bem_bad_request', 'Paramètres invalides.', ['status' => 400]);
+        }
+
+        $messageId = (new HandoffManager())->reply($leadId, $message, 0);
+        return $messageId > 0
+            ? rest_ensure_response(['ok' => true, 'message_id' => $messageId])
+            : new WP_Error('bem_not_found', 'Lead introuvable.', ['status' => 404]);
     }
 
     /**

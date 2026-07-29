@@ -2394,6 +2394,70 @@ class School_ia_bridge_model extends App_Model
             ->result();
     }
 
+    /**
+     * Relaie la réponse d'un conseiller Perfex vers le fil de chat live du
+     * prospect (widget WordPress ou site embarqué), via le point d'entrée
+     * retour du plugin. Le lead doit être rattaché à un site (source_site +
+     * external_id) — c'est le cas pour tout lead reçu via le pont, mais pas
+     * pour une saisie manuelle.
+     *
+     * @return array{0: bool, 1: string} [succès, message d'erreur éventuel]
+     */
+    public function send_chat_reply(object $lead, string $message): array
+    {
+        $site = rtrim((string) $lead->source_site, '/');
+        $externalId = (string) $lead->external_id;
+        if ($site === '' || $externalId === '') {
+            return [false, "Ce lead n'est pas relié à un site — impossible d'envoyer une réponse directe au prospect."];
+        }
+
+        $secret = (string) get_option('school_ia_bridge_secret');
+        $body = json_encode([
+            'lead_id' => $externalId,
+            'message' => $message,
+            'secret'  => $secret,
+        ], JSON_UNESCAPED_UNICODE);
+
+        $ch = curl_init($site . '/wp-json/bem-lead-ai/v1/handoff/reply-from-crm');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'X-SIA-Secret: ' . $secret,
+            ],
+        ]);
+        $resp = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+
+        if ($resp === false) {
+            return [false, 'Connexion au site du prospect impossible : ' . $cerr];
+        }
+        $data = json_decode((string) $resp, true);
+        if ($code < 200 || $code >= 300 || empty($data['ok'])) {
+            $err = is_array($data) ? ($data['message'] ?? $resp) : $resp;
+            return [false, 'Le site a refusé la réponse (' . $code . ') : ' . mb_substr((string) $err, 0, 200)];
+        }
+
+        // Enregistre aussi la réponse dans l'historique local (affichage
+        // immédiat côté Perfex), avec l'id du message WordPress pour garder
+        // le tri chronologique correct (chat_messages() trie par
+        // external_message_id).
+        $this->add_chat_message(
+            (int) $lead->id,
+            'agent',
+            $message,
+            'web',
+            !empty($data['message_id']) ? (string) $data['message_id'] : null
+        );
+
+        return [true, ''];
+    }
+
     /** Nombre de messages de conversation d'un lead (une conversation existe si > 0). */
     public function chat_count(int $leadId): int
     {

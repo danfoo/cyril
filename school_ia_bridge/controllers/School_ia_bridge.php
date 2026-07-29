@@ -1022,6 +1022,31 @@ class School_ia_bridge extends AdminController
         redirect(admin_url('school_ia_bridge/lead/' . $id));
     }
 
+    /**
+     * Réponse d'un conseiller Perfex, envoyée en direct dans le fil de chat
+     * live du prospect (widget WordPress ou site embarqué), via le pont retour.
+     */
+    public function send_chat_reply($id = 0)
+    {
+        $this->need('send');
+        $id = (int) $id;
+        $lead = $this->school_ia_bridge_model->get_lead($id);
+        $message = trim((string) $this->input->post('message'));
+        $back = admin_url('school_ia_bridge/lead/' . $id) . '#tab-ia';
+
+        if (!$lead) {
+            show_404();
+        }
+        if ($message === '') {
+            set_alert('warning', 'Le message est vide.');
+            redirect($back);
+        }
+
+        [$ok, $error] = $this->school_ia_bridge_model->send_chat_reply($lead, $message);
+        set_alert($ok ? 'success' : 'danger', $ok ? 'Réponse envoyée au prospect.' : $error);
+        redirect($back);
+    }
+
     /** Appel bas niveau à l'API SMS LAfricaMobile. Renvoie [ok, info]. */
     private function lam_send_sms(string $phone, string $text, int $leadId): array
     {

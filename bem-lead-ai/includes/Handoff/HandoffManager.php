@@ -67,24 +67,44 @@ final class HandoffManager
         }
     }
 
-    /** Réponse d'un conseiller depuis l'inbox : affichée dans le fil de chat web. */
-    public function reply(int $leadId, string $message, int $agentUserId): bool
+    /**
+     * Réponse d'un conseiller (inbox WordPress, ou conseiller côté Perfex via
+     * le pont retour) : affichée dans le fil de chat web. Ouvre/active
+     * silencieusement la prise en main humaine si aucune escalade n'était
+     * déjà en cours (l'IA se met en pause sur ce fil).
+     *
+     * @return int Id du message créé (0 si le lead est introuvable).
+     */
+    public function reply(int $leadId, string $message, int $agentUserId): int
     {
         $lead = (new LeadRepository())->findById($leadId);
         if (!$lead) {
-            return false;
+            return 0;
         }
         global $wpdb;
         $p = $wpdb->prefix;
-        $wpdb->query($wpdb->prepare(
-            "UPDATE {$p}bem_handoffs SET statut = 'assigned', conseiller_id = %d
-             WHERE lead_id = %d AND statut = 'open'",
-            $agentUserId,
+
+        $openId = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$p}bem_handoffs WHERE lead_id = %d AND statut IN ('open','assigned')",
             $leadId
         ));
+        if ($openId) {
+            $wpdb->update("{$p}bem_handoffs", [
+                'statut' => 'assigned',
+                'conseiller_id' => $agentUserId,
+            ], ['id' => $openId]);
+        } else {
+            $wpdb->insert("{$p}bem_handoffs", [
+                'lead_id' => $leadId,
+                'motif' => __('Prise en charge manuelle par un conseiller', 'bem-lead-ai'),
+                'statut' => 'assigned',
+                'conseiller_id' => $agentUserId,
+                'opened_at' => current_time('mysql'),
+            ]);
+        }
+        (new LeadRepository())->update($leadId, ['handoff_active' => 1]);
 
-        (new ConversationRepository())->add($leadId, 'agent', $message, 'web');
-        return true;
+        return (new ConversationRepository())->add($leadId, 'agent', $message, 'web');
     }
 
     /** Clôture : l'IA reprend la main sur le fil. */

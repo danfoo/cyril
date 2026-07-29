@@ -520,17 +520,36 @@
           <?php } else { ?>
             <div class="sia-chat-thread" style="max-height:none;">
               <?php foreach ($chatMessages as $m) {
-                  $isUser = $m->role === 'user'; ?>
-                <div class="sia-chat-row <?php echo $isUser ? 'sia-chat-row-user' : 'sia-chat-row-assistant'; ?>">
+                  $isUser = $m->role === 'user';
+                  $isAgent = $m->role === 'agent';
+                  $who = $isUser ? 'Lead' : ($isAgent ? 'Conseiller' : 'IA'); ?>
+                <div class="sia-chat-row <?php echo $isUser ? 'sia-chat-row-user' : 'sia-chat-row-assistant'; ?><?php echo $isAgent ? ' sia-chat-row-agent' : ''; ?>">
                   <div class="sia-chat-bubble">
                     <?php echo nl2br(htmlspecialchars((string) $m->content, ENT_QUOTES)); ?>
                     <div class="sia-chat-meta">
-                      <?php echo htmlspecialchars(($isUser ? 'Lead' : 'IA') . ($m->canal ? ' · ' . $m->canal : '') . ' · ' . $m->created_at, ENT_QUOTES); ?>
+                      <?php echo htmlspecialchars($who . ($m->canal ? ' · ' . $m->canal : '') . ' · ' . $m->created_at, ENT_QUOTES); ?>
                     </div>
                   </div>
                 </div>
               <?php } ?>
             </div>
+          <?php } ?>
+
+          <?php if ($canEdit) { ?>
+            <?php if (!empty($lead->source_site) && !empty($lead->external_id)) { ?>
+              <?php echo form_open(admin_url('school_ia_bridge/send_chat_reply/' . (int) $lead->id), ['class' => 'sia-chat-reply-form', 'style' => 'margin-top:14px;border-top:1px solid var(--sia-border);padding-top:14px;']); ?>
+                <label class="control-label" style="display:flex;align-items:center;gap:6px;">
+                  <i class="fa fa-headset"></i> Répondre au prospect en direct
+                </label>
+                <textarea name="message" class="form-control" rows="2" required
+                          placeholder="Votre message apparaît instantanément dans le chat du prospect — l'IA se met en pause sur cet échange."></textarea>
+                <button type="submit" class="btn btn-primary" style="margin-top:8px;"><i class="fa fa-paper-plane"></i> Envoyer au prospect</button>
+              <?php echo form_close(); ?>
+            <?php } elseif (!empty($chatMessages)) { ?>
+              <p class="text-muted" style="margin-top:12px;border-top:1px solid var(--sia-border);padding-top:12px;">
+                Ce lead n'est pas rattaché à un site — la réponse directe dans le chat n'est pas disponible.
+              </p>
+            <?php } ?>
           <?php } ?>
         </div></div>
       </div>

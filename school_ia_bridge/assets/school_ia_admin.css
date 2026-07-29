@@ -362,6 +362,7 @@
 }
 #wrapper .content .sia-chat-row-user .sia-chat-bubble { background: var(--sia-surface-2); }
 #wrapper .content .sia-chat-row-assistant .sia-chat-bubble { background: var(--sia-primary-soft); }
+#wrapper .content .sia-chat-row-agent .sia-chat-bubble { background: #16a34a1a; border: 1px solid #16a34a33; }
 #wrapper .content .sia-chat-meta { color: var(--sia-muted); font-size: 10.5px; font-weight: 600; margin-top: 4px; }
 
 /* ---- Veille concurrentielle : extraits ---- */
