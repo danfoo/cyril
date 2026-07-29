@@ -2304,9 +2304,13 @@ class School_ia_bridge_model extends App_Model
      *    une requête partielle ne doit jamais écraser un nom/e-mail existant
      *    avec du vide ;
      *  - on refuse de créer une fiche « fantôme » sans aucune donnée utile
-     *    (retourne 0), pour ne pas polluer la liste avec des « Lead #N » vides.
+     *    (retourne id 0), pour ne pas polluer la liste avec des « Lead #N » vides.
+     *
+     * @return array{id: int, created: bool} created = true seulement pour une
+     *         VRAIE nouvelle fiche (pas une mise à jour), pour ne notifier
+     *         qu'à l'arrivée d'un nouveau lead.
      */
-    public function save_lead(array $p): int
+    public function save_lead(array $p): array
     {
         // Ne mappe que les champs présents dans le payload (clé existante).
         $data = [];
@@ -2344,7 +2348,7 @@ class School_ia_bridge_model extends App_Model
                 if ($data) {
                     $this->db->where('id', $existing->id)->update($this->table(), $data);
                 }
-                return (int) $existing->id;
+                return ['id' => (int) $existing->id, 'created' => false];
             }
         }
 
@@ -2352,13 +2356,13 @@ class School_ia_bridge_model extends App_Model
         $meaningful = !empty($data['name']) || !empty($data['email']) || !empty($data['phone'])
             || !empty($data['formation']) || (!empty($data['score']) && (float) $data['score'] > 0);
         if (!$meaningful) {
-            return 0;
+            return ['id' => 0, 'created' => false];
         }
 
         $data['payload']     = json_encode($p, JSON_UNESCAPED_UNICODE);
         $data['received_at'] = !empty($p['received_at']) ? substr((string) $p['received_at'], 0, 19) : date('Y-m-d H:i:s');
         $this->db->insert($this->table(), $data);
-        return (int) $this->db->insert_id();
+        return ['id' => (int) $this->db->insert_id(), 'created' => true];
     }
 
     /**

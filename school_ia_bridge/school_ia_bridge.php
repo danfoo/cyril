@@ -740,9 +740,44 @@ function school_ia_notify_handoff(int $leadId, string $motif = ''): void
 
     $name = trim((string) ($lead->name ?? '')) ?: ('Lead #' . $leadId);
     $desc = 'Conversation à prendre en charge — ' . $name . ($motif !== '' ? ' (' . $motif . ')' : '');
+    school_ia_push_notification($lead, $desc, 'school_ia_bridge/inbox');
+}
 
-    // Conseiller déjà assigné : lui seul est notifié. Sinon, tous les admins
-    // actifs (même repli que l'alerte e-mail « nouvelle conversation »).
+/**
+ * Notification Perfex (cloche) : un nouveau lead vient d'être créé (reçu via
+ * le pont depuis un site — WordPress ou embarqué). Ne se déclenche jamais sur
+ * une simple mise à jour d'un lead déjà connu.
+ */
+function school_ia_notify_new_lead(int $leadId): void
+{
+    if (!function_exists('add_notification')) {
+        return;
+    }
+    $CI = &get_instance();
+    $CI->load->model('school_ia_bridge/school_ia_bridge_model');
+    $lead = $CI->school_ia_bridge_model->get_lead($leadId);
+    if (!$lead) {
+        return;
+    }
+
+    $name = trim((string) ($lead->name ?? '')) ?: ('Lead #' . $leadId);
+    $desc = 'Nouveau lead reçu — ' . $name . (!empty($lead->formation) ? ' (' . $lead->formation . ')' : '');
+    school_ia_push_notification($lead, $desc, 'school_ia_bridge/lead/' . $leadId);
+}
+
+/**
+ * Envoie la notification Perfex (cloche) au conseiller assigné au lead, ou à
+ * tous les admins actifs si aucun conseiller n'est encore assigné (même repli
+ * que l'alerte e-mail « nouvelle conversation »). Best-effort : ne doit
+ * jamais faire échouer l'appelant si le cœur Perfex change de schéma un jour.
+ */
+function school_ia_push_notification(object $lead, string $description, string $link): void
+{
+    if (!function_exists('add_notification')) {
+        return;
+    }
+    $CI = &get_instance();
+
     $recipients = [];
     if (!empty($lead->owner_id)) {
         $recipients[] = (int) $lead->owner_id;
@@ -755,13 +790,13 @@ function school_ia_notify_handoff(int $leadId, string $motif = ''): void
     foreach (array_unique($recipients) as $staffId) {
         try {
             add_notification([
-                'description' => $desc,
+                'description' => $description,
                 'touserid'    => $staffId,
                 'fromcompany' => true,
-                'link'        => 'school_ia_bridge/inbox',
+                'link'        => $link,
             ]);
         } catch (\Throwable $e) {
-            error_log('[school_ia_bridge] Notification handoff impossible : ' . $e->getMessage());
+            error_log('[school_ia_bridge] Notification impossible : ' . $e->getMessage());
         }
     }
 }

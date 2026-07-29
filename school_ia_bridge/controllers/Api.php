@@ -85,10 +85,17 @@ class Api extends App_Controller
             return;
         }
 
-        $id = $this->school_ia_bridge_model->save_lead($body);
+        $result = $this->school_ia_bridge_model->save_lead($body);
+        $id = $result['id'];
         if ($id === 0) {
             $this->respond(['ok' => false, 'error' => 'empty_lead_ignored'], 422);
             return;
+        }
+
+        // Notification Perfex (cloche) : uniquement à l'arrivée d'une VRAIE
+        // nouvelle fiche, jamais à chaque mise à jour d'un lead déjà connu.
+        if ($result['created']) {
+            school_ia_notify_new_lead($id);
         }
 
         // Le nom arrive parfois avec la fiche lead (après quelques échanges) :
