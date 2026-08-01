@@ -497,7 +497,12 @@ class School_ia_bridge extends AdminController
         $system = 'Tu es analyste CRM pour une école supérieure. À partir des données fournies, rédige un rapport clair, concis et ACTIONNABLE en français. '
             . 'Réponds en HTML simple (balises autorisées : h4, h5, p, ul, ol, li, strong, em) — sans <html>, <head>, <body>, ni styles. '
             . 'Structure : 1) Synthèse (2-3 phrases), 2) Évolution vs période précédente (croissance/baisse chiffrée), 3) Points forts, 4) Points de vigilance, 5) Recommandations concrètes, 6) Prochaines actions. '
-            . 'Sois factuel, cite les chiffres, compare à la période précédente, et donne des conseils réalistes pour améliorer les admissions.';
+            . 'Sois factuel, cite les chiffres, compare à la période précédente, et donne des conseils réalistes pour améliorer les admissions.'
+            . "\n\n"
+            // Sans cette consigne, le modèle rédige parfois ses brouillons et ses
+            // commentaires internes (« voici la réponse finale… ») dans la réponse.
+            . 'Ne renvoie QUE le rapport final. Aucun préambule, aucun commentaire sur ta démarche, '
+            . 'aucun brouillon, aucune version intermédiaire, aucun bloc de code Markdown (```) autour de la réponse.';
         $prompt = "Données de la période :\n" . implode("\n", $lines);
 
         [$ok, $out] = school_ia_ai_generate($system, $prompt);
@@ -505,6 +510,7 @@ class School_ia_bridge extends AdminController
             set_alert('danger', 'Génération impossible : ' . $out);
             redirect(admin_url('school_ia_bridge/reporting?period=' . $period . ($date ? '&date=' . $date : '')));
         }
+        $out = school_ia_ai_clean_report($out);
 
         $id = $this->school_ia_bridge_model->save_report([
             'period'    => $period,

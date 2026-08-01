@@ -460,12 +460,26 @@ function school_ia_ai_supports_adaptive(string $model): bool
  * que la mise en forme simple attendue (ce qui protège aussi contre l'injection
  * HTML, le texte d'origine venant des conversations des prospects).
  */
-function school_ia_ai_clean_html(string $raw): string
+function school_ia_ai_sanitize_html(string $raw, string $allowed): string
 {
     $out = trim($raw);
     // Blocs de code Markdown (```html … ```) parfois ajoutés autour de la réponse.
     $out = (string) preg_replace('/^```[a-z]*\s*/i', '', $out);
     $out = (string) preg_replace('/```\s*$/', '', $out);
+    // Supprime les blocs script/style AVEC leur contenu (strip_tags ne retire que
+    // les balises et laisserait le code à l'intérieur).
+    $out = (string) preg_replace('#<(script|style)\b[^>]*>.*?</\1>#is', '', $out);
+    $out = strip_tags($out, $allowed);
+    // strip_tags conserve les ATTRIBUTS : on les retire, sinon un onclick/onerror
+    // injecté via la conversation d'un prospect survivrait au filtrage.
+    $out = (string) preg_replace('#<\s*([a-z0-9]+)\b[^>]*>#i', '<$1>', $out);
+    return trim($out);
+}
+
+/** Résumé de lead : une simple liste à puces. */
+function school_ia_ai_clean_html(string $raw): string
+{
+    $out = trim($raw);
     // Ne conserve que la liste : coupe un éventuel préambule / épilogue bavard.
     $start = stripos($out, '<ul');
     if ($start !== false && $start > 0) {
@@ -475,14 +489,16 @@ function school_ia_ai_clean_html(string $raw): string
     if ($end !== false) {
         $out = substr($out, 0, $end + 5);
     }
-    // Supprime les blocs script/style avec leur contenu (strip_tags ne retire que
-    // les balises et laisserait le code à l'intérieur).
-    $out = (string) preg_replace('#<(script|style)\b[^>]*>.*?</\1>#is', '', $out);
-    $out = strip_tags($out, '<ul><ol><li><strong><em><b><i><br><p>');
-    // strip_tags conserve les ATTRIBUTS : on les retire, sinon un onclick/style
-    // injecté via la conversation du prospect survivrait au filtrage.
-    $out = (string) preg_replace('#<\s*([a-z0-9]+)\b[^>]*>#i', '<$1>', $out);
-    return trim($out);
+    return school_ia_ai_sanitize_html($out, '<ul><ol><li><strong><em><b><i><br><p>');
+}
+
+/**
+ * Rapport IA : structure plus riche (titres, paragraphes, listes). On ne rogne
+ * donc PAS jusqu'à la première liste, contrairement au résumé de lead.
+ */
+function school_ia_ai_clean_report(string $raw): string
+{
+    return school_ia_ai_sanitize_html($raw, '<h3><h4><h5><h6><p><ul><ol><li><strong><em><b><i><br><table><thead><tbody><tr><th><td>');
 }
 
 /**
