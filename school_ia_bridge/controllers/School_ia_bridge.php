@@ -1526,12 +1526,23 @@ class School_ia_bridge extends AdminController
         }
         $system = 'Tu es assistant CRM pour une école supérieure. Résume la conversation ci-dessous pour un conseiller commercial qui doit rappeler ce prospect. '
             . 'Réponds en HTML simple (uniquement <ul><li> et <strong>), sans <html>/<head>/<body>. '
-            . '3 à 5 puces maximum : besoin/projet du prospect, formation visée, objections ou concurrents cités, niveau d\'urgence, et LA prochaine action recommandée pour le conseiller.';
+            . '3 à 5 puces maximum : besoin/projet du prospect, formation visée, objections ou concurrents cités, niveau d\'urgence, et LA prochaine action recommandée pour le conseiller.'
+            . "\n\n"
+            // Sans cette consigne, le modèle rédige parfois ses brouillons et ses
+            // commentaires internes (« voici la réponse finale… ») dans la réponse.
+            . 'Ne renvoie QUE la réponse finale : commence directement par <ul> et termine par </ul>. '
+            . 'Aucun préambule, aucun commentaire sur ta démarche, aucun brouillon, aucune version intermédiaire, '
+            . 'aucun bloc de code Markdown (```) autour de la réponse.';
         $prompt = "Conversation :\n" . implode("\n", $lines);
 
         [$ok, $out] = school_ia_ai_generate($system, $prompt);
         if (!$ok) {
             set_alert('danger', 'Résumé impossible : ' . $out);
+            redirect($back);
+        }
+        $out = school_ia_ai_clean_html($out);
+        if ($out === '') {
+            set_alert('danger', 'Résumé illisible renvoyé par l\'IA. Réessayez.');
             redirect($back);
         }
         update_option('sia_lead_summary_' . $id, json_encode(['content' => $out, 'at' => date('Y-m-d H:i:s')], JSON_UNESCAPED_UNICODE));

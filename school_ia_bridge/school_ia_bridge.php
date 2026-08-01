@@ -431,10 +431,69 @@ function school_ia_period_range(string $period, string $date = ''): array
 }
 
 /**
+ * Le modèle accepte-t-il la « réflexion adaptative » (thinking adaptive) ?
+ *
+ * Important : sur les modèles récents (Opus 4.6+, Sonnet 4.6+, Fable 5…), ne PAS
+ * envoyer ce paramètre revient à désactiver la réflexion — et le modèle rédige
+ * alors son brouillon et ses commentaires internes (« voici la réponse
+ * finale… ») directement dans la réponse visible. Les modèles plus anciens
+ * (Haiku 4.5…) refusent en revanche ce paramètre avec une erreur 400 : on ne
+ * l'envoie donc que lorsqu'il est supporté.
+ */
+function school_ia_ai_supports_adaptive(string $model): bool
+{
+    $supported = [
+        'claude-opus-4-6', 'claude-opus-4-7', 'claude-opus-4-8', 'claude-opus-5',
+        'claude-sonnet-4-6', 'claude-sonnet-5', 'claude-fable-5', 'claude-mythos-5',
+    ];
+    foreach ($supported as $prefix) {
+        if (strpos($model, $prefix) === 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Nettoie une réponse HTML produite par l'IA : retire les blocs de code
+ * Markdown, le bavardage éventuel avant/après la liste, et toute balise autre
+ * que la mise en forme simple attendue (ce qui protège aussi contre l'injection
+ * HTML, le texte d'origine venant des conversations des prospects).
+ */
+function school_ia_ai_clean_html(string $raw): string
+{
+    $out = trim($raw);
+    // Blocs de code Markdown (```html … ```) parfois ajoutés autour de la réponse.
+    $out = (string) preg_replace('/^```[a-z]*\s*/i', '', $out);
+    $out = (string) preg_replace('/```\s*$/', '', $out);
+    // Ne conserve que la liste : coupe un éventuel préambule / épilogue bavard.
+    $start = stripos($out, '<ul');
+    if ($start !== false && $start > 0) {
+        $out = substr($out, $start);
+    }
+    $end = strripos($out, '</ul>');
+    if ($end !== false) {
+        $out = substr($out, 0, $end + 5);
+    }
+    // Supprime les blocs script/style avec leur contenu (strip_tags ne retire que
+    // les balises et laisserait le code à l'intérieur).
+    $out = (string) preg_replace('#<(script|style)\b[^>]*>.*?</\1>#is', '', $out);
+    $out = strip_tags($out, '<ul><ol><li><strong><em><b><i><br><p>');
+    // strip_tags conserve les ATTRIBUTS : on les retire, sinon un onclick/style
+    // injecté via la conversation du prospect survivrait au filtrage.
+    $out = (string) preg_replace('#<\s*([a-z0-9]+)\b[^>]*>#i', '<$1>', $out);
+    return trim($out);
+}
+
+/**
  * Appelle l'API Claude (Anthropic) pour rédiger le rapport. Renvoie [ok, texte].
  * Raw HTTPS via cURL (Perfex = PHP sans le SDK Anthropic).
+ *
+ * Note : les paramètres d'échantillonnage (temperature / top_p / top_k) ne sont
+ * PAS acceptés par les modèles récents (erreur 400) — le comportement se pilote
+ * par la consigne système, pas par ces réglages.
  */
-function school_ia_ai_generate(string $system, string $prompt): array
+function school_ia_ai_generate(string $system, string $prompt, int $maxTokens = 8000): array
 {
     $key = trim((string) get_option('sia_ai_api_key'));
     if ($key === '') {
@@ -442,19 +501,39 @@ function school_ia_ai_generate(string $system, string $prompt): array
     }
     $model = trim((string) get_option('sia_ai_model')) ?: 'claude-opus-4-8';
 
-    $payload = json_encode([
-        'model'      => $model,
-        'max_tokens' => 3000,
+    $body = [
+        'model' => $model,
+        // La réflexion et le texte final se partagent ce plafond : prévoir de la marge.
+        'max_tokens' => $maxTokens,
         'system'     => $system,
         'messages'   => [['role' => 'user', 'content' => $prompt]],
-    ], JSON_UNESCAPED_UNICODE);
+    ];
+    $withThinking = school_ia_ai_supports_adaptive($model);
+    if ($withThinking) {
+        $body['thinking'] = ['type' => 'adaptive'];
+    }
 
+    [$ok, $out, $code] = school_ia_ai_post($body, $key);
+
+    // Filet de sécurité : si un modèle personnalisé refuse « thinking », on
+    // réessaie une fois sans ce paramètre plutôt que d'échouer.
+    if (!$ok && $withThinking && $code === 400 && stripos($out, 'thinking') !== false) {
+        unset($body['thinking']);
+        [$ok, $out] = school_ia_ai_post($body, $key);
+    }
+
+    return [$ok, $out];
+}
+
+/** Exécute l'appel HTTP vers l'API Messages. Renvoie [ok, texte|erreur, code HTTP]. */
+function school_ia_ai_post(array $body, string $key): array
+{
     $ch = curl_init('https://api.anthropic.com/v1/messages');
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payload,
-        CURLOPT_TIMEOUT        => 120,
+        CURLOPT_POSTFIELDS     => json_encode($body, JSON_UNESCAPED_UNICODE),
+        CURLOPT_TIMEOUT        => 300,
         CURLOPT_HTTPHEADER     => [
             'content-type: application/json',
             'x-api-key: ' . $key,
@@ -467,12 +546,13 @@ function school_ia_ai_generate(string $system, string $prompt): array
     curl_close($ch);
 
     if ($resp === false) {
-        return [false, 'Connexion à l\'IA échouée : ' . $cerr];
+        return [false, 'Connexion à l\'IA échouée : ' . $cerr, 0];
     }
     $data = json_decode((string) $resp, true);
     if ($code >= 400) {
-        return [false, 'Erreur API (' . $code . ') : ' . ($data['error']['message'] ?? mb_substr((string) $resp, 0, 200))];
+        return [false, 'Erreur API (' . $code . ') : ' . ($data['error']['message'] ?? mb_substr((string) $resp, 0, 200)), $code];
     }
+    // Les blocs « thinking » sont ignorés : seul le texte final est conservé.
     $text = '';
     foreach (($data['content'] ?? []) as $block) {
         if (($block['type'] ?? '') === 'text') {
@@ -480,9 +560,9 @@ function school_ia_ai_generate(string $system, string $prompt): array
         }
     }
     if (trim($text) === '') {
-        return [false, 'Réponse de l\'IA vide.'];
+        return [false, 'Réponse de l\'IA vide.', $code];
     }
-    return [true, $text];
+    return [true, $text, $code];
 }
 
 /**

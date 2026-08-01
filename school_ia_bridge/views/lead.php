@@ -499,7 +499,7 @@
             <?php } ?>
           </div>
           <?php if ($aiSummary) { ?>
-            <div class="sia-report" style="line-height:1.55;"><?php echo $aiSummary['content']; ?></div>
+            <div class="sia-report" style="line-height:1.55;"><?php echo school_ia_ai_clean_html((string) $aiSummary['content']); ?></div>
             <div class="text-muted" style="font-size:11px;margin-top:6px;">Généré le <?php echo htmlspecialchars(date('d/m/Y à H:i', strtotime((string) $aiSummary['at'])), ENT_QUOTES); ?></div>
           <?php } elseif (empty($chatMessages)) { ?>
             <p class="text-muted" style="margin-top:8px;">Aucune conversation à résumer.</p>
