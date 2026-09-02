@@ -19,12 +19,12 @@ defined('ABSPATH') || exit;
  */
 final class SignalClassifier
 {
-    private const SYSTEM_PROMPT = <<<'PROMPT'
+    private const SYSTEM_PROMPT_TEMPLATE = <<<'PROMPT'
 Tu analyses des messages envoyés par un prospect au conseiller d'orientation virtuel d'une école de management. Réponds UNIQUEMENT avec un objet JSON strict, sans aucun texte autour, avec exactement ces clés :
 
 {
   "intent_level": <entier 0-100 : probabilité que ce prospect candidate réellement. 0-20 curiosité vague, 21-45 intérêt réel mais exploratoire, 46-70 projet concret (questions sur admission, dossier, dates), 71-100 décision imminente (veut candidater, demande les étapes, parle de délais)>,
-  "formation": <string|null : formation visée si identifiable (ex: "Master Finance", "Bachelor Marketing")>,
+  "formation": %s,
   "urgency": <"none"|"low"|"high" : "high" si le prospect exprime une échéance pressante, une détresse, une hésitation critique de dernière minute, ou demande explicitement à parler à un humain>,
   "price_sensitivity": <true|false : questions ou inquiétudes sur les frais, le coût, les bourses, les facilités de paiement>,
   "competitors": [<liste des écoles/universités concurrentes explicitement mentionnées, avec pour chacune {"name": string, "context": string extrait court}>],
@@ -35,6 +35,29 @@ Tu analyses des messages envoyés par un prospect au conseiller d'orientation vi
 
 Sois factuel : n'invente aucun signal absent des messages.
 PROMPT;
+
+    /**
+     * Construit le prompt système, avec une instruction "formation" tantôt
+     * libre, tantôt contrainte à la liste exacte des programmes configurés
+     * côté Perfex (réglages → Programmes) quand le pont CRM est actif. Un
+     * libellé recopié tel quel permet à resolve_fee() (côté Perfex) de
+     * retrouver systématiquement le tarif par correspondance exacte, plutôt
+     * que de deviner sur du texte libre — voir program_fees()/resolve_fee()
+     * dans School_ia_bridge_model.
+     */
+    private function buildSystemPrompt(): string
+    {
+        $programs = (new \BemLeadAi\Crm\PerfexBridgeConnector())->fetchProgramList();
+        if ($programs) {
+            $list = implode(' | ', array_map(fn($p) => '"' . $p . '"', $programs));
+            $formation = '<string|null : DOIT être EXACTEMENT l\'un de ces libellés, recopié tel quel sans reformuler : '
+                . $list . '. Si aucun ne correspond clairement à ce qu\'exprime le prospect, renvoie null — '
+                . 'n\'invente jamais un autre libellé>';
+        } else {
+            $formation = '<string|null : formation visée si identifiable (ex: "Master Finance", "Bachelor Marketing")>';
+        }
+        return sprintf(self::SYSTEM_PROMPT_TEMPLATE, $formation);
+    }
 
     public function classifyPendingMessages(int $leadId): void
     {
@@ -48,7 +71,7 @@ PROMPT;
         $client = new ClaudeClient();
         $result = $client->completeJson(
             (string) Options::get('classifier_model'),
-            self::SYSTEM_PROMPT,
+            $this->buildSystemPrompt(),
             [['role' => 'user', 'content' => "Messages du prospect :\n" . $text]]
         );
 

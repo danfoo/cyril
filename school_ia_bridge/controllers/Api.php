@@ -327,6 +327,34 @@ class Api extends App_Controller
     }
 
     /**
+     * Liste des programmes configurés (réglages → Programmes), consommée par
+     * le plugin WordPress pour contraindre son classificateur IA à choisir un
+     * libellé EXACT plutôt que du texte libre — indispensable pour que
+     * resolve_fee() retrouve toujours le tarif correspondant (voir
+     * program_fees()/resolve_fee() dans School_ia_bridge_model). Même
+     * authentification que les autres points d'entrée.
+     */
+    public function programs()
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        $secret   = (string) get_option('school_ia_bridge_secret');
+        $provided = $this->input->get_request_header('X-SIA-Secret', true);
+        if ($provided === null || $provided === '') {
+            $provided = (string) ($this->input->get('secret') ?: $this->input->post('secret'));
+        }
+        if ($secret === '' || !hash_equals($secret, (string) $provided)) {
+            $this->respond(['ok' => false, 'error' => 'unauthorized'], 401);
+            return;
+        }
+
+        $raw = (string) get_option('sia_programs');
+        $programs = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $raw))));
+
+        $this->respond(['ok' => true, 'programs' => $programs]);
+    }
+
+    /**
      * Diagnostic : compte des lignes par table (protégé par le secret).
      * Ouvrir {perfex}/school_ia_bridge/api/diag?secret=VOTRE_SECRET pour voir
      * si les messages / concurrents sont réellement stockés côté Perfex.

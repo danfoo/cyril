@@ -18,6 +18,8 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
     public int $lastCode = 0;
     public string $lastError = '';
 
+    private const PROGRAM_LIST_TRANSIENT = 'bem_perfex_program_list';
+
     /** base64url (sans +, /, = qui déclenchent parfois un pare-feu applicatif). */
     private static function b64urlEncode(string $s): string
     {
@@ -97,6 +99,55 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
         } else {
             $this->lastError = '';
         }
+    }
+
+    /**
+     * Liste des programmes configurés côté Perfex (réglages → Programmes),
+     * mise en cache 1h — appelée à chaque classification IA, pas question de
+     * faire un aller-retour réseau à chaque message. Contraint le
+     * classificateur à un libellé EXACT plutôt que du texte libre, pour que
+     * resolve_fee() (côté Perfex) retrouve toujours le tarif correspondant.
+     * Retourne [] si le pont n'est pas configuré ou en cas d'échec réseau —
+     * le classificateur retombe alors sur du texte libre.
+     *
+     * @return string[]
+     */
+    public function fetchProgramList(): array
+    {
+        if (!$this->isConfigured()) {
+            return [];
+        }
+        $cached = get_transient(self::PROGRAM_LIST_TRANSIENT);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $base = rtrim((string) Options::get('perfex_url'), '/');
+        $secret = (string) Options::get('perfex_bridge_secret');
+        $url = $base . '/school_ia_bridge/api/programs?' . http_build_query(['secret' => $secret]);
+
+        $response = wp_remote_get($url, [
+            'timeout' => 10,
+            'headers' => [
+                'X-SIA-Secret' => $secret,
+                'Accept'       => 'application/json',
+            ],
+        ]);
+
+        if (is_wp_error($response) || (int) wp_remote_retrieve_response_code($response) !== 200) {
+            // Échec réseau : cache court pour ne pas marteler Perfex à chaque
+            // classification tant que le problème n'est pas résolu.
+            set_transient(self::PROGRAM_LIST_TRANSIENT, [], 5 * MINUTE_IN_SECONDS);
+            return [];
+        }
+
+        $body = json_decode((string) wp_remote_retrieve_body($response), true);
+        $programs = is_array($body['programs'] ?? null)
+            ? array_values(array_filter(array_map('strval', $body['programs'])))
+            : [];
+
+        set_transient(self::PROGRAM_LIST_TRANSIENT, $programs, HOUR_IN_SECONDS);
+        return $programs;
     }
 
     /**
