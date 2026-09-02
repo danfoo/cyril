@@ -856,6 +856,11 @@ class School_ia_bridge_model extends App_Model
             'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'ö' => 'o', 'õ' => 'o',
             'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
             'ç' => 'c', 'ñ' => 'n',
+            // Exposants d'ordinaux (« 6ᵉ », « 1ʳᵉ ») : un clavier/correcteur
+            // français les insère automatiquement, mais un autre champ peut
+            // avoir été tapé en « 6e » tout court — sans cette table, les deux
+            // graphies ne se normalisent pas pareil et ne matchent jamais.
+            'ᵉ' => 'e', 'ʳ' => 'r', 'ᵈ' => 'd', 'ᵒ' => 'o', 'ⁿ' => 'n', 'ᵗ' => 't', 'ᵉʳ' => 'er',
         ];
         $s = strtr($s, $map);
         $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
