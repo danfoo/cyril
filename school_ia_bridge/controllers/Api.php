@@ -379,12 +379,19 @@ class Api extends App_Controller
             $this->respond(['ok' => false, 'error' => 'unauthorized', 'hint' => 'Ouvrez cette URL dans l\'onglet où vous êtes connecté à Perfex.'], 401);
             return;
         }
+        $rawPrograms = (string) get_option('sia_programs');
         $this->respond([
             'ok'                    => true,
             'tables'                => $this->school_ia_bridge_model->diag_counts(),
             'write_test'            => $this->school_ia_bridge_model->diag_write_test(),
             'competitor_calls'      => (int) get_option('sia_competitor_calls'),
             'last_competitor_call'  => json_decode((string) get_option('sia_last_competitor_call'), true),
+            // Liste des programmes (réglages → Programmes), consommée par le
+            // plugin WordPress pour contraindre son classificateur IA à un
+            // libellé exact — repliée ici (plutôt qu'un nouveau point d'entrée
+            // dédié) car ce diagnostic s'est révélé fiable en déploiement là où
+            // un nouveau contrôleur/méthode ne l'était pas.
+            'programs'              => array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $rawPrograms)))),
         ]);
     }
 

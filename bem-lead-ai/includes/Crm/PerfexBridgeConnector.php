@@ -151,7 +151,12 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
 
         $base = rtrim((string) Options::get('perfex_url'), '/');
         $secret = (string) Options::get('perfex_bridge_secret');
-        $url = $base . '/school_ia_bridge/api/programs?' . http_build_query(['secret' => $secret]);
+        // Lu depuis /api/diag (existant de longue date côté Perfex, donc déjà
+        // éprouvé en déploiement) plutôt qu'un point d'entrée /api/programs
+        // dédié : un nouveau contrôleur/méthode s'est révélé peu fiable à
+        // déployer sur certains hébergements (upload FTP manuel, cache…), là
+        // où diag() était déjà en place et fonctionnel.
+        $url = $base . '/school_ia_bridge/api/diag?' . http_build_query(['secret' => $secret]);
 
         $response = wp_remote_get($url, [
             'timeout' => 10,
