@@ -114,12 +114,39 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
      */
     public function fetchProgramList(): array
     {
-        if (!$this->isConfigured()) {
-            return [];
-        }
         $cached = get_transient(self::PROGRAM_LIST_TRANSIENT);
         if (is_array($cached)) {
             return $cached;
+        }
+
+        $result = $this->requestProgramList();
+        set_transient(
+            self::PROGRAM_LIST_TRANSIENT,
+            $result['programs'],
+            // Échec : cache court pour ne pas marteler Perfex à chaque
+            // classification tant que le problème n'est pas résolu.
+            $result['ok'] ? HOUR_IN_SECONDS : 5 * MINUTE_IN_SECONDS
+        );
+        return $result['programs'];
+    }
+
+    /** Invalide le cache de la liste de programmes (bouton de diagnostic). */
+    public function clearProgramListCache(): void
+    {
+        delete_transient(self::PROGRAM_LIST_TRANSIENT);
+    }
+
+    /**
+     * Interroge Perfex sans passer par le cache — utilisé par le bouton de
+     * diagnostic (réglages → CRM) pour montrer la cause exacte d'un échec
+     * (secret invalide, URL injoignable, liste vide…) sans accès aux logs.
+     *
+     * @return array{ok: bool, error: string, programs: string[]}
+     */
+    public function requestProgramList(): array
+    {
+        if (!$this->isConfigured()) {
+            return ['ok' => false, 'error' => 'Pont Perfex non configuré (URL ou secret manquant).', 'programs' => []];
         }
 
         $base = rtrim((string) Options::get('perfex_url'), '/');
@@ -134,20 +161,21 @@ final class PerfexBridgeConnector implements CrmConnectorInterface
             ],
         ]);
 
-        if (is_wp_error($response) || (int) wp_remote_retrieve_response_code($response) !== 200) {
-            // Échec réseau : cache court pour ne pas marteler Perfex à chaque
-            // classification tant que le problème n'est pas résolu.
-            set_transient(self::PROGRAM_LIST_TRANSIENT, [], 5 * MINUTE_IN_SECONDS);
-            return [];
+        if (is_wp_error($response)) {
+            return ['ok' => false, 'error' => $response->get_error_message(), 'programs' => []];
         }
 
+        $code = (int) wp_remote_retrieve_response_code($response);
         $body = json_decode((string) wp_remote_retrieve_body($response), true);
+        if ($code !== 200 || !is_array($body) || empty($body['ok'])) {
+            $error = is_array($body) && !empty($body['error']) ? (string) $body['error'] : ('HTTP ' . $code);
+            return ['ok' => false, 'error' => $error, 'programs' => []];
+        }
+
         $programs = is_array($body['programs'] ?? null)
             ? array_values(array_filter(array_map('strval', $body['programs'])))
             : [];
-
-        set_transient(self::PROGRAM_LIST_TRANSIENT, $programs, HOUR_IN_SECONDS);
-        return $programs;
+        return ['ok' => true, 'error' => '', 'programs' => $programs];
     }
 
     /**

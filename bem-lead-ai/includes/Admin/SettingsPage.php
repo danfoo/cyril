@@ -62,6 +62,23 @@ final class SettingsPage
             }
         }
 
+        // Résultat du test de la liste de programmes Perfex (le cas échéant).
+        $programsTest = get_transient('bem_perfex_programs_test');
+        if (is_array($programsTest)) {
+            delete_transient('bem_perfex_programs_test');
+            if (!empty($programsTest['ok'])) {
+                $list = $programsTest['programs'] ?? [];
+                echo '<div class="notice notice-success"><p><strong>' . esc_html__('Liste de programmes récupérée depuis Perfex.', 'bem-lead-ai') . '</strong><br>'
+                    . ($list
+                        ? esc_html(implode(', ', $list))
+                        : '<em>' . esc_html__('Liste vide : rien n\'est saisi dans Perfex → Réglages → Programmes. Le classificateur retombera sur du texte libre.', 'bem-lead-ai') . '</em>')
+                    . '</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p><strong>' . esc_html__('Échec de la récupération de la liste de programmes.', 'bem-lead-ai') . '</strong><br>'
+                    . '<code>' . esc_html((string) ($programsTest['error'] ?? '')) . '</code></p></div>';
+            }
+        }
+
         // Raccourci vers l'assistant de configuration (relance guidée).
         echo '<p style="margin:12px 0;"><a class="button button-secondary" href="'
             . esc_url(admin_url('admin.php?page=' . SetupWizard::PAGE)) . '">'
@@ -188,6 +205,15 @@ final class SettingsPage
             $this->secret('hubspot_api_key', 'Token API HubSpot (optionnel)', $o),
             $this->secret('crm_webhook_secret', 'Secret webhook retour CRM', $o),
         ], __('Méthode recommandée (gratuite) : installez le module « School IA Bridge » dans Perfex et collez ici son URL + son secret partagé (visibles sur la page « School IA — Leads » de Perfex). Les leads y arrivent directement. Le token API REST (et les ID source/statut) ne servent que si vous utilisez le module REST API payant de Perfex.', 'bem-lead-ai'));
+
+        if (($o['perfex_url'] ?? '') !== '' && Options::hasSecret('perfex_bridge_secret')) {
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin:-8px 0 20px;">';
+            wp_nonce_field('bem_test_perfex_programs');
+            echo '<input type="hidden" name="action" value="bem_test_perfex_programs">';
+            submit_button(__('Tester la liste de programmes Perfex', 'bem-lead-ai'), 'secondary', 'submit', false);
+            echo ' <span class="description">' . esc_html__('Vérifie que le pont peut lire vos programmes (réglages → Programmes, côté Perfex) — nécessaire pour que le classificateur IA choisisse un libellé exact plutôt que du texte libre.', 'bem-lead-ai') . '</span>';
+            echo '</form>';
+        }
 
         // --- Widget : contenu ---
         $this->section(__('Widget de chat — contenu', 'bem-lead-ai'), [
@@ -811,6 +837,28 @@ final class SettingsPage
         } else {
             set_transient('bem_lead_ai_claude_test', ['ok' => true, 'msg' => trim((string) $res)], 180);
         }
+        wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
+        exit;
+    }
+
+    /**
+     * Diagnostic (sans accès aux logs) de la liste de programmes remontée par
+     * Perfex — montre la cause exacte d'un échec (secret invalide, URL
+     * injoignable, liste vide…), consommée par le classificateur IA pour
+     * contraindre le champ "formation" à un libellé exact.
+     */
+    public static function handleTestPerfexPrograms(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Forbidden');
+        }
+        check_admin_referer('bem_test_perfex_programs');
+
+        $connector = new PerfexBridgeConnector();
+        $connector->clearProgramListCache();
+        $result = $connector->requestProgramList();
+        set_transient('bem_perfex_programs_test', $result, 180);
+
         wp_safe_redirect(admin_url('admin.php?page=bem-lead-ai-settings'));
         exit;
     }
