@@ -80,6 +80,11 @@ final class ChatOrchestrator
         foreach ($programs as $program) {
             if ($program !== '' && str_contains($norm, $this->normalizeForKeywordMatch($program))) {
                 (new LeadRepository())->update((int) $lead->id, ['formation_interet' => $program]);
+                // Synchro CRM immédiate (hors file d'attente) : on ne veut pas
+                // que la valeur reste coincée en attente d'un WP-Cron peu
+                // fiable — c'est justement ce qui empêchait la valorisation du
+                // pipeline de suivre en pratique.
+                (new \BemLeadAi\Triggers\ActionRunner())->run('crm_sync', (int) $lead->id);
                 return;
             }
         }
