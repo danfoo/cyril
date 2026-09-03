@@ -29,6 +29,11 @@ class School_ia_bridge_model extends App_Model
         return db_prefix() . 'school_ia_battlecards';
     }
 
+    private function programTable(): string
+    {
+        return db_prefix() . 'school_ia_lead_programs';
+    }
+
     /** Normalise une URL de site (schéma + slash final) pour comparer http/https sans faux négatif. */
     private function normalizeSite(string $url): string
     {
@@ -296,6 +301,22 @@ class School_ia_bridge_model extends App_Model
         if ($this->db->table_exists($this->competitorTable())
             && !$this->db->field_exists('handled', $this->competitorTable())) {
             $this->db->query('ALTER TABLE `' . $this->competitorTable() . '` ADD `handled` TINYINT(1) NOT NULL DEFAULT 0');
+        }
+        // Programmes multiples par lead (ex. un parent avec plusieurs enfants,
+        // chacun visant une classe différente) — le champ `formation` sur la
+        // fiche reste la valeur la plus récente/principale pour l'affichage
+        // simple, mais toute valeur reçue est aussi accumulée ici sans être
+        // écrasée, pour que la valorisation du pipeline compte chaque enfant.
+        if (!$this->db->table_exists($this->programTable())) {
+            $this->db->query('CREATE TABLE `' . $this->programTable() . "` (
+                `id` int(11) NOT NULL AUTO_INCREMENT,
+                `lead_id` int(11) NOT NULL,
+                `formation` varchar(191) NOT NULL,
+                `created_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id`),
+                UNIQUE KEY `lead_formation` (`lead_id`, `formation`(190)),
+                KEY `lead_id` (`lead_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
         }
         // Argumentaires de contre (« battle cards ») par concurrent.
         if (!$this->db->table_exists($this->battlecardTable())) {
@@ -917,6 +938,39 @@ class School_ia_bridge_model extends App_Model
         return $bestScore >= 0.6 ? $best : null;
     }
 
+    /**
+     * Enregistre qu'un lead est intéressé par un programme donné, SANS jamais
+     * écraser les autres déjà connus — un parent avec plusieurs enfants peut
+     * en accumuler plusieurs au fil de la conversation. Idempotent (clé
+     * unique lead_id+formation) : rappeler avec la même valeur est sans effet.
+     */
+    public function add_lead_program(int $leadId, string $formation): void
+    {
+        $formation = substr(trim($formation), 0, 191);
+        if ($leadId <= 0 || $formation === '') {
+            return;
+        }
+        $this->ensure_schema();
+        $exists = $this->db->where('lead_id', $leadId)->where('formation', $formation)
+            ->count_all_results($this->programTable());
+        if ($exists) {
+            return;
+        }
+        $this->db->insert($this->programTable(), [
+            'lead_id'    => $leadId,
+            'formation'  => $formation,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    /** Tous les programmes accumulés pour un lead (plusieurs enfants, par ex.), du plus ancien au plus récent. */
+    public function lead_programs(int $leadId): array
+    {
+        $this->ensure_schema();
+        $rows = $this->db->where('lead_id', $leadId)->order_by('id', 'ASC')->get($this->programTable())->result();
+        return array_map(static fn($r) => (string) $r->formation, $rows);
+    }
+
     /** Index des tarifs : table de correspondance exacte + liste tokenisée. */
     public function fees_index(): array
     {
@@ -940,6 +994,13 @@ class School_ia_bridge_model extends App_Model
      * La correspondance formation → tarif est tolérante (accents, casse, tirets,
      * variantes) : un lead « Bachelor Prépa Ingénieur » est bien rattaché au
      * tarif « Bachelor PRÉPA-INGÉNIEUR ».
+     *
+     * Un lead peut avoir plusieurs programmes accumulés (ex. un parent avec
+     * plusieurs enfants) : chacun est valorisé et sommé pour ce même lead, via
+     * school_ia_lead_programs. Les leads qui n'ont encore aucune ligne dans
+     * cette table (créés avant cette fonctionnalité, import CSV, saisie
+     * manuelle jamais repassée par la conversation) retombent sur leur champ
+     * `formation` unique — repli, pas de double-comptage.
      */
     public function finance_summary(array $filters = []): array
     {
@@ -948,15 +1009,17 @@ class School_ia_bridge_model extends App_Model
             return ['has_fees' => false, 'pipeline' => 0.0, 'realized' => 0.0];
         }
 
-        $this->applyLeadFilters($filters);
-        $rows = $this->db
-            ->select("COALESCE(NULLIF(formation,''),'—') AS formation, stage, COUNT(*) AS n")
-            ->group_by('formation, stage')
-            ->get($this->table())
-            ->result();
-
         $pipeline = 0.0;
         $realized = 0.0;
+
+        $this->applyLeadFilters($filters, 'l');
+        $rows = $this->db
+            ->select('lp.formation AS formation, l.stage AS stage, COUNT(*) AS n')
+            ->from($this->programTable() . ' lp')
+            ->join($this->table() . ' l', 'l.id = lp.lead_id')
+            ->group_by('lp.formation, l.stage')
+            ->get()
+            ->result();
         foreach ($rows as $r) {
             $fee = $this->resolve_fee((string) $r->formation, $index);
             if ($fee === null) {
@@ -968,6 +1031,26 @@ class School_ia_bridge_model extends App_Model
                 $pipeline += $fee * (int) $r->n;
             }
         }
+
+        $this->applyLeadFilters($filters);
+        $this->db->where("id NOT IN (SELECT DISTINCT lead_id FROM `{$this->programTable()}`)", null, false);
+        $rows = $this->db
+            ->select("COALESCE(NULLIF(formation,''),'—') AS formation, stage, COUNT(*) AS n")
+            ->group_by('formation, stage')
+            ->get($this->table())
+            ->result();
+        foreach ($rows as $r) {
+            $fee = $this->resolve_fee((string) $r->formation, $index);
+            if ($fee === null) {
+                continue;
+            }
+            if ($r->stage === 'inscrit') {
+                $realized += $fee * (int) $r->n;
+            } elseif ($r->stage !== 'perdu') {
+                $pipeline += $fee * (int) $r->n;
+            }
+        }
+
         return ['has_fees' => true, 'pipeline' => $pipeline, 'realized' => $realized];
     }
 
@@ -1055,7 +1138,11 @@ class School_ia_bridge_model extends App_Model
             'payload'     => json_encode($d, JSON_UNESCAPED_UNICODE),
             'received_at' => date('Y-m-d H:i:s'),
         ]);
-        return (int) $this->db->insert_id();
+        $newId = (int) $this->db->insert_id();
+        if (trim((string) ($d['formation'] ?? '')) !== '') {
+            $this->add_lead_program($newId, (string) $d['formation']);
+        }
+        return $newId;
     }
 
     /** Met à jour les informations éditables d'un lead (saisie manuelle). */
@@ -1076,6 +1163,9 @@ class School_ia_bridge_model extends App_Model
         // L'étape n'est mise à jour que si elle est valide.
         if (isset($d['stage']) && array_key_exists($d['stage'], $this->stages())) {
             $fields['stage'] = $d['stage'];
+        }
+        if (!empty($fields['formation'])) {
+            $this->add_lead_program($id, (string) $fields['formation']);
         }
         $this->db->where('id', $id)->update($this->table(), $fields);
     }
@@ -2344,6 +2434,9 @@ class School_ia_bridge_model extends App_Model
                     LIMIT 1';
             $existing = $this->db->query($sql, [$externalId, $this->normalizeSite($sourceSite)])->row();
             if ($existing) {
+                if (!empty($data['formation'])) {
+                    $this->add_lead_program((int) $existing->id, (string) $data['formation']);
+                }
                 $data['payload'] = json_encode($p, JSON_UNESCAPED_UNICODE);
                 if (!empty($p['received_at'])) {
                     $data['received_at'] = substr((string) $p['received_at'], 0, 19);
@@ -2367,7 +2460,11 @@ class School_ia_bridge_model extends App_Model
         $data['payload']     = json_encode($p, JSON_UNESCAPED_UNICODE);
         $data['received_at'] = !empty($p['received_at']) ? substr((string) $p['received_at'], 0, 19) : date('Y-m-d H:i:s');
         $this->db->insert($this->table(), $data);
-        return ['id' => (int) $this->db->insert_id(), 'created' => true];
+        $newId = (int) $this->db->insert_id();
+        if (!empty($data['formation'])) {
+            $this->add_lead_program($newId, (string) $data['formation']);
+        }
+        return ['id' => $newId, 'created' => true];
     }
 
     /**
@@ -2679,6 +2776,7 @@ class School_ia_bridge_model extends App_Model
             'activities'    => $this->activityTable(),
             'chat_messages' => $this->chatTable(),
             'competitors'   => $this->competitorTable(),
+            'lead_programs' => $this->programTable(),
         ];
         $out = [];
         foreach ($tables as $key => $t) {

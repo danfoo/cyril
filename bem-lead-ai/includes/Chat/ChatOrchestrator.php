@@ -62,31 +62,39 @@ final class ChatOrchestrator
     }
 
     /**
-     * Filet de sécurité synchrone : si le message cite mot pour mot un
-     * programme configuré côté Perfex, on l'attribue tout de suite au lead —
-     * sans attendre le classificateur IA. Ne remplace jamais une formation
-     * déjà connue (l'IA reste la source la plus fine pour les reformulations).
+     * Filet de sécurité synchrone : si le message cite mot pour mot un ou
+     * plusieurs programmes configurés côté Perfex, on les attribue tout de
+     * suite au lead — sans attendre le classificateur IA. Ne s'arrête pas au
+     * premier trouvé : un parent avec plusieurs enfants peut en citer
+     * plusieurs dans un même message, ou au fil de la conversation. Chaque
+     * nouveau programme déclenche sa propre synchro CRM ; côté Perfex,
+     * save_lead() les accumule (school_ia_lead_programs) sans jamais perdre
+     * les précédents — seul `formation_interet` ici reflète juste le dernier
+     * cité, pour l'affichage simple côté WordPress.
      */
     private function captureFormationKeyword(object $lead, string $message): void
     {
-        if (!empty($lead->formation_interet)) {
-            return;
-        }
         $programs = (new PerfexBridgeConnector())->fetchProgramList();
         if (!$programs) {
             return;
         }
         $norm = $this->normalizeForKeywordMatch($message);
+        $current = (string) ($lead->formation_interet ?? '');
         foreach ($programs as $program) {
-            if ($program !== '' && str_contains($norm, $this->normalizeForKeywordMatch($program))) {
-                (new LeadRepository())->update((int) $lead->id, ['formation_interet' => $program]);
-                // Synchro CRM immédiate (hors file d'attente) : on ne veut pas
-                // que la valeur reste coincée en attente d'un WP-Cron peu
-                // fiable — c'est justement ce qui empêchait la valorisation du
-                // pipeline de suivre en pratique.
-                (new \BemLeadAi\Triggers\ActionRunner())->run('crm_sync', (int) $lead->id);
-                return;
+            if ($program === '' || $program === $current) {
+                continue; // déjà la valeur connue, rien à (re)synchroniser
             }
+            if (!str_contains($norm, $this->normalizeForKeywordMatch($program))) {
+                continue;
+            }
+            (new LeadRepository())->update((int) $lead->id, ['formation_interet' => $program]);
+            $current = $program;
+            $lead->formation_interet = $program;
+            // Synchro CRM immédiate (hors file d'attente) : on ne veut pas que
+            // la valeur reste coincée en attente d'un WP-Cron peu fiable —
+            // c'est justement ce qui empêchait la valorisation du pipeline de
+            // suivre en pratique.
+            (new \BemLeadAi\Triggers\ActionRunner())->run('crm_sync', (int) $lead->id);
         }
     }
 

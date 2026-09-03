@@ -23,6 +23,19 @@
     $smsBody = "Bonjour {$prenom}, merci pour votre intérêt pour {$formation}. Un conseiller vous recontacte très vite. — " . get_option('companyname');
     $notes = array_values(array_filter($activities, static function ($a) { return $a->type === 'note'; }));
     $ownerName = !empty($lead->owner_id) ? get_staff_full_name((int) $lead->owner_id) : '';
+
+    // Plusieurs programmes possibles pour un même lead (ex. un parent avec
+    // plusieurs enfants) : repli sur le champ `formation` unique si aucune
+    // ligne n'a encore été accumulée (fiche antérieure à cette fonctionnalité).
+    $siaPrograms = $model->lead_programs((int) $lead->id);
+    if (!$siaPrograms && $lead->formation) { $siaPrograms = [(string) $lead->formation]; }
+    $siaIndex = $model->fees_index();
+    $siaTotal = 0.0;
+    $siaAnyFee = false;
+    foreach ($siaPrograms as $siaProg) {
+        $siaFee = $model->resolve_fee($siaProg, $siaIndex);
+        if ($siaFee !== null) { $siaTotal += $siaFee; $siaAnyFee = true; }
+    }
     ?>
 
     <!-- ===== HEADER + ONGLETS (collant) ===== -->
@@ -46,13 +59,14 @@
             <div class="sia-lead-head-meta">
               <?php if ($lead->email) { ?><span><i class="fa fa-envelope"></i> <?php echo htmlspecialchars((string) $lead->email, ENT_QUOTES); ?></span><?php } ?>
               <?php if ($lead->phone) { ?><span><i class="fa fa-phone"></i> <?php echo htmlspecialchars((string) $lead->phone, ENT_QUOTES); ?></span><?php } ?>
-              <?php if ($lead->formation) { ?><span><i class="fa fa-graduation-cap"></i> <?php echo htmlspecialchars((string) $lead->formation, ENT_QUOTES); ?></span><?php } ?>
+              <?php foreach ($siaPrograms as $siaProg) { ?>
+                <span title="<?php echo count($siaPrograms) > 1 ? 'Un des programmes visés (plusieurs enfants ?)' : ''; ?>"><i class="fa fa-graduation-cap"></i> <?php echo htmlspecialchars($siaProg, ENT_QUOTES); ?></span>
+              <?php } ?>
               <?php if ($lead->score !== null && $lead->score !== '') { ?>
                 <span><i class="fa fa-star"></i> score <?php echo htmlspecialchars((string) $lead->score, ENT_QUOTES); ?><?php echo $lead->band ? ' · ' . htmlspecialchars(str_replace('_', ' ', (string) $lead->band), ENT_QUOTES) : ''; ?></span>
               <?php }
-              $siaVal = $model->resolve_fee((string) $lead->formation, $model->fees_index());
-              if ($siaVal !== null) { $siaCur = (string) (get_option('sia_currency') ?: 'GNF'); ?>
-                <span title="Valeur estimée (frais de la formation)"><i class="fa fa-money"></i> <?php echo number_format($siaVal, 0, ',', ' '); ?> <?php echo htmlspecialchars($siaCur, ENT_QUOTES); ?></span>
+              if ($siaAnyFee) { $siaCur = (string) (get_option('sia_currency') ?: 'GNF'); ?>
+                <span title="Valeur estimée (<?php echo count($siaPrograms) > 1 ? 'somme des frais de tous les programmes' : 'frais de la formation'; ?>)"><i class="fa fa-money"></i> <?php echo number_format($siaTotal, 0, ',', ' '); ?> <?php echo htmlspecialchars($siaCur, ENT_QUOTES); ?></span>
               <?php } ?>
               <?php if ($lead->source_site) { ?><span><i class="fa fa-globe"></i> <?php echo htmlspecialchars((string) $lead->source_site, ENT_QUOTES); ?></span><?php } ?>
               <?php if (!empty($lead->source_form)) { ?><span title="Formulaire d'origine"><i class="fa fa-wpforms"></i> <?php echo htmlspecialchars((string) $lead->source_form, ENT_QUOTES); ?></span><?php } ?>
