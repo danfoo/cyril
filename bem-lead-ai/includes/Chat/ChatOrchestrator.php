@@ -6,8 +6,10 @@ use BemLeadAi\Ai\ClaudeClient;
 use BemLeadAi\Channels\WhatsAppHandoff;
 use BemLeadAi\Core\Options;
 use BemLeadAi\Core\Queue;
+use BemLeadAi\Crm\PerfexBridgeConnector;
 use BemLeadAi\Knowledge\KnowledgeBaseBuilder;
 use BemLeadAi\Leads\EventRepository;
+use BemLeadAi\Leads\LeadRepository;
 
 defined('ABSPATH') || exit;
 
@@ -32,7 +34,14 @@ final class ChatOrchestrator
         (new EventRepository())->record((int) $lead->id, 'chat_message', ['length' => mb_strlen($message)], $canal);
         $this->syncMessageToCrm((int) $lead->id, $userMessageId, 'user', $message, $canal);
 
-        // Classification multi-signaux en asynchrone (jamais dans le fil).
+        // Capture déterministe et immédiate : si le message cite mot pour mot
+        // un programme configuré (côté Perfex), pas besoin d'attendre la
+        // classification IA (asynchrone, dépendante de Claude + WP-Cron).
+        $this->captureFormationKeyword($lead, $message);
+
+        // Classification multi-signaux en asynchrone (jamais dans le fil) —
+        // complémentaire : couvre les formulations qui ne citent pas le
+        // libellé exact (« je pense entrer en sixième » plutôt que « 6e »).
         Queue::dispatch('bem_lead_ai_job_classify', [(int) $lead->id]);
 
         // Conversation prise en main par un humain : l'IA reste en pause.
@@ -50,6 +59,52 @@ final class ChatOrchestrator
             'message_id' => $messageId,
             'whatsapp' => $this->maybeWhatsApp($lead),
         ];
+    }
+
+    /**
+     * Filet de sécurité synchrone : si le message cite mot pour mot un
+     * programme configuré côté Perfex, on l'attribue tout de suite au lead —
+     * sans attendre le classificateur IA. Ne remplace jamais une formation
+     * déjà connue (l'IA reste la source la plus fine pour les reformulations).
+     */
+    private function captureFormationKeyword(object $lead, string $message): void
+    {
+        if (!empty($lead->formation_interet)) {
+            return;
+        }
+        $programs = (new PerfexBridgeConnector())->fetchProgramList();
+        if (!$programs) {
+            return;
+        }
+        $norm = $this->normalizeForKeywordMatch($message);
+        foreach ($programs as $program) {
+            if ($program !== '' && str_contains($norm, $this->normalizeForKeywordMatch($program))) {
+                (new LeadRepository())->update((int) $lead->id, ['formation_interet' => $program]);
+                return;
+            }
+        }
+    }
+
+    /**
+     * Minuscules, sans accents ni exposants d'ordinaux (« 6ᵉ » → « 6e »), sans
+     * ponctuation — même logique que fee_norm() côté Perfex (School_ia_bridge_model),
+     * pour que ce qui matche ici matche aussi côté valorisation du pipeline.
+     */
+    private function normalizeForKeywordMatch(string $s): string
+    {
+        $s = function_exists('mb_strtolower') ? mb_strtolower(trim($s), 'UTF-8') : strtolower(trim($s));
+        $map = [
+            'á' => 'a', 'à' => 'a', 'â' => 'a', 'ä' => 'a', 'ã' => 'a', 'å' => 'a',
+            'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'í' => 'i', 'ì' => 'i', 'î' => 'i', 'ï' => 'i',
+            'ó' => 'o', 'ò' => 'o', 'ô' => 'o', 'ö' => 'o', 'õ' => 'o',
+            'ú' => 'u', 'ù' => 'u', 'û' => 'u', 'ü' => 'u',
+            'ç' => 'c', 'ñ' => 'n',
+            'ᵉ' => 'e', 'ʳ' => 'r', 'ᵈ' => 'd', 'ᵒ' => 'o', 'ⁿ' => 'n', 'ᵗ' => 't', 'ᵉʳ' => 'er',
+        ];
+        $s = strtr($s, $map);
+        $s = preg_replace('/[^a-z0-9]+/', ' ', $s);
+        return trim(preg_replace('/\s+/', ' ', (string) $s));
     }
 
     /** Envoi CRM du message hors du flux de chat (file asynchrone, aucun impact sur la latence perçue). */
