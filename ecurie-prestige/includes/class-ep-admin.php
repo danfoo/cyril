@@ -13,6 +13,7 @@ class EP_Admin {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_post_ep_import_demo', array( __CLASS__, 'import_demo' ) );
+		add_action( 'admin_post_ep_create_elevage', array( __CLASS__, 'create_elevage' ) );
 	}
 
 	public static function assets( $hook ) {
@@ -78,7 +79,7 @@ class EP_Admin {
 
 				<div class="card">
 					<h2>2. <?php esc_html_e( 'Avec Elementor', 'ecurie-prestige' ); ?></h2>
-					<p><?php esc_html_e( 'Dans l’éditeur Elementor, recherchez « Écurie » : quatre widgets sont disponibles dans la catégorie « Écurie Prestige ».', 'ecurie-prestige' ); ?></p>
+					<p><?php esc_html_e( 'Dans l’éditeur Elementor, recherchez « Écurie » : quatre widgets de présentation des chevaux sont disponibles dans la catégorie « Écurie Prestige ».', 'ecurie-prestige' ); ?></p>
 					<ul class="ul-disc">
 						<li><strong><?php esc_html_e( 'Chevaux — Grille', 'ecurie-prestige' ); ?></strong> : <?php esc_html_e( 'grille ou mosaïque, filtres par discipline, fiche en fenêtre.', 'ecurie-prestige' ); ?></li>
 						<li><strong><?php esc_html_e( 'Chevaux — Carrousel cinéma', 'ecurie-prestige' ); ?></strong> : <?php esc_html_e( 'le grand spectacle : cheval central en majesté, défilement automatique, boucle infinie.', 'ecurie-prestige' ); ?></li>
@@ -97,9 +98,36 @@ class EP_Admin {
 					<p><code>[ecurie_cheval id="123" clic="fiche"]</code></p>
 					<p class="description"><?php esc_html_e( 'Options : mise_en_page (grille, mosaique, carrousel, cinema), defilement_auto, duree, style (prestige, editorial), theme (sombre, clair), fond, colonnes, nombre, discipline, vedettes, ids, filtres, stats, tri (ordre, nom, date, victoires, gains, aleatoire), clic (fiche, page, aucun), surtitre, titre, intro, alignement.', 'ecurie-prestige' ); ?></p>
 				</div>
+
+				<div class="card">
+					<h2>4. <?php esc_html_e( 'Page « L’élevage »', 'ecurie-prestige' ); ?></h2>
+					<p><?php esc_html_e( 'Une page complète, prête à personnaliser : bandeau titre, mot de la maison, piliers d’élevage, infrastructures et appel à contact. Elle est créée en brouillon ; ajoutez vos photos puis publiez.', 'ecurie-prestige' ); ?></p>
+					<?php if ( current_user_can( 'publish_pages' ) ) : ?>
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+							<input type="hidden" name="action" value="ep_create_elevage">
+							<?php wp_nonce_field( 'ep_create_elevage' ); ?>
+							<p><button class="button button-primary"><?php esc_html_e( 'Créer la page « L’élevage »', 'ecurie-prestige' ); ?></button></p>
+						</form>
+					<?php endif; ?>
+					<p class="description"><?php esc_html_e( 'Avec Elementor, la page est composée de 5 widgets « Page — … » modifiables un par un. Sans Elementor : shortcode [ecurie_elevage]. Un modèle à importer est aussi fourni dans le dossier templates/elementor du plugin.', 'ecurie-prestige' ); ?></p>
+				</div>
 			</div>
 		</div>
 		<?php
+	}
+
+	public static function create_elevage() {
+		if ( ! current_user_can( 'publish_pages' ) ) {
+			wp_die( esc_html__( 'Action non autorisée.', 'ecurie-prestige' ) );
+		}
+		check_admin_referer( 'ep_create_elevage' );
+		$page_id = EP_Sections::create_elevage_page();
+		if ( is_wp_error( $page_id ) ) {
+			wp_die( esc_html( $page_id->get_error_message() ) );
+		}
+		$action = did_action( 'elementor/loaded' ) ? 'elementor' : 'edit';
+		wp_safe_redirect( admin_url( 'post.php?post=' . (int) $page_id . '&action=' . $action ) );
+		exit;
 	}
 
 	public static function import_demo() {

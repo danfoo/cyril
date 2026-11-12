@@ -191,14 +191,20 @@ abstract class EP_Widget_Base extends \Elementor\Widget_Base {
 		$this->end_controls_section();
 	}
 
-	protected function register_theme_controls( $with_cards = true ) {
+	/**
+	 * @param bool|string $with_cards    true : widgets à cartes ; false : cheval vedette ; 'section' : blocs de page.
+	 * @param string      $default_theme dark | light.
+	 */
+	protected function register_theme_controls( $with_cards = true, $default_theme = 'dark' ) {
+		$section    = 'section' === $with_cards;
+		$with_cards = true === $with_cards;
 		$this->start_controls_section( 'section_style_theme', array( 'label' => __( 'Ambiance & couleurs', 'ecurie-prestige' ), 'tab' => Controls_Manager::TAB_STYLE ) );
 		$this->add_control(
 			'theme',
 			array(
 				'label'   => __( 'Thème', 'ecurie-prestige' ),
 				'type'    => Controls_Manager::SELECT,
-				'default' => 'dark',
+				'default' => $default_theme,
 				'options' => array(
 					'dark'  => __( 'Sombre — noir & or', 'ecurie-prestige' ),
 					'light' => __( 'Clair — ivoire & or', 'ecurie-prestige' ),
@@ -254,6 +260,8 @@ abstract class EP_Widget_Base extends \Elementor\Widget_Base {
 		if ( $with_cards ) {
 			$this->add_group_control( Group_Control_Typography::get_type(), array( 'name' => 'type_title', 'label' => __( 'Titre du bloc', 'ecurie-prestige' ), 'selector' => '{{WRAPPER}} .ep .ep-head__title' ) );
 			$this->add_group_control( Group_Control_Typography::get_type(), array( 'name' => 'type_name', 'label' => __( 'Nom du cheval', 'ecurie-prestige' ), 'selector' => '{{WRAPPER}} .ep .ep-card__name' ) );
+		} elseif ( $section ) {
+			$this->add_group_control( Group_Control_Typography::get_type(), array( 'name' => 'type_title', 'label' => __( 'Titre', 'ecurie-prestige' ), 'selector' => '{{WRAPPER}} .ep .ep-head__title, {{WRAPPER}} .ep .ep-sec__display' ) );
 		} else {
 			$this->add_group_control( Group_Control_Typography::get_type(), array( 'name' => 'type_name', 'label' => __( 'Nom du cheval', 'ecurie-prestige' ), 'selector' => '{{WRAPPER}} .ep .ep-featured__name' ) );
 		}

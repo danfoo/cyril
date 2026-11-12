@@ -16,7 +16,7 @@
 	/* ---------- Apparition au défilement + compteurs ---------- */
 
 	function setupReveal(root) {
-		var items = root.querySelectorAll('.ep-head, .ep-card:not(.ep-slide), .ep-showcase, .ep-featured__media, .ep-featured__content > *, .ep-hero__text > *, .ep-hero__media, .ep-page__card');
+		var items = root.querySelectorAll('.ep-head, .ep-card:not(.ep-slide), .ep-showcase, .ep-featured__media, .ep-featured__content > *, .ep-hero__text > *, .ep-hero__media, .ep-page__card, [data-ep-reveal]');
 		var counters = root.querySelectorAll('[data-ep-count]');
 
 		if (reduceMotion || inEditor() || !('IntersectionObserver' in window)) {
@@ -421,7 +421,9 @@
 	/* ---------- Page d’un cheval : pleine largeur, quel que soit le conteneur du thème ---------- */
 
 	function setupPage(root) {
-		if (root.getAttribute('data-ep') !== 'page') { return; }
+		if (root.getAttribute('data-ep') !== 'page' && !root.classList.contains('ep-fullbleed')) { return; }
+		if (root.dataset.epFit) { return; }
+		root.dataset.epFit = '1';
 		function fit() {
 			root.style.marginLeft = '';
 			root.style.removeProperty('--ep-vw');
@@ -448,6 +450,7 @@
 	}
 
 	function initAll(scope) {
+		each((scope || document).querySelectorAll('.ep-fullbleed'), setupPage);
 		each((scope || document).querySelectorAll('.ep[data-ep]'), init);
 	}
 
@@ -461,7 +464,7 @@
 	function bindElementor() {
 		if (!window.elementorFrontend || !window.elementorFrontend.hooks || bindElementor.done) { return; }
 		bindElementor.done = true;
-		['ep-grid', 'ep-carousel', 'ep-showcase', 'ep-featured'].forEach(function (name) {
+		['ep-grid', 'ep-carousel', 'ep-showcase', 'ep-featured', 'ep-page-hero', 'ep-statement', 'ep-pillars', 'ep-features', 'ep-cta'].forEach(function (name) {
 			window.elementorFrontend.hooks.addAction('frontend/element_ready/' + name + '.default', function ($scope) {
 				initAll($scope && $scope[0] ? $scope[0] : document);
 			});

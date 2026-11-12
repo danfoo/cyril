@@ -32,10 +32,14 @@ class EP_Elementor {
 		require_once EP_DIR . 'includes/widgets/class-ep-widget-carousel.php';
 		require_once EP_DIR . 'includes/widgets/class-ep-widget-showcase.php';
 		require_once EP_DIR . 'includes/widgets/class-ep-widget-featured.php';
+		require_once EP_DIR . 'includes/widgets/class-ep-widget-sections.php';
 
 		$widgets_manager->register( new EP_Widget_Grid() );
 		$widgets_manager->register( new EP_Widget_Showcase() );
 		$widgets_manager->register( new EP_Widget_Carousel() );
 		$widgets_manager->register( new EP_Widget_Featured() );
+		foreach ( array( 'EP_Widget_Page_Hero', 'EP_Widget_Statement', 'EP_Widget_Pillars', 'EP_Widget_Features', 'EP_Widget_Cta' ) as $class ) {
+			$widgets_manager->register( new $class() );
+		}
 	}
 }

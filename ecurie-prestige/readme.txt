@@ -2,7 +2,7 @@
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.2.1
+Stable tag: 1.3.0
 License: GPLv2 or later
 
 Présentez les chevaux de votre écurie de courses avec des widgets Elementor haut de gamme.
@@ -36,6 +36,9 @@ Variables CSS : --ep-accent, --ep-bg, --ep-surface, --ep-text, --ep-radius, --ep
 Police Cormorant Garamond (Christian Thalmann, Catharsis Fonts) — SIL Open Font License 1.1.
 
 == Changelog ==
+
+= 1.3.0 =
+* Page « L’élevage » : 5 widgets Elementor « Page — … » (bandeau titre, mot de la maison, piliers, infrastructures, appel à contact), création de la page en un clic (Écurie → Guide de démarrage), modèle Elementor à importer (templates/elementor/elevage.json) et shortcode [ecurie_elevage].
 
 = 1.2.1 =
 * Gains affichés en FCFA (devise modifiable avec le filtre ecurie_prestige_currency).
