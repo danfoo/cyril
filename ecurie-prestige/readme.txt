@@ -2,7 +2,7 @@
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 
 Présentez les chevaux de votre écurie de courses avec des widgets Elementor haut de gamme.
@@ -26,7 +26,9 @@ Présentez les chevaux de votre écurie de courses avec des widgets Elementor ha
 
 == Personnalisation pour développeurs ==
 
-Filtres : ecurie_prestige_query_args, ecurie_prestige_data, ecurie_prestige_single_fiche (false pour désactiver la fiche automatique sur la page d’un cheval), ecurie_prestige_single_theme ('light' ou 'dark').
+La page d’un cheval utilise le gabarit du plugin (templates/single-cheval.php). Pour le remplacer, créez single-ep_cheval.php dans votre thème, ou désactivez-le : add_filter( 'ecurie_prestige_single_template', '__return_false' ). Un modèle « Single » d’Elementor Pro reste prioritaire.
+
+Filtres : ecurie_prestige_query_args, ecurie_prestige_archive_url, ecurie_prestige_data, ecurie_prestige_single_fiche (false pour désactiver la fiche automatique sur la page d’un cheval), ecurie_prestige_single_theme ('light' ou 'dark').
 Variables CSS : --ep-accent, --ep-bg, --ep-surface, --ep-text, --ep-radius, --ep-gap, --ep-ratio, --ep-cols, --ep-font-display, --ep-font-body.
 
 == Crédits ==
@@ -34,6 +36,10 @@ Variables CSS : --ep-accent, --ep-bg, --ep-surface, --ep-text, --ep-radius, --ep
 Police Cormorant Garamond (Christian Thalmann, Catharsis Fonts) — SIL Open Font License 1.1.
 
 == Changelog ==
+
+= 1.2.0 =
+* Nouvelle page d’un cheval : bandeau photo pleine largeur, portrait, palmarès, galerie, fiche technique en colonne, navigation précédent / suivant.
+* Balisage insensible aux styles de listes des thèmes (libellés, cadres et débordements corrigés).
 
 = 1.1.0 =
 * Nouveau widget « Chevaux — Carrousel cinéma » et shortcode [ecurie_chevaux mise_en_page="cinema"].

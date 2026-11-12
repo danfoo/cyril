@@ -14,6 +14,7 @@ class EP_Render {
 	public static function init() {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'register_assets' ), 5 );
 		add_filter( 'the_content', array( __CLASS__, 'single_content' ) );
+		add_filter( 'template_include', array( __CLASS__, 'single_template' ) );
 	}
 
 	public static function register_assets() {
@@ -254,12 +255,12 @@ class EP_Render {
 		if ( ! $stats ) {
 			return '';
 		}
-		$html = '<dl class="' . esc_attr( $class ) . '">';
+		$html = '<div class="' . esc_attr( $class ) . '">';
 		foreach ( $stats as $stat ) {
 			$count = $animate && null !== $stat['value'] ? ' data-ep-count="' . esc_attr( $stat['value'] ) . '"' : '';
-			$html .= '<div class="ep-stat' . ( empty( $stat['accent'] ) ? '' : ' ep-stat--accent' ) . '"><dt>' . esc_html( $stat['label'] ) . '</dt><dd' . $count . '>' . esc_html( $stat['display'] ) . '</dd></div>';
+			$html .= '<div class="ep-stat' . ( empty( $stat['accent'] ) ? '' : ' ep-stat--accent' ) . '"><span class="ep-k">' . esc_html( $stat['label'] ) . '</span><span class="ep-v"' . $count . '>' . esc_html( $stat['display'] ) . '</span></div>';
 		}
-		return $html . '</dl>';
+		return $html . '</div>';
 	}
 
 	private static function meta_line( array $d ) {
@@ -320,10 +321,75 @@ class EP_Render {
 		return $html . '</article>';
 	}
 
+	/* Les blocs ci-dessous utilisent des div/span (et non dl/ol) pour ne pas hériter des styles de listes des thèmes. */
+
+	private static function specs_html( array $d, $with_statut ) {
+		$specs = array_filter(
+			array(
+				__( 'Race', 'ecurie-prestige' )         => $d['race'],
+				__( 'Sexe', 'ecurie-prestige' )         => $d['sexe_label'],
+				__( 'Robe', 'ecurie-prestige' )         => $d['robe'],
+				__( 'Naissance', 'ecurie-prestige' )    => $d['naissance'] ? $d['naissance'] . ( $d['age'] ? ' (' . $d['age'] . ')' : '' ) : '',
+				__( 'Aptitude', 'ecurie-prestige' )     => $d['aptitude'],
+				__( 'Statut', 'ecurie-prestige' )       => $with_statut ? $d['statut_label'] : '',
+				__( 'Entraîneur', 'ecurie-prestige' )   => $d['entraineur'],
+				__( 'Jockey', 'ecurie-prestige' )       => $d['jockey'],
+				__( 'Propriétaire', 'ecurie-prestige' ) => $d['proprietaire'],
+				__( 'Éleveur', 'ecurie-prestige' )      => $d['eleveur'],
+			)
+		);
+		if ( ! $specs ) {
+			return '';
+		}
+		$html = '<section class="ep-fiche__section"><h3 class="ep-fiche__h">' . esc_html__( 'Caractéristiques', 'ecurie-prestige' ) . '</h3><div class="ep-specs">';
+		foreach ( $specs as $label => $value ) {
+			$html .= '<div class="ep-specs__row"><span class="ep-k">' . esc_html( $label ) . '</span><span class="ep-v">' . esc_html( $value ) . '</span></div>';
+		}
+		return $html . '</div></section>';
+	}
+
+	private static function pedigree_html( array $d ) {
+		if ( ! $d['pere'] && ! $d['mere'] ) {
+			return '';
+		}
+		$html  = '<section class="ep-fiche__section"><h3 class="ep-fiche__h">' . esc_html__( 'Pedigree', 'ecurie-prestige' ) . '</h3><div class="ep-pedigree">';
+		$html .= '<div class="ep-pedigree__self">' . esc_html( $d['name'] ) . '</div><div class="ep-pedigree__parents">';
+		if ( $d['pere'] ) {
+			$html .= '<div class="ep-pedigree__node"><small>' . esc_html__( 'Père', 'ecurie-prestige' ) . '</small><b>' . esc_html( $d['pere'] ) . '</b></div>';
+		}
+		if ( $d['mere'] ) {
+			$html .= '<div class="ep-pedigree__node"><small>' . esc_html__( 'Mère', 'ecurie-prestige' ) . '</small><b>' . esc_html( $d['mere'] ) . '</b>';
+			if ( $d['pere_mere'] ) {
+				/* translators: %s : nom du père de mère */
+				$html .= '<em>' . esc_html( sprintf( __( 'par %s', 'ecurie-prestige' ), $d['pere_mere'] ) ) . '</em>';
+			}
+			$html .= '</div>';
+		}
+		return $html . '</div></div></section>';
+	}
+
+	private static function palmares_html( array $d ) {
+		if ( ! $d['results'] ) {
+			return '';
+		}
+		$html = '<section class="ep-fiche__section"><h3 class="ep-fiche__h">' . esc_html__( 'Palmarès', 'ecurie-prestige' ) . '</h3><div class="ep-palmares" role="list">';
+		foreach ( $d['results'] as $row ) {
+			$win   = (bool) preg_match( '/^\s*(1er|1re|1ère|1st|1|vainqueur)\b/iu', $row['rank'] );
+			$html .= '<div role="listitem" class="ep-palmares__row' . ( $win ? ' is-win' : '' ) . '"><span class="ep-palmares__year">' . esc_html( $row['year'] ) . '</span>';
+			$html .= '<span class="ep-palmares__race"><b>' . esc_html( $row['race'] ) . '</b>' . ( $row['place'] ? '<small>' . esc_html( $row['place'] ) . '</small>' : '' ) . '</span>';
+			$html .= '<span class="ep-palmares__rank">' . esc_html( $row['rank'] ) . '</span></div>';
+		}
+		return $html . '</div></section>';
+	}
+
+	private static function video_button( array $d ) {
+		return $d['video'] ? '<a class="ep-btn ep-btn--ghost" href="' . esc_url( $d['video'] ) . '" target="_blank" rel="noopener">' . self::icon( 'play' ) . esc_html__( 'Voir la vidéo', 'ecurie-prestige' ) . '</a>' : '';
+	}
+
 	/**
 	 * Fiche détaillée.
 	 *
-	 * @param string $context modal | single.
+	 * @param string $context modal (fenêtre) | single (ajoutée au contenu, thèmes « blocs »).
 	 */
 	public static function fiche( array $d, $context = 'modal' ) {
 		$single = 'single' === $context;
@@ -347,80 +413,96 @@ class EP_Render {
 		}
 
 		$html .= self::stats_html( self::stats( $d ), 'ep-fiche__stats', true );
-
 		if ( ! $single && $d['bio'] ) {
 			$html .= '<div class="ep-fiche__bio">' . $d['bio'] . '</div>';
 		}
-
-		// Caractéristiques.
-		$specs = array(
-			__( 'Race', 'ecurie-prestige' )         => $d['race'],
-			__( 'Sexe', 'ecurie-prestige' )         => $d['sexe_label'],
-			__( 'Robe', 'ecurie-prestige' )         => $d['robe'],
-			__( 'Naissance', 'ecurie-prestige' )    => $d['naissance'] ? $d['naissance'] . ( $d['age'] ? ' (' . $d['age'] . ')' : '' ) : '',
-			__( 'Aptitude', 'ecurie-prestige' )     => $d['aptitude'],
-			__( 'Statut', 'ecurie-prestige' )       => $single ? $d['statut_label'] : '',
-			__( 'Entraîneur', 'ecurie-prestige' )   => $d['entraineur'],
-			__( 'Jockey', 'ecurie-prestige' )       => $d['jockey'],
-			__( 'Propriétaire', 'ecurie-prestige' ) => $d['proprietaire'],
-			__( 'Éleveur', 'ecurie-prestige' )      => $d['eleveur'],
-		);
-		$specs = array_filter( $specs );
-		if ( $specs ) {
-			$html .= '<section class="ep-fiche__section"><h3 class="ep-fiche__h">' . esc_html__( 'Caractéristiques', 'ecurie-prestige' ) . '</h3><dl class="ep-specs">';
-			foreach ( $specs as $label => $value ) {
-				$html .= '<div><dt>' . esc_html( $label ) . '</dt><dd>' . esc_html( $value ) . '</dd></div>';
-			}
-			$html .= '</dl></section>';
-		}
-
-		// Pedigree.
-		if ( $d['pere'] || $d['mere'] ) {
-			$html .= '<section class="ep-fiche__section"><h3 class="ep-fiche__h">' . esc_html__( 'Pedigree', 'ecurie-prestige' ) . '</h3><div class="ep-pedigree">';
-			$html .= '<div class="ep-pedigree__self">' . esc_html( $d['name'] ) . '</div><div class="ep-pedigree__parents">';
-			if ( $d['pere'] ) {
-				$html .= '<div class="ep-pedigree__node"><small>' . esc_html__( 'Père', 'ecurie-prestige' ) . '</small><b>' . esc_html( $d['pere'] ) . '</b></div>';
-			}
-			if ( $d['mere'] ) {
-				$html .= '<div class="ep-pedigree__node"><small>' . esc_html__( 'Mère', 'ecurie-prestige' ) . '</small><b>' . esc_html( $d['mere'] ) . '</b>';
-				if ( $d['pere_mere'] ) {
-					/* translators: %s : nom du père de mère */
-					$html .= '<em>' . esc_html( sprintf( __( 'par %s', 'ecurie-prestige' ), $d['pere_mere'] ) ) . '</em>';
-				}
-				$html .= '</div>';
-			}
-			$html .= '</div></div></section>';
-		}
-
-		// Palmarès.
-		if ( $d['results'] ) {
-			$html .= '<section class="ep-fiche__section"><h3 class="ep-fiche__h">' . esc_html__( 'Palmarès', 'ecurie-prestige' ) . '</h3><ol class="ep-palmares">';
-			foreach ( $d['results'] as $row ) {
-				$win   = (bool) preg_match( '/^\s*(1er|1re|1ère|1st|1|vainqueur)\b/iu', $row['rank'] );
-				$html .= '<li class="' . ( $win ? 'is-win' : '' ) . '"><span class="ep-palmares__year">' . esc_html( $row['year'] ) . '</span>';
-				$html .= '<span class="ep-palmares__race"><b>' . esc_html( $row['race'] ) . '</b>' . ( $row['place'] ? '<small>' . esc_html( $row['place'] ) . '</small>' : '' ) . '</span>';
-				$html .= '<span class="ep-palmares__rank">' . esc_html( $row['rank'] ) . '</span></li>';
-			}
-			$html .= '</ol></section>';
-		}
-
+		$html .= self::specs_html( $d, $single ) . self::pedigree_html( $d ) . self::palmares_html( $d );
 		if ( $single ) {
 			$html .= self::gallery_html( $d, false );
 		}
 
-		// Actions.
-		$actions = '';
-		if ( $d['video'] ) {
-			$actions .= '<a class="ep-btn ep-btn--ghost" href="' . esc_url( $d['video'] ) . '" target="_blank" rel="noopener">' . self::icon( 'play' ) . esc_html__( 'Voir la vidéo', 'ecurie-prestige' ) . '</a>';
-		}
+		$actions = self::video_button( $d );
 		if ( ! $single ) {
 			$actions .= '<a class="ep-btn" href="' . esc_url( $d['url'] ) . '">' . esc_html__( 'Page complète', 'ecurie-prestige' ) . self::icon( 'arrow' ) . '</a>';
 		}
 		if ( $actions ) {
 			$html .= '<div class="ep-fiche__actions">' . $actions . '</div>';
 		}
-
 		return $html . '</div></div>';
+	}
+
+	/** Page complète d’un cheval : bandeau, portrait, palmarès, galerie, fiche technique et navigation. */
+	public static function single_page( $post_id ) {
+		$d = self::data( $post_id );
+		if ( ! $d ) {
+			return '';
+		}
+		self::enqueue();
+		$theme   = 'dark' === apply_filters( 'ecurie_prestige_single_theme', 'light', $d['id'] ) ? 'dark' : 'light';
+		$archive = get_post_type_archive_link( EP_CPT::POST_TYPE );
+		$archive = apply_filters( 'ecurie_prestige_archive_url', $archive, $d['id'] );
+		$kicker  = implode( ' — ', array_filter( array( $d['terms'] ? implode( ' / ', $d['terms'] ) : '', $d['statut_label'] ) ) );
+
+		// Contenu rédigé dans l’éditeur (y compris avec Elementor), sans ré-ajouter la fiche automatique.
+		self::$in_single = true;
+		$bio             = apply_filters( 'the_content', get_the_content( null, false, $d['id'] ) );
+		self::$in_single = false;
+
+		$html  = '<div class="ep ep--' . $theme . ' ep-page" data-ep="page">';
+
+		// Bandeau.
+		$html .= '<section class="ep-hero"><div class="ep-hero__ghost" aria-hidden="true"><span>' . esc_html( $d['name'] ) . '</span></div><div class="ep-hero__inner"><div class="ep-hero__text">';
+		if ( $archive ) {
+			$html .= '<a class="ep-hero__back" href="' . esc_url( $archive ) . '">' . self::icon( 'prev' ) . esc_html__( 'Tous les chevaux', 'ecurie-prestige' ) . '</a>';
+		}
+		if ( $kicker ) {
+			$html .= '<p class="ep-eyebrow">' . esc_html( $kicker ) . '</p>';
+		}
+		$html .= '<h1 class="ep-hero__name">' . esc_html( $d['name'] ) . '</h1>';
+		if ( $d['surnom'] ) {
+			$html .= '<p class="ep-fiche__tagline">' . esc_html( $d['surnom'] ) . '</p>';
+		}
+		$meta = self::meta_line( $d );
+		if ( $meta ) {
+			$html .= '<p class="ep-hero__meta">' . $meta . '</p>';
+		}
+		$html .= self::stats_html( self::stats( $d ), 'ep-fiche__stats ep-hero__stats', true );
+		$html .= '</div><div class="ep-hero__media">' . self::image( $d, '1536x1536', 'ep-img', '(max-width: 900px) 100vw, 45vw' ) . '<span class="ep-featured__frame" aria-hidden="true"></span></div></div></section>';
+
+		// Corps : récit à gauche, fiche technique à droite.
+		$main = '';
+		if ( '' !== trim( wp_strip_all_tags( $bio ) ) || false !== strpos( $bio, '<img' ) ) {
+			$main .= '<section class="ep-fiche__section ep-page__bio"><h2 class="ep-fiche__h">' . esc_html__( 'Portrait', 'ecurie-prestige' ) . '</h2><div class="ep-page__text">' . $bio . '</div></section>';
+		}
+		$main .= self::palmares_html( $d ) . self::gallery_html( $d, false );
+		$video = self::video_button( $d );
+		if ( $video ) {
+			$main .= '<div class="ep-fiche__actions">' . $video . '</div>';
+		}
+		$aside = self::specs_html( $d, false ) . self::pedigree_html( $d );
+
+		$html .= '<div class="ep-page__body' . ( $aside && $main ? '' : ' ep-page__body--single' ) . '">';
+		if ( $main ) {
+			$html .= '<div class="ep-page__main">' . $main . '</div>';
+		}
+		if ( $aside ) {
+			$html .= '<aside class="ep-page__aside"><div class="ep-page__card">' . $aside . '</div></aside>';
+		}
+		$html .= '</div>';
+
+		// Navigation entre chevaux.
+		$ids = wp_list_pluck( self::query( wp_parse_args( array( 'number' => 0 ), self::defaults() ) ), 'ID' );
+		$pos = array_search( $d['id'], $ids, true );
+		if ( false !== $pos && count( $ids ) > 1 ) {
+			$n    = count( $ids );
+			$prev = $ids[ ( $pos - 1 + $n ) % $n ];
+			$next = $ids[ ( $pos + 1 ) % $n ];
+			$html .= '<nav class="ep-page__nav" aria-label="' . esc_attr__( 'Autres chevaux', 'ecurie-prestige' ) . '">';
+			$html .= '<a class="ep-page__navlink" href="' . esc_url( get_permalink( $prev ) ) . '"><small>' . self::icon( 'prev' ) . esc_html__( 'Précédent', 'ecurie-prestige' ) . '</small><b>' . esc_html( get_the_title( $prev ) ) . '</b></a>';
+			$html .= '<a class="ep-page__navlink ep-page__navlink--next" href="' . esc_url( get_permalink( $next ) ) . '"><small>' . esc_html__( 'Suivant', 'ecurie-prestige' ) . self::icon( 'arrow' ) . '</small><b>' . esc_html( get_the_title( $next ) ) . '</b></a>';
+			$html .= '</nav>';
+		}
+		return $html . '</div>';
 	}
 
 	private static function gallery_html( array $d, $thumbs ) {
@@ -637,9 +719,27 @@ class EP_Render {
 		return $html . '</div>';
 	}
 
-	/** Ajoute la fiche technique sous le contenu de la page d’un cheval. */
+	/** Vrai si la page d’un cheval est rendue par le gabarit du plugin. */
+	public static function uses_page_template() {
+		$block_theme = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
+		return (bool) apply_filters( 'ecurie_prestige_single_template', ! $block_theme );
+	}
+
+	/** Remplace le gabarit du thème par la page « cheval » du plugin (thèmes classiques). */
+	public static function single_template( $template ) {
+		if ( ! is_singular( EP_CPT::POST_TYPE ) || ! self::uses_page_template() ) {
+			return $template;
+		}
+		// Un gabarit dédié dans le thème reste prioritaire.
+		if ( 0 === strpos( basename( (string) $template ), 'single-' . EP_CPT::POST_TYPE ) ) {
+			return $template;
+		}
+		return EP_DIR . 'templates/single-cheval.php';
+	}
+
+	/** Thèmes « blocs » : ajoute la fiche technique sous le contenu de la page d’un cheval. */
 	public static function single_content( $content ) {
-		if ( self::$in_single || ! is_singular( EP_CPT::POST_TYPE ) || ! in_the_loop() || ! is_main_query() ) {
+		if ( self::$in_single || ! is_singular( EP_CPT::POST_TYPE ) || ! in_the_loop() || ! is_main_query() || self::uses_page_template() ) {
 			return $content;
 		}
 		if ( ! apply_filters( 'ecurie_prestige_single_fiche', true, get_the_ID() ) ) {

@@ -16,7 +16,7 @@
 	/* ---------- Apparition au défilement + compteurs ---------- */
 
 	function setupReveal(root) {
-		var items = root.querySelectorAll('.ep-head, .ep-card:not(.ep-slide), .ep-showcase, .ep-featured__media, .ep-featured__content > *');
+		var items = root.querySelectorAll('.ep-head, .ep-card:not(.ep-slide), .ep-showcase, .ep-featured__media, .ep-featured__content > *, .ep-hero__text > *, .ep-hero__media, .ep-page__card');
 		var counters = root.querySelectorAll('[data-ep-count]');
 
 		if (reduceMotion || inEditor() || !('IntersectionObserver' in window)) {
@@ -418,11 +418,28 @@
 		dialog.addEventListener('close', onClose);
 	}
 
+	/* ---------- Page d’un cheval : pleine largeur, quel que soit le conteneur du thème ---------- */
+
+	function setupPage(root) {
+		if (root.getAttribute('data-ep') !== 'page') { return; }
+		function fit() {
+			root.style.marginLeft = '';
+			root.style.removeProperty('--ep-vw');
+			var left = root.getBoundingClientRect().left;
+			root.style.setProperty('--ep-vw', document.documentElement.clientWidth + 'px');
+			root.style.marginLeft = (-left) + 'px';
+		}
+		fit();
+		window.addEventListener('resize', fit);
+		window.addEventListener('load', fit);
+	}
+
 	/* ---------- Initialisation ---------- */
 
 	function init(root) {
 		if (!root || root.dataset.epReady) { return; }
 		root.dataset.epReady = '1';
+		setupPage(root);
 		setupReveal(root);
 		setupFilters(root);
 		setupCarousel(root);
