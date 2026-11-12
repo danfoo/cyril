@@ -2,7 +2,8 @@
 /**
  * Shortcodes — utilisables sans Elementor.
  *
- * [ecurie_chevaux mise_en_page="grille|mosaique|carrousel" style="prestige|editorial" theme="sombre|clair"
+ * [ecurie_chevaux mise_en_page="grille|mosaique|carrousel|cinema" style="prestige|editorial" theme="sombre|clair"
+ *                 defilement_auto="oui" duree="6" (mise_en_page="cinema" : carrousel animé)
  *                 colonnes="3" nombre="12" discipline="plat,obstacle" vedettes="non" filtres="oui"
  *                 tri="ordre|nom|date|victoires|gains|aleatoire" clic="fiche|page|aucun" titre="" surtitre=""]
  * [ecurie_cheval id="12" theme="sombre" inverse="non"]
@@ -49,6 +50,8 @@ class EP_Shortcodes {
 				'titre'        => '',
 				'intro'        => '',
 				'alignement'   => 'gauche',
+				'defilement_auto' => 'oui',
+				'duree'        => 6,
 			),
 			$atts,
 			'ecurie_chevaux'
@@ -58,7 +61,9 @@ class EP_Shortcodes {
 		$order   = $a['ordre'] ? strtoupper( $a['ordre'] ) : ( in_array( $orderby, array( 'victoires', 'gains', 'date' ), true ) ? 'DESC' : 'ASC' );
 
 		$args = array(
-			'layout'      => self::map( $a['mise_en_page'], array( 'grille' => 'grid', 'mosaique' => 'mosaic', 'carrousel' => 'carousel' ), 'grid' ),
+			'layout'      => self::map( $a['mise_en_page'], array( 'grille' => 'grid', 'mosaique' => 'mosaic', 'carrousel' => 'carousel', 'cinema' => 'showcase' ), 'grid' ),
+			'autoplay'    => self::bool( $a['defilement_auto'] ),
+			'autoplay_delay' => (float) $a['duree'],
 			'skin'        => self::map( $a['style'], array( 'prestige' => 'prestige', 'editorial' => 'editorial' ), 'prestige' ),
 			'theme'       => self::map( $a['theme'], array( 'sombre' => 'dark', 'clair' => 'light' ), 'dark' ),
 			'background'  => self::bool( $a['fond'] ),

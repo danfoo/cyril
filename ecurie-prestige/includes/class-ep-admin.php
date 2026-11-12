@@ -78,9 +78,10 @@ class EP_Admin {
 
 				<div class="card">
 					<h2>2. <?php esc_html_e( 'Avec Elementor', 'ecurie-prestige' ); ?></h2>
-					<p><?php esc_html_e( 'Dans l’éditeur Elementor, recherchez « Écurie » : trois widgets sont disponibles dans la catégorie « Écurie Prestige ».', 'ecurie-prestige' ); ?></p>
+					<p><?php esc_html_e( 'Dans l’éditeur Elementor, recherchez « Écurie » : quatre widgets sont disponibles dans la catégorie « Écurie Prestige ».', 'ecurie-prestige' ); ?></p>
 					<ul class="ul-disc">
 						<li><strong><?php esc_html_e( 'Chevaux — Grille', 'ecurie-prestige' ); ?></strong> : <?php esc_html_e( 'grille ou mosaïque, filtres par discipline, fiche en fenêtre.', 'ecurie-prestige' ); ?></li>
+						<li><strong><?php esc_html_e( 'Chevaux — Carrousel cinéma', 'ecurie-prestige' ); ?></strong> : <?php esc_html_e( 'le grand spectacle : cheval central en majesté, défilement automatique, boucle infinie.', 'ecurie-prestige' ); ?></li>
 						<li><strong><?php esc_html_e( 'Chevaux — Carrousel', 'ecurie-prestige' ); ?></strong> : <?php esc_html_e( 'défilement horizontal fluide, idéal en page d’accueil.', 'ecurie-prestige' ); ?></li>
 						<li><strong><?php esc_html_e( 'Cheval vedette', 'ecurie-prestige' ); ?></strong> : <?php esc_html_e( 'grande mise en avant d’un champion avec ses statistiques.', 'ecurie-prestige' ); ?></li>
 					</ul>
@@ -91,9 +92,10 @@ class EP_Admin {
 					<h2>3. <?php esc_html_e( 'Sans Elementor : les shortcodes', 'ecurie-prestige' ); ?></h2>
 					<p><code>[ecurie_chevaux]</code></p>
 					<p><code>[ecurie_chevaux mise_en_page="mosaique" theme="clair" colonnes="3" titre="Nos champions" surtitre="L’écurie"]</code></p>
+					<p><code>[ecurie_chevaux mise_en_page="cinema" duree="6"]</code></p>
 					<p><code>[ecurie_chevaux mise_en_page="carrousel" discipline="plat" tri="victoires"]</code></p>
 					<p><code>[ecurie_cheval id="123" clic="fiche"]</code></p>
-					<p class="description"><?php esc_html_e( 'Options : mise_en_page (grille, mosaique, carrousel), style (prestige, editorial), theme (sombre, clair), fond, colonnes, nombre, discipline, vedettes, ids, filtres, stats, tri (ordre, nom, date, victoires, gains, aleatoire), clic (fiche, page, aucun), surtitre, titre, intro, alignement.', 'ecurie-prestige' ); ?></p>
+					<p class="description"><?php esc_html_e( 'Options : mise_en_page (grille, mosaique, carrousel, cinema), defilement_auto, duree, style (prestige, editorial), theme (sombre, clair), fond, colonnes, nombre, discipline, vedettes, ids, filtres, stats, tri (ordre, nom, date, victoires, gains, aleatoire), clic (fiche, page, aucun), surtitre, titre, intro, alignement.', 'ecurie-prestige' ); ?></p>
 				</div>
 			</div>
 		</div>

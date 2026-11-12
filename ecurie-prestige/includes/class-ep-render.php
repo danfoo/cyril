@@ -35,7 +35,10 @@ class EP_Render {
 
 	public static function defaults() {
 		return array(
-			'layout'       => 'grid',      // grid | mosaic | carousel.
+			'layout'       => 'grid',      // grid | mosaic | carousel | showcase.
+			'autoplay'     => true,        // showcase : défilement automatique.
+			'autoplay_delay' => 6,         // showcase : secondes par cheval.
+			'ghost'        => true,        // showcase : nom géant en filigrane.
 			'skin'         => 'prestige',  // prestige | editorial.
 			'theme'        => 'dark',      // dark | light.
 			'background'   => true,
@@ -277,7 +280,7 @@ class EP_Render {
 		$badge = $d['terms'] ? reset( $d['terms'] ) : '';
 		$meta  = $args['show_meta'] ? self::meta_line( $d ) : '';
 
-		$html  = '<article class="ep-card" data-ep-terms="' . esc_attr( implode( ' ', array_keys( $d['terms'] ) ) ) . '" style="--ep-i:' . (int) $index . '">';
+		$html  = '<article class="ep-card' . ( 'showcase' === $args['layout'] ? ' ep-slide' : '' ) . '" data-ep-terms="' . esc_attr( implode( ' ', array_keys( $d['terms'] ) ) ) . '" style="--ep-i:' . (int) $index . '">';
 		$html .= '<' . $tag . ' ' . $attrs . '>';
 		$html .= '<span class="ep-card__media">' . self::image( $d, 'large', 'ep-img', '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw' ) . '</span>';
 		$html .= '<span class="ep-card__shade" aria-hidden="true"></span>';
@@ -502,8 +505,9 @@ class EP_Render {
 		$posts = self::query( $args );
 		self::enqueue();
 
-		$layout = in_array( $args['layout'], array( 'grid', 'mosaic', 'carousel' ), true ) ? $args['layout'] : 'grid';
-		$skin   = 'editorial' === $args['skin'] ? 'editorial' : 'prestige';
+		$layout = in_array( $args['layout'], array( 'grid', 'mosaic', 'carousel', 'showcase' ), true ) ? $args['layout'] : 'grid';
+		$skin   = 'editorial' === $args['skin'] && 'showcase' !== $layout ? 'editorial' : 'prestige';
+		$args['layout'] = $layout;
 		$style  = (int) $args['columns'] > 0 ? ' style="--ep-cols-d:' . (int) $args['columns'] . ';--ep-per-view-d:' . (int) $args['columns'] . '"' : '';
 
 		$html = '<div class="' . esc_attr( self::wrapper_classes( $args, 'ep-collection' ) ) . '" data-ep="collection"' . $style . '>';
@@ -536,7 +540,17 @@ class EP_Render {
 			$html .= '</div>';
 		}
 
-		if ( 'carousel' === $layout ) {
+		if ( 'showcase' === $layout ) {
+			$delay = max( 2, min( 30, (float) $args['autoplay_delay'] ) );
+			$html .= '<div class="ep-showcase ep-skin-prestige" style="--ep-autoplay:' . esc_attr( $delay ) . 's"' . ( $args['autoplay'] ? ' data-ep-autoplay' : '' ) . '>';
+			if ( $args['ghost'] ) {
+				$html .= '<div class="ep-showcase__ghost" aria-hidden="true"><span></span></div>';
+			}
+			$html .= '<div class="ep-showcase__stage" role="group" aria-roledescription="' . esc_attr__( 'carrousel', 'ecurie-prestige' ) . '" aria-label="' . esc_attr__( 'Les chevaux de l’écurie', 'ecurie-prestige' ) . '"><div class="ep-showcase__sizer" aria-hidden="true"></div>' . $cards . '</div>';
+			$html .= '<div class="ep-showcase__ui"><div class="ep-showcase__count"><b aria-live="polite"></b><span class="ep-showcase__bar" aria-hidden="true"><span></span></span><i></i></div>';
+			$html .= '<button type="button" class="ep-carousel__btn" data-ep-go="-1" aria-label="' . esc_attr__( 'Cheval précédent', 'ecurie-prestige' ) . '">' . self::icon( 'prev' ) . '</button>';
+			$html .= '<button type="button" class="ep-carousel__btn" data-ep-go="1" aria-label="' . esc_attr__( 'Cheval suivant', 'ecurie-prestige' ) . '">' . self::icon( 'arrow' ) . '</button></div></div>';
+		} elseif ( 'carousel' === $layout ) {
 			$html .= '<div class="ep-carousel ep-skin-' . $skin . '"><div class="ep-carousel__track" tabindex="0">' . $cards . '</div>';
 			$html .= '<div class="ep-carousel__ui"><div class="ep-carousel__progress" aria-hidden="true"><span></span></div>';
 			$html .= '<button type="button" class="ep-carousel__btn" data-ep-scroll="-1" aria-label="' . esc_attr__( 'Précédent', 'ecurie-prestige' ) . '">' . self::icon( 'prev' ) . '</button>';

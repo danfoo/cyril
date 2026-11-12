@@ -30,9 +30,11 @@ class EP_Elementor {
 		require_once EP_DIR . 'includes/widgets/class-ep-widget-base.php';
 		require_once EP_DIR . 'includes/widgets/class-ep-widget-grid.php';
 		require_once EP_DIR . 'includes/widgets/class-ep-widget-carousel.php';
+		require_once EP_DIR . 'includes/widgets/class-ep-widget-showcase.php';
 		require_once EP_DIR . 'includes/widgets/class-ep-widget-featured.php';
 
 		$widgets_manager->register( new EP_Widget_Grid() );
+		$widgets_manager->register( new EP_Widget_Showcase() );
 		$widgets_manager->register( new EP_Widget_Carousel() );
 		$widgets_manager->register( new EP_Widget_Featured() );
 	}

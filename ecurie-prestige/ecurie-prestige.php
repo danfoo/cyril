@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name:       Écurie Prestige
- * Description:       Présentez les chevaux de votre écurie de courses avec des widgets Elementor haut de gamme : grille, mosaïque, carrousel, cheval vedette et fiche détaillée (pedigree, performances, palmarès).
- * Version:           1.0.0
+ * Description:       Présentez les chevaux de votre écurie de courses avec des widgets Elementor haut de gamme : grille, mosaïque, carrousel cinéma animé, cheval vedette et fiche détaillée (pedigree, performances, palmarès).
+ * Version:           1.1.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Écurie Prestige
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'EP_VERSION', '1.0.0' );
+define( 'EP_VERSION', '1.1.0' );
 define( 'EP_FILE', __FILE__ );
 define( 'EP_DIR', plugin_dir_path( __FILE__ ) );
 define( 'EP_URL', plugin_dir_url( __FILE__ ) );

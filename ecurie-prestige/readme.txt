@@ -2,7 +2,7 @@
 Requires at least: 6.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 
 Présentez les chevaux de votre écurie de courses avec des widgets Elementor haut de gamme.
@@ -11,7 +11,7 @@ Présentez les chevaux de votre écurie de courses avec des widgets Elementor ha
 
 * Type de contenu « Cheval » (menu Écurie) : photo, biographie, identité, pedigree, entourage, performances, palmarès, galerie, vidéo.
 * Taxonomie « Disciplines » (Plat, Obstacle, Trot…) avec filtres automatiques.
-* 3 widgets Elementor (catégorie « Écurie Prestige ») : Chevaux — Grille (grille ou mosaïque), Chevaux — Carrousel, Cheval vedette.
+* 4 widgets Elementor (catégorie « Écurie Prestige ») : Chevaux — Grille (grille ou mosaïque), Chevaux — Carrousel cinéma (cheval central en majesté, défilement automatique, boucle infinie, glisser au doigt), Chevaux — Carrousel, Cheval vedette.
 * Fiche détaillée en fenêtre (statistiques animées, caractéristiques, pedigree, palmarès, galerie) et fiche technique ajoutée automatiquement à la page de chaque cheval.
 * Thème sombre « noir & or » ou clair « ivoire & or », couleur d’accent, polices, colonnes, format des photos et arrondis réglables dans l’onglet Style.
 * Shortcodes [ecurie_chevaux] et [ecurie_cheval] pour une utilisation sans Elementor.
@@ -34,6 +34,9 @@ Variables CSS : --ep-accent, --ep-bg, --ep-surface, --ep-text, --ep-radius, --ep
 Police Cormorant Garamond (Christian Thalmann, Catharsis Fonts) — SIL Open Font License 1.1.
 
 == Changelog ==
+
+= 1.1.0 =
+* Nouveau widget « Chevaux — Carrousel cinéma » et shortcode [ecurie_chevaux mise_en_page="cinema"].
 
 = 1.0.0 =
 * Première version.

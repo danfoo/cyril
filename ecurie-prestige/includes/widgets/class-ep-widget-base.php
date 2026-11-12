@@ -131,9 +131,9 @@ abstract class EP_Widget_Base extends \Elementor\Widget_Base {
 		$this->end_controls_section();
 	}
 
-	protected function register_card_controls() {
+	protected function register_card_controls( $with_skin = true ) {
 		$this->start_controls_section( 'section_cards', array( 'label' => __( 'Cartes', 'ecurie-prestige' ) ) );
-		$this->add_control(
+		$with_skin && $this->add_control(
 			'skin',
 			array(
 				'label'   => __( 'Style de carte', 'ecurie-prestige' ),
