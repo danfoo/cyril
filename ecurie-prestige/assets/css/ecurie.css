@@ -620,6 +620,8 @@
 	white-space: nowrap;
 }
 
+.ep.ep .ep-stat .ep-unit { margin-left: .55em; color: var(--ep-muted); font-family: var(--ep-font-body); font-size: 11px; font-weight: 600; letter-spacing: .18em; }
+
 /* ---------- Fenêtre de fiche ---------- */
 
 html.ep-lock { overflow: hidden; }

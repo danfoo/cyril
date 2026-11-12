@@ -192,16 +192,22 @@ class EP_Render {
 		return $rows;
 	}
 
-	/** 1 250 000 → « 1,25 M€ » ; 86 500 → « 86,5 k€ ». */
+	/** Devise affichée après les gains (modifiable avec le filtre « ecurie_prestige_currency »). */
+	public static function currency() {
+		return (string) apply_filters( 'ecurie_prestige_currency', 'FCFA' );
+	}
+
+	/** Montant abrégé, sans la devise : 25 000 000 → « 25 M » ; 1 250 000 000 → « 1,25 Md » ; 850 000 → « 850 000 ». */
 	public static function compact_money( $amount ) {
 		$amount = (float) $amount;
-		if ( $amount >= 1000000 ) {
-			return number_format_i18n( $amount / 1000000, fmod( $amount, 1000000 ) ? ( fmod( $amount, 100000 ) ? 2 : 1 ) : 0 ) . ' M€';
+		foreach ( array( 'Md' => 1000000000, 'M' => 1000000 ) as $suffix => $unit ) {
+			if ( $amount >= $unit ) {
+				$value    = round( $amount / $unit, 2 );
+				$decimals = floor( $value ) == $value ? 0 : ( round( $value, 1 ) == $value ? 1 : 2 ); // phpcs:ignore Universal.Operators.StrictComparisons
+				return number_format_i18n( $value, $decimals ) . ' ' . $suffix;
+			}
 		}
-		if ( $amount >= 10000 ) {
-			return number_format_i18n( $amount / 1000, fmod( $amount, 1000 ) >= 100 ? 1 : 0 ) . ' k€';
-		}
-		return number_format_i18n( $amount ) . ' €';
+		return number_format_i18n( $amount );
 	}
 
 	/** Statistiques affichables (seules les valeurs renseignées sont retournées). */
@@ -217,7 +223,7 @@ class EP_Render {
 			$stats[] = array( 'label' => _n( 'Place', 'Places', (int) $d['places'], 'ecurie-prestige' ), 'value' => (int) $d['places'], 'display' => number_format_i18n( (int) $d['places'] ) );
 		}
 		if ( $with_gains && (int) $d['gains'] > 0 ) {
-			$stats[] = array( 'label' => __( 'Gains', 'ecurie-prestige' ), 'value' => null, 'display' => self::compact_money( $d['gains'] ) );
+			$stats[] = array( 'label' => __( 'Gains', 'ecurie-prestige' ), 'value' => null, 'display' => self::compact_money( $d['gains'] ), 'unit' => self::currency() );
 		}
 		return $stats;
 	}
@@ -258,7 +264,7 @@ class EP_Render {
 		$html = '<div class="' . esc_attr( $class ) . '">';
 		foreach ( $stats as $stat ) {
 			$count = $animate && null !== $stat['value'] ? ' data-ep-count="' . esc_attr( $stat['value'] ) . '"' : '';
-			$html .= '<div class="ep-stat' . ( empty( $stat['accent'] ) ? '' : ' ep-stat--accent' ) . '"><span class="ep-k">' . esc_html( $stat['label'] ) . '</span><span class="ep-v"' . $count . '>' . esc_html( $stat['display'] ) . '</span></div>';
+			$html .= '<div class="ep-stat' . ( empty( $stat['accent'] ) ? '' : ' ep-stat--accent' ) . '"><span class="ep-k">' . esc_html( $stat['label'] ) . '</span><span class="ep-v"' . $count . '>' . esc_html( $stat['display'] ) . ( empty( $stat['unit'] ) ? '' : '<small class="ep-unit">' . esc_html( $stat['unit'] ) . '</small>' ) . '</span></div>';
 		}
 		return $html . '</div>';
 	}

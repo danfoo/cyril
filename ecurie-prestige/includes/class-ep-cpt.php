@@ -139,7 +139,7 @@ class EP_CPT {
 					'courses'   => array( 'label' => __( 'Courses courues', 'ecurie-prestige' ), 'type' => 'number' ),
 					'victoires' => array( 'label' => __( 'Victoires', 'ecurie-prestige' ), 'type' => 'number' ),
 					'places'    => array( 'label' => __( 'Places (podiums)', 'ecurie-prestige' ), 'type' => 'number' ),
-					'gains'     => array( 'label' => __( 'Gains (€)', 'ecurie-prestige' ), 'type' => 'number' ),
+					'gains'     => array( 'label' => __( 'Gains (FCFA)', 'ecurie-prestige' ), 'type' => 'number' ),
 					'palmares'  => array(
 						'label'       => __( 'Palmarès', 'ecurie-prestige' ),
 						'type'        => 'textarea',
