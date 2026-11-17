@@ -404,6 +404,7 @@ function gsf_admin_page() {
 			<h2><?php esc_html_e( 'Shortcodes', 'galsenfoot-league' ); ?></h2>
 			<p><?php esc_html_e( 'Tous ces blocs existent aussi en widgets Elementor (catégorie « GalsenFoot »).', 'galsenfoot-league' ); ?></p>
 			<table class="widefat striped" style="max-width:900px"><tbody>
+				<tr><td><code>[gsf_match_center]</code></td><td><?php esc_html_e( 'Centre des matchs à onglets : L’affiche, Derniers résultats, Prochains matchs. Options : default="results", results="6", fixtures="6", club, link', 'galsenfoot-league' ); ?></td></tr>
 				<tr><td><code>[gsf_standings]</code></td><td><?php esc_html_e( 'Classement. Options : limit="5" compact="1" form="0"', 'galsenfoot-league' ); ?></td></tr>
 				<tr><td><code>[gsf_matches type="fixtures"]</code></td><td><?php esc_html_e( 'Calendrier. type = fixtures, results, live ou all. Options : limit, club, matchday', 'galsenfoot-league' ); ?></td></tr>
 				<tr><td><code>[gsf_ticker]</code></td><td><?php esc_html_e( 'Bandeau défilant des scores et prochains matchs', 'galsenfoot-league' ); ?></td></tr>

@@ -273,9 +273,7 @@ function gf_setup_elementor_home() {
 				array(
 					66,
 					array(
-						$widget( 'gsf-next-match', array( 'title' => __( 'L’affiche', 'galsenfoot' ) ) ),
-						$widget( 'gsf-matches', array( 'title' => __( 'Derniers résultats', 'galsenfoot' ), 'type' => 'results', 'limit' => 7 ) ),
-						$widget( 'gsf-matches', array( 'title' => __( 'Prochains matchs', 'galsenfoot' ), 'type' => 'fixtures', 'limit' => 7 ) ),
+						$widget( 'gsf-match-center', array( 'title' => __( 'Les matchs', 'galsenfoot' ), 'results' => 7, 'fixtures' => 7, 'link' => array( 'url' => gf_page_url( 'matches' ) ) ) ),
 					),
 				),
 				array(

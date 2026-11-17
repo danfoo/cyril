@@ -46,17 +46,9 @@ if ( $gf_ad ) {
 			<div class="gf-layout__main">
 				<div class="gf-reveal">
 					<?php
-					echo gf_heading( __( 'L’affiche', 'galsenfoot' ), gf_page_url( 'matches' ), __( 'Calendrier', 'galsenfoot' ) ); // phpcs:ignore WordPress.Security.EscapeOutput
-					echo gf_league( 'gsf_render_next_match' ); // phpcs:ignore WordPress.Security.EscapeOutput
+					echo gf_heading( __( 'Les matchs', 'galsenfoot' ), gf_page_url( 'matches' ), __( 'Calendrier', 'galsenfoot' ) ); // phpcs:ignore WordPress.Security.EscapeOutput
+					echo gf_league( 'gsf_render_match_center', array( 'results' => 7, 'fixtures' => 7, 'link' => gf_page_url( 'matches' ) ) ); // phpcs:ignore WordPress.Security.EscapeOutput
 					?>
-				</div>
-				<div class="gf-tabs gf-reveal" data-gf-tabs>
-					<div class="gf-tabs__list" role="tablist" aria-label="<?php esc_attr_e( 'Matchs', 'galsenfoot' ); ?>">
-						<button type="button" role="tab" id="gf-tab-results" aria-controls="gf-panel-results" aria-selected="true"><?php esc_html_e( 'Résultats', 'galsenfoot' ); ?></button>
-						<button type="button" role="tab" id="gf-tab-fixtures" aria-controls="gf-panel-fixtures" aria-selected="false" tabindex="-1"><?php esc_html_e( 'Prochains matchs', 'galsenfoot' ); ?></button>
-					</div>
-					<div role="tabpanel" id="gf-panel-results" aria-labelledby="gf-tab-results"><?php echo gf_league( 'gsf_render_matches', array( 'type' => 'results', 'limit' => 7 ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></div>
-					<div role="tabpanel" id="gf-panel-fixtures" aria-labelledby="gf-tab-fixtures" hidden><?php echo gf_league( 'gsf_render_matches', array( 'type' => 'fixtures', 'limit' => 7 ) ); // phpcs:ignore WordPress.Security.EscapeOutput ?></div>
 				</div>
 			</div>
 			<aside class="gf-layout__side" aria-label="<?php esc_attr_e( 'Classements', 'galsenfoot' ); ?>">

@@ -71,6 +71,28 @@ function gsf_player_photo( $player_id, $size = 'thumbnail' ) {
 }
 
 /**
+ * Last results as coloured badges (V / N / D).
+ *
+ * @param string[] $form  W|D|L, oldest first.
+ * @param string   $class Extra class.
+ * @return string
+ */
+function gsf_form_html( $form, $class = '' ) {
+	$labels = array(
+		'W' => array( 'V', __( 'Victoire', 'galsenfoot-league' ) ),
+		'D' => array( 'N', __( 'Nul', 'galsenfoot-league' ) ),
+		'L' => array( 'D', __( 'Défaite', 'galsenfoot-league' ) ),
+	);
+	$html = '';
+	foreach ( (array) $form as $result ) {
+		if ( isset( $labels[ $result ] ) ) {
+			$html .= sprintf( '<span class="gsf-form__i is-%s" title="%s">%s</span>', esc_attr( strtolower( $result ) ), esc_attr( $labels[ $result ][1] ), esc_html( $labels[ $result ][0] ) );
+		}
+	}
+	return $html ? '<span class="gsf-form ' . esc_attr( $class ) . '" aria-label="' . esc_attr__( 'Forme sur les derniers matchs', 'galsenfoot-league' ) . '">' . $html . '</span>' : '';
+}
+
+/**
  * League table.
  *
  * @param array $args Arguments.
@@ -161,18 +183,7 @@ function gsf_render_standings( $args = array() ) {
 					<td><?php echo esc_html( ( $row['gd'] > 0 ? '+' : '' ) . $row['gd'] ); ?></td>
 					<?php if ( $form ) : ?>
 						<td class="gsf-col-form gsf-hide-sm">
-							<span class="gsf-form">
-							<?php
-							$labels = array(
-								'W' => array( 'V', __( 'Victoire', 'galsenfoot-league' ) ),
-								'D' => array( 'N', __( 'Nul', 'galsenfoot-league' ) ),
-								'L' => array( 'D', __( 'Défaite', 'galsenfoot-league' ) ),
-							);
-							foreach ( $row['form'] as $result ) {
-								printf( '<span class="gsf-form__i is-%s" title="%s">%s</span>', esc_attr( strtolower( $result ) ), esc_attr( $labels[ $result ][1] ), esc_html( $labels[ $result ][0] ) );
-							}
-							?>
-							</span>
+							<?php echo gsf_form_html( $row['form'] ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 						</td>
 					<?php endif; ?>
 				</tr>
@@ -370,6 +381,25 @@ function gsf_render_ticker( $args = array() ) {
 }
 
 /**
+ * Match to put forward: a live match, otherwise the next fixture, otherwise the latest result.
+ *
+ * @param array $args Normalised args (competition, season, club, match).
+ * @return int Match ID or 0.
+ */
+function gsf_featured_match_id( $args ) {
+	$id = (int) ( $args['match'] ?? 0 );
+	if ( $id && 'gsf_match' === get_post_type( $id ) ) {
+		return $id;
+	}
+	$live = gsf_matches_for( array_merge( $args, array( 'type' => 'live', 'limit' => 1 ) ) );
+	$ids  = $live ? $live : gsf_matches_for( array_merge( $args, array( 'type' => 'fixtures', 'limit' => 1 ) ) );
+	if ( ! $ids ) {
+		$ids = gsf_matches_for( array_merge( $args, array( 'type' => 'results', 'limit' => 1 ) ) );
+	}
+	return $ids ? (int) $ids[0] : 0;
+}
+
+/**
  * Next match hero with countdown.
  *
  * @param array $args Arguments.
@@ -377,16 +407,8 @@ function gsf_render_ticker( $args = array() ) {
  */
 function gsf_render_next_match( $args = array() ) {
 	$args = gsf_args( $args, array( 'club' => 0, 'match' => 0 ) );
-	$id   = (int) $args['match'];
+	$id   = gsf_featured_match_id( $args );
 	if ( ! $id ) {
-		$live = gsf_matches_for( array_merge( $args, array( 'type' => 'live', 'limit' => 1 ) ) );
-		$ids  = $live ? $live : gsf_matches_for( array_merge( $args, array( 'type' => 'fixtures', 'limit' => 1 ) ) );
-		if ( ! $ids ) {
-			$ids = gsf_matches_for( array_merge( $args, array( 'type' => 'results', 'limit' => 1 ) ) );
-		}
-		$id = $ids ? $ids[0] : 0;
-	}
-	if ( ! $id || 'gsf_match' !== get_post_type( $id ) ) {
 		return gsf_empty( __( 'Aucun match programmé pour le moment.', 'galsenfoot-league' ) );
 	}
 	return gsf_block_title( $args['title'] ) . gsf_match_hero( $id, true );
@@ -399,8 +421,18 @@ function gsf_render_next_match( $args = array() ) {
  * @param bool $link     Wrap team names with links and add a CTA.
  * @return string
  */
-function gsf_match_hero( $match_id, $link = false ) {
+function gsf_match_hero( $match_id, $link = false, $standing = false ) {
 	$m     = gsf_match( $match_id );
+	$table = array();
+	if ( $standing ) {
+		$comp_ids   = wp_get_object_terms( $match_id, 'gsf_competition', array( 'fields' => 'ids' ) );
+		$season_ids = wp_get_object_terms( $match_id, 'gsf_season', array( 'fields' => 'ids' ) );
+		if ( ! is_wp_error( $comp_ids ) && ! is_wp_error( $season_ids ) && $comp_ids && $season_ids ) {
+			foreach ( gsf_get_standings( $comp_ids[0], $season_ids[0] ) as $row ) {
+				$table[ $row['club'] ] = $row;
+			}
+		}
+	}
 	$home  = gsf_club( $m['home'] );
 	$away  = gsf_club( $m['away'] );
 	$comp  = get_the_terms( $match_id, 'gsf_competition' );
@@ -408,13 +440,20 @@ function gsf_match_hero( $match_id, $link = false ) {
 	if ( $m['matchday'] ) {
 		$label .= ( $label ? ' · ' : '' ) . sprintf( /* translators: %d matchday */ __( 'Journée %d', 'galsenfoot-league' ), $m['matchday'] );
 	}
-	$team = static function ( $club, $side ) {
+	$team = static function ( $club, $side ) use ( $table ) {
+		$info = '';
+		if ( isset( $table[ $club['id'] ] ) && $table[ $club['id'] ]['played'] ) {
+			$row  = $table[ $club['id'] ];
+			$rank = 1 === (int) $row['rank'] ? __( '1er', 'galsenfoot-league' ) : sprintf( /* translators: %d rank */ __( '%de', 'galsenfoot-league' ), $row['rank'] );
+			$info = '<span class="gsf-hero__info"><span class="gsf-hero__rank"><b>' . esc_html( $rank ) . '</b> · ' . esc_html( sprintf( /* translators: %d points */ _n( '%d pt', '%d pts', $row['points'], 'galsenfoot-league' ), $row['points'] ) ) . '</span>' . gsf_form_html( $row['form'], 'gsf-form--mini' ) . '</span>';
+		}
 		return sprintf(
-			'<div class="gsf-hero__team gsf-hero__team--%s"><a href="%s">%s<span class="gsf-hero__name">%s</span></a></div>',
+			'<div class="gsf-hero__team gsf-hero__team--%s"><a href="%s">%s<span class="gsf-hero__name">%s</span></a>%s</div>',
 			$side,
 			esc_url( $club['url'] ),
 			gsf_crest( $club['id'], 96 ),
-			esc_html( $club['name'] )
+			esc_html( $club['name'] ),
+			$info
 		);
 	};
 	$center = gsf_match_center( $m );
@@ -443,6 +482,109 @@ function gsf_match_hero( $match_id, $link = false ) {
 		'live' === $m['status'] ? ' data-gsf-live="1"' : '',
 		$m['id'],
 		$link ? '<p class="gsf-hero__cta"><a class="gsf-btn" href="' . esc_url( $m['url'] ) . '">' . esc_html__( 'Fiche du match', 'galsenfoot-league' ) . '</a></p>' : ''
+	);
+}
+
+/**
+ * Tabbed match centre: featured match, latest results and next fixtures.
+ *
+ * @param array $args {competition, season, club, title, default (auto|featured|results|fixtures),
+ *                    results, fixtures (number of matches), standing (show rank/form), link,
+ *                    label_featured, label_results, label_fixtures}.
+ * @return string
+ */
+function gsf_render_match_center( $args = array() ) {
+	$args = gsf_args(
+		$args,
+		array(
+			'club'           => 0,
+			'match'          => 0,
+			'default'        => 'auto',
+			'results'        => 6,
+			'fixtures'       => 6,
+			'standing'       => 1,
+			'link'           => '',
+			'label_featured' => '',
+			'label_results'  => '',
+			'label_fixtures' => '',
+		)
+	);
+	$uid  = function_exists( 'wp_unique_id' ) ? wp_unique_id( 'gsf-mc-' ) : 'gsf-mc-' . wp_rand( 1000, 9999 );
+	$feat = gsf_featured_match_id( $args );
+	$club = (int) $args['club'];
+	$list = static function ( $type, $limit ) use ( $args, $club ) {
+		$html = gsf_render_matches(
+			array(
+				'competition' => $club ? '' : $args['competition'],
+				'season'      => $club ? '' : $args['season'],
+				'club'        => $club,
+				'type'        => $type,
+				'limit'       => max( 1, min( 30, (int) $limit ) ),
+			)
+		);
+		return $html;
+	};
+
+	$is_live = $feat && 'live' === get_post_meta( $feat, '_gsf_status', true );
+	$tabs    = array(
+		'featured' => array(
+			'label' => '' !== $args['label_featured'] ? $args['label_featured'] : __( 'L’affiche', 'galsenfoot-league' ),
+			'short' => '' !== $args['label_featured'] ? $args['label_featured'] : __( 'Affiche', 'galsenfoot-league' ),
+			'icon'  => '<path d="m12 3 2.700 5.600 6.100.900-4.400 4.300 1 6.100L12 17l-5.400 2.900 1-6.100-4.400-4.300 6.100-.900z"/>',
+			'html'  => $feat ? gsf_match_hero( $feat, true, ! empty( $args['standing'] ) && 'no' !== $args['standing'] ) : gsf_empty( __( 'Aucun match programmé pour le moment.', 'galsenfoot-league' ) ),
+		),
+		'results'  => array(
+			'label' => '' !== $args['label_results'] ? $args['label_results'] : __( 'Derniers résultats', 'galsenfoot-league' ),
+			'short' => '' !== $args['label_results'] ? $args['label_results'] : __( 'Résultats', 'galsenfoot-league' ),
+			'icon'  => '<path d="M4 4v16M4 5h12l-2 4 2 4H4"/>',
+			'html'  => $list( 'results', $args['results'] ),
+		),
+		'fixtures' => array(
+			'label' => '' !== $args['label_fixtures'] ? $args['label_fixtures'] : __( 'Prochains matchs', 'galsenfoot-league' ),
+			'short' => '' !== $args['label_fixtures'] ? $args['label_fixtures'] : __( 'À venir', 'galsenfoot-league' ),
+			'icon'  => '<rect x="3.500" y="5" width="17" height="15" rx="2"/><path d="M3.500 10h17M8 3v4M16 3v4"/>',
+			'html'  => $list( 'fixtures', $args['fixtures'] ),
+		),
+	);
+	$active = isset( $tabs[ $args['default'] ] ) ? $args['default'] : 'featured';
+
+	$bar    = '';
+	$panels = '';
+	foreach ( $tabs as $key => $tab ) {
+		$on   = $key === $active;
+		$bar .= sprintf(
+			'<button type="button" class="gsf-mc__tab" role="tab" id="%1$s-tab-%2$s" aria-controls="%1$s-%2$s" aria-selected="%3$s" tabindex="%4$s" data-tab="%2$s"><svg class="gsf-mc__icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">%5$s</svg><span class="gsf-mc__label">%6$s</span><span class="gsf-mc__label-sm" aria-hidden="true">%7$s</span>%8$s</button>',
+			esc_attr( $uid ),
+			esc_attr( $key ),
+			$on ? 'true' : 'false',
+			$on ? '0' : '-1',
+			$tab['icon'],
+			esc_html( $tab['label'] ),
+			esc_html( $tab['short'] ),
+			'featured' === $key && $is_live ? '<span class="gsf-mc__live" title="' . esc_attr__( 'En direct', 'galsenfoot-league' ) . '"></span>' : ''
+		);
+		$panels .= sprintf(
+			'<div class="gsf-mc__panel gsf-mc__panel--%2$s" role="tabpanel" id="%1$s-%2$s" aria-labelledby="%1$s-tab-%2$s" tabindex="0"%3$s>%4$s</div>',
+			esc_attr( $uid ),
+			esc_attr( $key ),
+			$on ? '' : ' hidden',
+			$tab['html']
+		);
+	}
+
+	$foot = '';
+	if ( $args['link'] ) {
+		$foot = '<div class="gsf-mc__foot"><a href="' . esc_url( $args['link'] ) . '">' . esc_html__( 'Calendrier complet', 'galsenfoot-league' ) . ' <span aria-hidden="true">→</span></a></div>';
+	}
+	$has_live = $is_live || false !== strpos( $tabs['results']['html'] . $tabs['fixtures']['html'], 'data-gsf-live' );
+
+	return gsf_block_title( $args['title'] ) . sprintf(
+		'<div class="gsf-mc" data-gsf-mc%1$s><div class="gsf-mc__bar"><div class="gsf-mc__tabs" role="tablist" aria-label="%2$s"><span class="gsf-mc__ink" aria-hidden="true"></span>%3$s</div></div><div class="gsf-mc__body">%4$s</div>%5$s<noscript><style>.gsf-mc__panel[hidden]{display:block}.gsf-mc__panel+.gsf-mc__panel{margin-top:1rem}</style></noscript></div>',
+		$has_live ? ' data-gsf-live="1"' : '',
+		esc_attr__( 'Matchs', 'galsenfoot-league' ),
+		$bar,
+		$panels,
+		$foot
 	);
 }
 

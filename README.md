@@ -32,7 +32,7 @@ Pré-requis : WordPress 6.0+, PHP 7.4+.
 
 **UX** — bandeau scores sous le menu, menu mobile en tiroir, recherche plein écran, onglets Résultats / Prochains matchs, partage WhatsApp / Facebook / X / Telegram / copier le lien, fil d'Ariane, temps de lecture, bouton retour en haut, 404 thématique. Accessible (lien d'évitement, focus visibles, navigation clavier, ARIA).
 
-**Elementor** — widgets dans la catégorie « GalsenFoot » : À la une (mosaïque), Articles (grille/liste), Emplacement publicitaire, + les 7 widgets de l'extension (Classement, Matchs, Bandeau des scores, Prochain match, Buteurs/passeurs, Clubs, Effectif). Compatible avec le Theme Builder d'Elementor Pro (en-tête, pied de page, single, archive). Sans Elementor, le thème compose lui-même une page d'accueil complète.
+**Elementor** — widgets dans la catégorie « GalsenFoot » : À la une (mosaïque), Articles (grille/liste), Emplacement publicitaire, + les 8 widgets de l'extension (Centre des matchs, Classement, Matchs, Bandeau des scores, Prochain match, Buteurs/passeurs, Clubs, Effectif). Compatible avec le Theme Builder d'Elementor Pro (en-tête, pied de page, single, archive). Sans Elementor, le thème compose lui-même une page d'accueil complète.
 
 **SEO** — balises meta description, Open Graph, Twitter Cards ; JSON-LD `Organization`, `WebSite` (+ recherche), `NewsArticle`, `BreadcrumbList` ; et via l'extension `SportsEvent` (matchs), `SportsTeam` (clubs), `Person` (joueurs). Un seul `<h1>` par page, `max-image-preview:large` (Google Discover), recherches et 404 en `noindex`, URL propres (`/clubs/…`, `/joueurs/…`, `/matchs/…`). Si Yoast, Rank Math, SEOPress, AIOSEO ou The SEO Framework est actif, le thème leur laisse la main automatiquement.
 
@@ -55,10 +55,14 @@ Pré-requis : WordPress 6.0+, PHP 7.4+.
 - **Compétitions et saisons**, **clubs** (logo ou écusson généré aux couleurs du club, stade, ville, entraîneur…), **joueurs** (poste, numéro, naissance, taille, pied fort…), **matchs** (score, statut — à venir / en direct / terminé / reporté —, minute, journée, stade).
 - **Feuille de match** : buts (normal, penalty, contre son camp), passeurs, cartons, compositions.
 - **Calculé automatiquement** : classement (points, différence, forme sur 5 matchs, zones CAF/relégation, barème réglable, pénalités de points possibles), buteurs, passeurs, cartons, matchs joués, ratio, stats par joueur et par club.
+- **Centre des matchs** (widget Elementor « Centre des matchs (onglets) » ou shortcode `[gsf_match_center]`) : trois onglets *L'affiche* (match vedette avec compte à rebours, rang et forme des deux équipes), *Derniers résultats* et *Prochains matchs*. Indicateur animé, navigation au clavier, point rouge sur l'onglet quand un match est en direct. Sur mobile : libellés courts, affiche en pleine largeur, abréviations des clubs et changement d'onglet en glissant le doigt. Options : club (pour une page de club), onglet ouvert par défaut, nombre de matchs, libellés personnalisés, lien vers le calendrier. Exemple : `[gsf_match_center default="results" results="8" link="/calendrier/"]`.
+
+  ![Centre des matchs](docs/centre-matchs.jpg)
+
 - **Pages automatiques** pour chaque club, joueur et match (fonctionnent avec n'importe quel thème).
 - **Scores en direct** : les pages se mettent à jour toutes les 45 s sans recharger.
 - **API REST publique** : `/wp-json/gsf/v1/standings`, `/matches`, `/leaders`.
-- **Shortcodes** : `[gsf_standings]`, `[gsf_matches type="fixtures|results|live|all"]`, `[gsf_ticker]`, `[gsf_next_match]`, `[gsf_scorers stat="goals|assists|yellow|red|apps"]`, `[gsf_clubs]`, `[gsf_squad club="ID"]`.
+- **Shortcodes** : `[gsf_match_center]`, `[gsf_standings]`, `[gsf_matches type="fixtures|results|live|all"]`, `[gsf_ticker]`, `[gsf_next_match]`, `[gsf_scorers stat="goals|assists|yellow|red|apps"]`, `[gsf_clubs]`, `[gsf_squad club="ID"]`.
 
 ### Synchronisation API-Football (optionnel)
 

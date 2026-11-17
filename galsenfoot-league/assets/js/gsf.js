@@ -105,7 +105,82 @@
 		setInterval(refresh, 45000);
 	}
 
-	function init(root) { initCountdowns(root); initCounters(root); }
+	/* Match centre tabs: sliding indicator, keyboard arrows, swipe on touch screens */
+	function initMatchCenters(root) {
+		var nodes = (root || document).querySelectorAll('[data-gsf-mc]:not([data-gsf-ready])');
+		Array.prototype.forEach.call(nodes, function (mc) {
+			mc.setAttribute('data-gsf-ready', '1');
+			var tabs = Array.prototype.slice.call(mc.querySelectorAll('[role="tab"]'));
+			var ink = mc.querySelector('.gsf-mc__ink');
+			var body = mc.querySelector('.gsf-mc__body');
+			var current = 0;
+			tabs.forEach(function (t, i) { if (t.getAttribute('aria-selected') === 'true') { current = i; } });
+
+			function moveInk() {
+				var t = tabs[current];
+				if (!ink || !t) { return; }
+				ink.style.width = t.offsetWidth + 'px';
+				ink.style.transform = 'translateX(' + t.offsetLeft + 'px)';
+			}
+			function select(i, focus) {
+				if (i < 0 || i >= tabs.length || i === current) { return; }
+				var dir = i > current ? 'next' : 'prev';
+				tabs.forEach(function (t, j) {
+					var on = j === i;
+					t.setAttribute('aria-selected', on ? 'true' : 'false');
+					t.tabIndex = on ? 0 : -1;
+					var panel = document.getElementById(t.getAttribute('aria-controls'));
+					if (panel) {
+						panel.hidden = !on;
+						if (on && !reduce) {
+							panel.classList.remove('is-in-next', 'is-in-prev');
+							void panel.offsetWidth;
+							panel.classList.add('is-in-' + dir);
+						}
+						if (on) { initCountdowns(panel); initCounters(panel); }
+					}
+				});
+				current = i;
+				moveInk();
+				if (focus) { tabs[i].focus(); }
+				// Keep the tab bar in view when a long list is replaced by a short one on phones.
+				var top = mc.getBoundingClientRect().top;
+				if (top < 0) { window.scrollBy({ top: top - 80, behavior: reduce ? 'auto' : 'smooth' }); }
+			}
+			tabs.forEach(function (t, i) {
+				t.addEventListener('click', function () { select(i); });
+				t.addEventListener('keydown', function (e) {
+					var k = e.key;
+					if (k === 'ArrowRight' || k === 'ArrowLeft' || k === 'Home' || k === 'End') {
+						e.preventDefault();
+						var n = k === 'Home' ? 0 : k === 'End' ? tabs.length - 1 : (current + (k === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length;
+						select(n, true);
+					}
+				});
+			});
+
+			// Swipe left / right on the content to change tab (horizontal gestures only).
+			var sx = 0, sy = 0, tracking = false;
+			body.addEventListener('touchstart', function (e) {
+				if (e.touches.length !== 1 || e.target.closest('.gsf-ticker__track, .gsf-table-wrap')) { tracking = false; return; }
+				tracking = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+			}, { passive: true });
+			body.addEventListener('touchend', function (e) {
+				if (!tracking) { return; }
+				tracking = false;
+				var dx = e.changedTouches[0].clientX - sx;
+				var dy = e.changedTouches[0].clientY - sy;
+				if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.6) { select(current + (dx < 0 ? 1 : -1)); }
+			}, { passive: true });
+
+			mc.classList.add('is-ready');
+			moveInk();
+			window.addEventListener('resize', moveInk);
+			if (document.fonts && document.fonts.ready) { document.fonts.ready.then(moveInk); }
+		});
+	}
+
+	function init(root) { initMatchCenters(root); initCountdowns(root); initCounters(root); }
 	if (document.readyState === 'loading') {
 		document.addEventListener('DOMContentLoaded', function () { init(); initLive(); });
 	} else {

@@ -17,6 +17,7 @@ use Elementor\Widget_Base;
  */
 function gsf_elementor_widget_classes() {
 	return array(
+		'GSF_Widget_Match_Center',
 		'GSF_Widget_Standings',
 		'GSF_Widget_Matches',
 		'GSF_Widget_Ticker',
@@ -204,6 +205,109 @@ abstract class GSF_Widget extends Widget_Base {
 			}
 		}
 		echo '<div class="gsf">' . call_user_func( $this->renderer, $args ) . '</div>'; // phpcs:ignore WordPress.Security.EscapeOutput
+	}
+}
+
+/**
+ * Tabbed match centre: featured match / latest results / next fixtures.
+ */
+class GSF_Widget_Match_Center extends GSF_Widget {
+	protected $renderer = 'gsf_render_match_center';
+	protected $keys     = array( 'club', 'default', 'results', 'fixtures', 'standing', 'link', 'label_featured', 'label_results', 'label_fixtures' );
+
+	public function get_name() {
+		return 'gsf-match-center';
+	}
+	public function get_title() {
+		return __( 'Centre des matchs (onglets)', 'galsenfoot-league' );
+	}
+	public function get_icon() {
+		return 'eicon-tabs';
+	}
+	public function get_keywords() {
+		return array_merge( parent::get_keywords(), array( 'onglets', 'tabs', 'affiche', 'résultats', 'calendrier', 'prochains' ) );
+	}
+	protected function register_controls() {
+		$this->start_common();
+		$this->add_control(
+			'club',
+			array(
+				'label'       => __( 'Club', 'galsenfoot-league' ),
+				'description' => __( 'Vide : toute la compétition. Choisir un club pour une page de club.', 'galsenfoot-league' ),
+				'type'        => Controls_Manager::SELECT,
+				'options'     => $this->club_options( __( 'Tous les clubs', 'galsenfoot-league' ) ),
+				'default'     => '',
+			)
+		);
+		$this->add_control(
+			'default',
+			array(
+				'label'   => __( 'Onglet ouvert au chargement', 'galsenfoot-league' ),
+				'type'    => Controls_Manager::SELECT,
+				'default' => 'featured',
+				'options' => array(
+					'featured' => __( 'L’affiche', 'galsenfoot-league' ),
+					'results'  => __( 'Derniers résultats', 'galsenfoot-league' ),
+					'fixtures' => __( 'Prochains matchs', 'galsenfoot-league' ),
+				),
+			)
+		);
+		$this->add_control(
+			'results',
+			array(
+				'label'   => __( 'Nombre de résultats', 'galsenfoot-league' ),
+				'type'    => Controls_Manager::NUMBER,
+				'min'     => 1,
+				'max'     => 30,
+				'default' => 6,
+			)
+		);
+		$this->add_control(
+			'fixtures',
+			array(
+				'label'   => __( 'Nombre de prochains matchs', 'galsenfoot-league' ),
+				'type'    => Controls_Manager::NUMBER,
+				'min'     => 1,
+				'max'     => 30,
+				'default' => 6,
+			)
+		);
+		$this->add_control(
+			'standing',
+			array(
+				'label'        => __( 'Afficher rang et forme des équipes sur l’affiche', 'galsenfoot-league' ),
+				'type'         => Controls_Manager::SWITCHER,
+				'return_value' => 'yes',
+				'default'      => 'yes',
+			)
+		);
+		$this->add_control(
+			'link',
+			array(
+				'label' => __( 'Lien « Calendrier complet »', 'galsenfoot-league' ),
+				'type'  => Controls_Manager::URL,
+			)
+		);
+		$this->add_control(
+			'labels_heading',
+			array(
+				'label'     => __( 'Libellés des onglets (optionnel)', 'galsenfoot-league' ),
+				'type'      => Controls_Manager::HEADING,
+				'separator' => 'before',
+			)
+		);
+		foreach ( array( 'featured' => __( 'L’affiche', 'galsenfoot-league' ), 'results' => __( 'Derniers résultats', 'galsenfoot-league' ), 'fixtures' => __( 'Prochains matchs', 'galsenfoot-league' ) ) as $key => $placeholder ) {
+			$this->add_control(
+				'label_' . $key,
+				array(
+					'label'       => $placeholder,
+					'type'        => Controls_Manager::TEXT,
+					'placeholder' => $placeholder,
+				)
+			);
+		}
+		$this->end_controls_section();
+		$this->add_style_section();
 	}
 }
 
