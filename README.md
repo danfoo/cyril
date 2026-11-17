@@ -72,6 +72,7 @@ Les éléments importés gardent leur identifiant distant : les synchronisations
 ## Ce qui a été testé
 
 Sur WordPress 7.1 + Elementor (dernière version) + PHP 8.3, avec `WP_DEBUG` actif, aucun avertissement PHP ni erreur JavaScript :
-toutes les pages (accueil classique et Elementor, article, club, joueur, match, archives, catégorie, recherche, 404, flux, API REST), en 1440 px et 390 px, modes sombre et clair ; l'administration (réglages, feuille de match, page Publicités, assistant de démarrage) pilotée dans un navigateur ; l'import API sur des réponses simulées au format API-Football v3 (clé invalide, pagination, transferts, doublons) ; le thème sans l'extension et l'extension sans Elementor.
+toutes les pages (accueil classique et Elementor, article, club, joueur, match, archives, catégorie, recherche, 404, flux, API REST), modes sombre et clair ;
+un audit responsive automatisé de 14 pages × 9 largeurs (320, 360, 414, 600, 768, 900, 1024, 1280, 1920 px) : aucun débordement horizontal, toutes les zones cliquables ≥ 24 px (critère WCAG 2.2 AA) et ≈ 44 px sur écran tactile pour les boutons principaux ; l'administration (réglages, feuille de match, page Publicités, assistant de démarrage) pilotée dans un navigateur ; l'import API sur des réponses simulées au format API-Football v3 (clé invalide, pagination, transferts, doublons) ; le thème sans l'extension et l'extension sans Elementor.
 
 Non testé : appels réels à api-football.com et diffusion réelle d'annonces AdSense (pas d'accès réseau depuis l'environnement de développement).
