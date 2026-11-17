@@ -24,6 +24,10 @@ Thème média football pour **galsenfoot.sn**, compatible **Elementor**, optimis
 
 Pré-requis : WordPress 6.0+, PHP 7.4+.
 
+### Mettre à jour
+
+*Extensions → Ajouter → Téléverser* (et *Apparence → Thèmes → Ajouter → Téléverser*) avec la nouvelle archive, puis « Remplacer la version installée ». **Videz ensuite les caches** : extension de cache (LiteSpeed Cache, WP Rocket, W3 Total Cache, Autoptimize…), CDN (Cloudflare…) et, dans Elementor, *Outils → Vider les fichiers et les données*. Depuis la 1.1.0, l'adresse des fichiers CSS/JS change à chaque mise à jour, ce qui suffit dans la plupart des cas.
+
 ## Le thème
 
 **Design** — ambiance « stade de nuit » (mode sombre par défaut, mode clair en un clic, mémorisé), couleurs du drapeau sénégalais en accents, typographie condensée sportive (Barlow, auto-hébergée, aucun appel à Google Fonts). Couleurs modifiables dans le Customizer.

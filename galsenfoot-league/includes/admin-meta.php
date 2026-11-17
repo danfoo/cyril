@@ -526,8 +526,8 @@ add_action(
 		if ( ! $screen || ( false === strpos( (string) $screen->id, 'gsf' ) && false === strpos( (string) $screen->post_type, 'gsf_' ) ) ) {
 			return;
 		}
-		wp_enqueue_style( 'gsf-admin', GSF_URL . 'assets/css/admin.css', array(), GSF_VERSION );
-		wp_enqueue_script( 'gsf-admin', GSF_URL . 'assets/js/admin.js', array(), GSF_VERSION, true );
+		wp_enqueue_style( 'gsf-admin', GSF_URL . 'assets/css/admin.css', array(), gsf_asset_version( 'assets/css/admin.css' ) );
+		wp_enqueue_script( 'gsf-admin', GSF_URL . 'assets/js/admin.js', array(), gsf_asset_version( 'assets/js/admin.js' ), true );
 	}
 );
 

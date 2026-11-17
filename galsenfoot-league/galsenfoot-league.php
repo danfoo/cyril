@@ -3,7 +3,7 @@
  * Plugin Name:       GalsenFoot League
  * Plugin URI:        https://galsenfoot.sn/
  * Description:       Gestion complète de championnats de football : compétitions, saisons, clubs, joueurs, matchs, classements et statistiques. Saisie manuelle ou synchronisation automatique via API-Football. Widgets Elementor et shortcodes inclus.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            GalsenFoot
@@ -16,10 +16,22 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'GSF_VERSION', '1.0.0' );
+define( 'GSF_VERSION', '1.1.0' );
 define( 'GSF_FILE', __FILE__ );
 define( 'GSF_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GSF_URL', plugin_dir_url( __FILE__ ) );
+
+/**
+ * Asset version: plugin version + file modification time, so browsers, cache plugins
+ * and CDNs always fetch the new file after an update.
+ *
+ * @param string $relative Path relative to the plugin folder.
+ * @return string
+ */
+function gsf_asset_version( $relative ) {
+	$file = GSF_DIR . ltrim( $relative, '/' );
+	return file_exists( $file ) ? GSF_VERSION . '.' . filemtime( $file ) : GSF_VERSION;
+}
 
 require_once GSF_DIR . 'includes/helpers.php';
 require_once GSF_DIR . 'includes/post-types.php';
@@ -49,8 +61,8 @@ add_action(
 add_action(
 	'wp_enqueue_scripts',
 	static function () {
-		wp_register_style( 'gsf', GSF_URL . 'assets/css/gsf.css', array(), GSF_VERSION );
-		wp_register_script( 'gsf', GSF_URL . 'assets/js/gsf.js', array(), GSF_VERSION, array( 'in_footer' => true, 'strategy' => 'defer' ) );
+		wp_register_style( 'gsf', GSF_URL . 'assets/css/gsf.css', array(), gsf_asset_version( 'assets/css/gsf.css' ) );
+		wp_register_script( 'gsf', GSF_URL . 'assets/js/gsf.js', array(), gsf_asset_version( 'assets/js/gsf.js' ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
 		wp_localize_script(
 			'gsf',
 			'GSF',

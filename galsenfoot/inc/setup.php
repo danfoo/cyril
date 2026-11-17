@@ -128,9 +128,9 @@ add_action(
 	static function () {
 		$css = GF_DIR . '/assets/css/main.css';
 		$js  = GF_DIR . '/assets/js/main.js';
-		wp_enqueue_style( 'galsenfoot', GF_URI . '/assets/css/main.css', array(), file_exists( $css ) ? (string) filemtime( $css ) : GF_VERSION );
+		wp_enqueue_style( 'galsenfoot', GF_URI . '/assets/css/main.css', array(), file_exists( $css ) ? GF_VERSION . '.' . filemtime( $css ) : GF_VERSION );
 		wp_add_inline_style( 'galsenfoot', gf_dynamic_css() );
-		wp_enqueue_script( 'galsenfoot', GF_URI . '/assets/js/main.js', array(), file_exists( $js ) ? (string) filemtime( $js ) : GF_VERSION, array( 'in_footer' => true, 'strategy' => 'defer' ) );
+		wp_enqueue_script( 'galsenfoot', GF_URI . '/assets/js/main.js', array(), file_exists( $js ) ? GF_VERSION . '.' . filemtime( $js ) : GF_VERSION, array( 'in_footer' => true, 'strategy' => 'defer' ) );
 		wp_localize_script(
 			'galsenfoot',
 			'GF',

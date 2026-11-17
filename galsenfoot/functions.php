@@ -7,7 +7,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'GF_VERSION', '1.0.0' );
+define( 'GF_VERSION', '1.1.0' );
 define( 'GF_DIR', get_template_directory() );
 define( 'GF_URI', get_template_directory_uri() );
 
