@@ -3,7 +3,7 @@
  * Plugin Name:       GalsenFoot League
  * Plugin URI:        https://galsenfoot.sn/
  * Description:       Gestion complète de championnats de football : compétitions, saisons, clubs, joueurs, matchs, classements et statistiques. Saisie manuelle ou synchronisation automatique via API-Football. Widgets Elementor et shortcodes inclus.
- * Version:           1.2.0
+ * Version:           1.2.1
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            GalsenFoot
@@ -16,7 +16,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'GSF_VERSION', '1.2.0' );
+define( 'GSF_VERSION', '1.2.1' );
 define( 'GSF_FILE', __FILE__ );
 define( 'GSF_DIR', plugin_dir_path( __FILE__ ) );
 define( 'GSF_URL', plugin_dir_url( __FILE__ ) );

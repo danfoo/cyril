@@ -38,3 +38,6 @@
 .gsf-nt-steps > li { margin-bottom: 18px; padding-left: 6px; }
 .gsf-nt-team { display: flex; align-items: center; gap: 8px; }
 .gsf-nt-steps select { min-width: 360px; max-width: 100%; }
+.gsf-version { margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #e7f5ec; color: #0a5c2b; font-size: 12px; font-weight: 600; vertical-align: middle; }
+.gsf-admin-card.is-nt { border-color: #00853f; }
+.gsf-admin-card.is-nt b { font-size: 26px; }

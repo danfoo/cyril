@@ -77,7 +77,7 @@ Pré-requis : WordPress 6.0+, PHP 7.4+.
 
 ### Équipe nationale (ex. Lions du Sénégal — éliminatoires de la CAN)
 
-Dans *GalsenFoot → Tableau de bord*, panneau **Équipe nationale** (clé API-Football requise) :
+Menu **GalsenFoot → Équipe nationale** (la clé API-Football peut être saisie directement sur cette page) :
 
 1. **Trouver la sélection** : saisir le pays en anglais (`Senegal`). L'équipe A masculine est retenue automatiquement (pas les sélections féminine ou U23), et la compétition la plus pertinente est présélectionnée : **Éliminatoires CAN, saison en cours**.
 2. **Compétition et saison** : modifiable (CAN, éliminatoires Coupe du monde, amicaux…). Option : ajouter les 10 derniers et 10 prochains matchs toutes compétitions ; option : mise à jour automatique (toutes les 6 h, plus souvent les jours de match).

@@ -12,6 +12,7 @@ add_action(
 	static function () {
 		add_menu_page( __( 'GalsenFoot', 'galsenfoot-league' ), __( 'GalsenFoot', 'galsenfoot-league' ), 'edit_posts', 'gsf', 'gsf_admin_page', 'dashicons-awards', 5 );
 		add_submenu_page( 'gsf', __( 'Tableau de bord', 'galsenfoot-league' ), __( 'Tableau de bord', 'galsenfoot-league' ), 'edit_posts', 'gsf', 'gsf_admin_page', 0 );
+		add_submenu_page( 'gsf', __( 'Équipe nationale', 'galsenfoot-league' ), __( 'Équipe nationale', 'galsenfoot-league' ), 'manage_options', 'gsf-national', 'gsf_admin_national_page', 1 );
 		add_submenu_page( 'gsf', __( 'Compétitions', 'galsenfoot-league' ), __( 'Compétitions', 'galsenfoot-league' ), 'manage_categories', 'edit-tags.php?taxonomy=gsf_competition&post_type=gsf_match' );
 		add_submenu_page( 'gsf', __( 'Saisons', 'galsenfoot-league' ), __( 'Saisons', 'galsenfoot-league' ), 'manage_categories', 'edit-tags.php?taxonomy=gsf_season&post_type=gsf_match' );
 	},
@@ -172,6 +173,11 @@ add_action(
 					$notice = sprintf( /* translators: %d count */ __( '%d compétition(s) trouvée(s) — voir la liste ci-dessous.', 'galsenfoot-league' ), count( $result ) );
 				}
 				break;
+			case 'nt_key':
+				$key = preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) wp_unslash( $_POST['api_key'] ?? '' ) );
+				update_option( 'gsf_settings', array_merge( gsf_settings(), array( 'api_key' => $key ) ) );
+				$notice = $key ? __( 'Clé API enregistrée.', 'galsenfoot-league' ) : __( 'Clé API supprimée.', 'galsenfoot-league' );
+				break;
 			case 'nt_find':
 				$country = sanitize_text_field( wp_unslash( $_POST['nt_country'] ?? 'Senegal' ) );
 				$teams   = gsf_nt_find_team( $country );
@@ -287,7 +293,7 @@ add_action(
 			),
 			60
 		);
-		wp_safe_redirect( admin_url( 'admin.php?page=gsf' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=' . ( 0 === strpos( $tool, 'nt_' ) ? 'gsf-national' : 'gsf' ) ) );
 		exit;
 	}
 );
@@ -322,7 +328,7 @@ function gsf_admin_page() {
 	$can    = current_user_can( 'manage_options' );
 	?>
 	<div class="wrap gsf-admin">
-		<h1><?php esc_html_e( 'GalsenFoot League', 'galsenfoot-league' ); ?></h1>
+		<h1><?php esc_html_e( 'GalsenFoot League', 'galsenfoot-league' ); ?> <small class="gsf-version"><?php echo esc_html( 'v' . GSF_VERSION ); ?></small></h1>
 		<?php if ( $notice ) : ?>
 			<div class="notice notice-<?php echo $notice['ok'] ? 'success' : 'error'; ?> is-dismissible"><p><?php echo esc_html( $notice['message'] ); ?></p></div>
 		<?php endif; ?>
@@ -333,6 +339,9 @@ function gsf_admin_page() {
 			<a class="gsf-admin-card" href="<?php echo esc_url( admin_url( 'edit.php?post_type=gsf_player' ) ); ?>"><b><?php echo (int) $counts['gsf_player']; ?></b><?php esc_html_e( 'Joueurs', 'galsenfoot-league' ); ?></a>
 			<a class="gsf-admin-card" href="<?php echo esc_url( admin_url( 'edit.php?post_type=gsf_match' ) ); ?>"><b><?php echo (int) $counts['gsf_match']; ?></b><?php esc_html_e( 'Matchs', 'galsenfoot-league' ); ?></a>
 			<a class="gsf-admin-card is-cta" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=gsf_match' ) ); ?>"><b>+</b><?php esc_html_e( 'Saisir un match', 'galsenfoot-league' ); ?></a>
+			<?php if ( current_user_can( 'manage_options' ) ) : ?>
+				<a class="gsf-admin-card is-nt" href="<?php echo esc_url( admin_url( 'admin.php?page=gsf-national' ) ); ?>"><b>🇸🇳</b><?php esc_html_e( 'Équipe nationale', 'galsenfoot-league' ); ?></a>
+			<?php endif; ?>
 		</div>
 
 		<?php if ( ! $can ) : ?>
@@ -500,8 +509,6 @@ function gsf_admin_page() {
 			?>
 		</div>
 
-		<?php gsf_admin_national_panel(); ?>
-
 		<div class="gsf-admin-panel">
 			<h2><?php esc_html_e( 'Données de démonstration', 'galsenfoot-league' ); ?></h2>
 			<p><?php esc_html_e( 'Installe un championnat fictif complet (clubs, joueurs, calendrier, résultats, buteurs) pour découvrir le thème et les widgets. Les joueurs et les scores sont inventés. Tout se supprime en un clic.', 'galsenfoot-league' ); ?></p>
@@ -547,8 +554,17 @@ function gsf_admin_national_panel() {
 	<div class="gsf-admin-panel" id="gsf-nt">
 		<h2><?php esc_html_e( 'Équipe nationale (API-Football)', 'galsenfoot-league' ); ?></h2>
 		<p><?php esc_html_e( 'Importe les matchs de la sélection pour une compétition (par exemple les éliminatoires de la CAN : matchs joués et à venir, scores, buteurs, classement du groupe) ainsi que la liste actuelle des joueurs. Les joueurs gardent leur club : l’appartenance à la sélection est enregistrée à part.', 'galsenfoot-league' ); ?></p>
+		<form method="post" action="<?php echo $action; // phpcs:ignore WordPress.Security.EscapeOutput ?>" class="gsf-tool-inline">
+			<?php $hidden( 'nt_key' ); ?>
+			<label><strong><?php esc_html_e( 'Clé API-Football', 'galsenfoot-league' ); ?></strong>
+				<input type="text" name="api_key" class="regular-text" autocomplete="off" placeholder="<?php esc_attr_e( 'Collez votre clé ici', 'galsenfoot-league' ); ?>" value="<?php echo esc_attr( $s['api_key'] ? str_repeat( '•', 20 ) . substr( $s['api_key'], -4 ) : '' ); ?>" onfocus="if(this.value.indexOf('•')===0){this.value=''}">
+			</label>
+			<button class="button"><?php esc_html_e( 'Enregistrer la clé', 'galsenfoot-league' ); ?></button>
+			<?php if ( ! $s['api_key'] ) : ?>
+				<span class="description"><?php echo wp_kses_post( __( 'Créez-la sur <a href="https://www.api-football.com/" target="_blank" rel="noopener">api-football.com</a>.', 'galsenfoot-league' ) ); ?></span>
+			<?php endif; ?>
+		</form>
 		<?php if ( '' === trim( (string) $s['api_key'] ) ) : ?>
-			<p><em><?php esc_html_e( 'Renseignez d’abord la clé API ci-dessus.', 'galsenfoot-league' ); ?></em></p>
 		</div>
 			<?php
 			return;
@@ -602,7 +618,7 @@ function gsf_admin_national_panel() {
 							<p class="description"><?php esc_html_e( 'Pour la CAN, l’API classe les éliminatoires sous « Africa Cup of Nations - Qualification » ; l’année est celle du début des éliminatoires, pas celle de la phase finale. Choisissez la saison marquée « en cours » pour la prochaine CAN.', 'galsenfoot-league' ); ?></p>
 							<p>
 								<label><input type="checkbox" name="nt_extra" value="1"<?php checked( $s['nt_extra'] ); ?>> <?php esc_html_e( 'Ajouter aussi les 10 derniers et 10 prochains matchs de la sélection, toutes compétitions (amicaux, éliminatoires Coupe du monde…)', 'galsenfoot-league' ); ?></label><br>
-								<label><input type="checkbox" name="nt_auto" value="1"<?php checked( $s['nt_auto'] ); ?>> <?php esc_html_e( 'Mettre à jour automatiquement (toutes les 6 heures, à chaque passage les jours de match) — nécessite une fréquence de mise à jour active ci-dessus', 'galsenfoot-league' ); ?></label>
+								<label><input type="checkbox" name="nt_auto" value="1"<?php checked( $s['nt_auto'] ); ?>> <?php esc_html_e( 'Mettre à jour automatiquement (toutes les 6 heures, à chaque passage les jours de match) — nécessite une fréquence de mise à jour active dans GalsenFoot → Tableau de bord', 'galsenfoot-league' ); ?></label>
 							</p>
 							<button class="button"><?php esc_html_e( 'Enregistrer', 'galsenfoot-league' ); ?></button>
 						</form>
@@ -642,4 +658,31 @@ function gsf_admin_national_panel() {
 		</ol>
 	</div>
 	<?php
+}
+
+/**
+ * GalsenFoot → Équipe nationale.
+ */
+function gsf_admin_national_page() {
+	$notice = get_transient( 'gsf_notice_' . get_current_user_id() );
+	delete_transient( 'gsf_notice_' . get_current_user_id() );
+	echo '<div class="wrap gsf-admin"><h1>' . esc_html__( 'Équipe nationale', 'galsenfoot-league' ) . ' <small class="gsf-version">' . esc_html( 'GalsenFoot League v' . GSF_VERSION ) . '</small></h1>';
+	if ( $notice ) {
+		printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', $notice['ok'] ? 'success' : 'error', esc_html( $notice['message'] ) );
+	}
+	gsf_admin_national_panel();
+	$log = array_filter(
+		(array) get_option( 'gsf_api_log', array() ),
+		static function ( $entry ) {
+			return 0 === strpos( (string) ( $entry['step'] ?? '' ), 'nt-' );
+		}
+	);
+	if ( $log ) {
+		echo '<div class="gsf-admin-panel"><h2>' . esc_html__( 'Journal', 'galsenfoot-league' ) . '</h2><ul class="gsf-log">';
+		foreach ( $log as $entry ) {
+			printf( '<li class="%s"><time>%s</time> <b>%s</b> — %s</li>', $entry['ok'] ? 'is-ok' : 'is-error', esc_html( wp_date( 'd/m H:i', (int) $entry['time'] ) ), esc_html( $entry['step'] ), esc_html( $entry['message'] ) );
+		}
+		echo '</ul></div>';
+	}
+	echo '</div>';
 }
