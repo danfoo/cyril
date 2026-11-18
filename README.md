@@ -75,6 +75,18 @@ Pré-requis : WordPress 6.0+, PHP 7.4+.
 3. Lancer dans l'ordre : Clubs → Matchs et scores → Effectifs → Statistiques des joueurs. Les gros imports continuent en arrière-plan.
 4. Choisir une fréquence de mise à jour automatique des scores (manuelle → toutes les 15 min).
 
+### Équipe nationale (ex. Lions du Sénégal — éliminatoires de la CAN)
+
+Dans *GalsenFoot → Tableau de bord*, panneau **Équipe nationale** (clé API-Football requise) :
+
+1. **Trouver la sélection** : saisir le pays en anglais (`Senegal`). L'équipe A masculine est retenue automatiquement (pas les sélections féminine ou U23), et la compétition la plus pertinente est présélectionnée : **Éliminatoires CAN, saison en cours**.
+2. **Compétition et saison** : modifiable (CAN, éliminatoires Coupe du monde, amicaux…). Option : ajouter les 10 derniers et 10 prochains matchs toutes compétitions ; option : mise à jour automatique (toutes les 6 h, plus souvent les jours de match).
+3. **Importer** : liste actuelle des joueurs, matchs joués et à venir, classement officiel du groupe, puis feuille de chaque match terminé (buteurs, passeurs, cartons, joueurs ayant joué), étalée en arrière-plan.
+
+Résultat : une page **Sénégal** (centre des matchs, classement du groupe, liste des joueurs par poste, buteurs en sélection) et, sur chaque fiche joueur, un bloc **En sélection** (matchs, buts, passes, cartons). Les noms des pays sont traduits en français ; les joueurs gardent leur club ; les sélections n'apparaissent pas dans la liste des clubs et n'affectent pas le classement de Ligue 1. Tout reste modifiable à la main (case « Équipe nationale » sur une équipe, champs « Sélection » et « Numéro en sélection » sur un joueur).
+
+> L'offre gratuite d'API-Football ne donne accès qu'à d'anciennes saisons : pour les éliminatoires en cours, il faut une offre payante. L'import complet coûte environ 8 requêtes, puis 1 par match terminé.
+
 Les éléments importés gardent leur identifiant distant : les synchronisations suivantes mettent à jour sans créer de doublons, et vos modifications manuelles (biographie, couleurs, photos…) sont conservées. On peut mélanger saisie manuelle et import.
 
 ## Ce qui a été testé

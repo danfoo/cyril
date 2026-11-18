@@ -210,6 +210,18 @@ add_action(
 			$query->set( 'order', 'DESC' );
 			$query->set( 'posts_per_page', 30 );
 		}
+		if ( $query->is_post_type_archive( 'gsf_club' ) ) {
+			// National teams have their own page and are not listed among the clubs.
+			$query->set(
+				'meta_query',
+				array(
+					array(
+						'key'     => '_gsf_national',
+						'compare' => 'NOT EXISTS',
+					),
+				)
+			);
+		}
 		if ( $query->is_post_type_archive( array( 'gsf_club', 'gsf_player' ) ) ) {
 			$query->set( 'orderby', 'title' );
 			$query->set( 'order', 'ASC' );

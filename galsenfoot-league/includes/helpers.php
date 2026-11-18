@@ -28,6 +28,15 @@ function gsf_settings( $key = null ) {
 		'api_frequency' => 'off',
 		'api_images'    => 1,
 		'api_events'    => 1,
+		'nt_country'    => 'Senegal',
+		'nt_team'       => 0,
+		'nt_name'       => '',
+		'nt_logo'       => '',
+		'nt_league'     => 0,
+		'nt_league_name' => '',
+		'nt_season'     => 0,
+		'nt_extra'      => 1,
+		'nt_auto'       => 1,
 	);
 	$settings = wp_parse_args( (array) get_option( 'gsf_settings', array() ), $defaults );
 	if ( null === $key ) {
@@ -130,6 +139,7 @@ function gsf_club( $club_id ) {
 			'url'   => '',
 			'color' => '#5b6b63',
 			'color2' => '#1c2622',
+			'national' => false,
 		);
 	}
 	$name  = get_the_title( $post );
@@ -144,6 +154,7 @@ function gsf_club( $club_id ) {
 		'url'    => get_permalink( $post ),
 		'color'  => sanitize_hex_color( get_post_meta( $club_id, '_gsf_color', true ) ) ?: '#00853f',
 		'color2' => sanitize_hex_color( get_post_meta( $club_id, '_gsf_color2', true ) ) ?: '#ffffff',
+		'national' => (bool) get_post_meta( $club_id, '_gsf_national', true ),
 	);
 	return $cache[ $club_id ];
 }
@@ -376,12 +387,14 @@ function gsf_query_matches( $args = array() ) {
  * @return WP_Post[]
  */
 function gsf_club_players( $club_id ) {
-	$players = get_posts(
+	$national = gsf_is_national( $club_id );
+	$num_key  = $national ? '_gsf_nt_number' : '_gsf_number';
+	$players  = get_posts(
 		array(
 			'post_type'      => 'gsf_player',
 			'post_status'    => 'publish',
 			'posts_per_page' => 100,
-			'meta_key'       => '_gsf_club', // phpcs:ignore WordPress.DB.SlowDBQuery
+			'meta_key'       => $national ? '_gsf_national_team' : '_gsf_club', // phpcs:ignore WordPress.DB.SlowDBQuery
 			'meta_value'     => (int) $club_id, // phpcs:ignore WordPress.DB.SlowDBQuery
 			'orderby'        => 'title',
 			'order'          => 'ASC',
@@ -390,16 +403,38 @@ function gsf_club_players( $club_id ) {
 	$order = array_flip( array_keys( gsf_positions() ) );
 	usort(
 		$players,
-		static function ( $a, $b ) use ( $order ) {
+		static function ( $a, $b ) use ( $order, $num_key ) {
 			$pa = $order[ get_post_meta( $a->ID, '_gsf_position', true ) ] ?? 9;
 			$pb = $order[ get_post_meta( $b->ID, '_gsf_position', true ) ] ?? 9;
 			if ( $pa !== $pb ) {
 				return $pa <=> $pb;
 			}
-			return (int) get_post_meta( $a->ID, '_gsf_number', true ) <=> (int) get_post_meta( $b->ID, '_gsf_number', true );
+			return (int) get_post_meta( $a->ID, $num_key, true ) <=> (int) get_post_meta( $b->ID, $num_key, true );
 		}
 	);
 	return $players;
+}
+
+/**
+ * Whether a team is a national team.
+ *
+ * @param int $club_id Team post ID.
+ * @return bool
+ */
+function gsf_is_national( $club_id ) {
+	return $club_id && (bool) get_post_meta( (int) $club_id, '_gsf_national', true );
+}
+
+/**
+ * Shirt number of a player, for his club or for his national team.
+ *
+ * @param int  $player_id Player ID.
+ * @param bool $national  National team number.
+ * @return string
+ */
+function gsf_player_number( $player_id, $national = false ) {
+	$number = (string) get_post_meta( $player_id, $national ? '_gsf_nt_number' : '_gsf_number', true );
+	return '' !== $number ? (string) (int) $number : '';
 }
 
 /**

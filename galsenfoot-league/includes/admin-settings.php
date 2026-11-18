@@ -81,6 +81,25 @@ function gsf_sanitize_settings( $input ) {
 		'api_images'    => empty( $input['api_images'] ) ? 0 : 1,
 		'api_events'    => empty( $input['api_events'] ) ? 0 : 1,
 	);
+	foreach ( array( 'nt_country', 'nt_name', 'nt_logo', 'nt_league_name' ) as $key ) {
+		$clean[ $key ] = sanitize_text_field( array_key_exists( $key, $input ) ? (string) $input[ $key ] : (string) $old[ $key ] );
+	}
+	$clean['nt_logo'] = esc_url_raw( $clean['nt_logo'] );
+	foreach ( array( 'nt_team', 'nt_league', 'nt_season' ) as $key ) {
+		$clean[ $key ] = absint( array_key_exists( $key, $input ) ? $input[ $key ] : $old[ $key ] );
+	}
+	foreach ( array( 'nt_extra', 'nt_auto' ) as $key ) {
+		$clean[ $key ] = array_key_exists( $key, $input ) ? ( empty( $input[ $key ] ) ? 0 : 1 ) : (int) $old[ $key ];
+	}
+	if ( isset( $input['nt_choice'] ) && preg_match( '/^(\d+):(\d{4})$/', (string) $input['nt_choice'], $choice ) ) {
+		$clean['nt_league'] = (int) $choice[1];
+		$clean['nt_season'] = (int) $choice[2];
+		foreach ( (array) get_transient( 'gsf_nt_leagues' ) as $league ) {
+			if ( (int) $league['id'] === $clean['nt_league'] ) {
+				$clean['nt_league_name'] = $league['name'];
+			}
+		}
+	}
 	// The key field is rendered masked: an untouched mask keeps the stored key.
 	if ( isset( $input['api_key'] ) && false !== strpos( (string) $input['api_key'], '•' ) ) {
 		$clean['api_key'] = $old['api_key'];
@@ -152,6 +171,99 @@ add_action(
 					set_transient( 'gsf_league_search_' . get_current_user_id(), $result, 10 * MINUTE_IN_SECONDS );
 					$notice = sprintf( /* translators: %d count */ __( '%d compétition(s) trouvée(s) — voir la liste ci-dessous.', 'galsenfoot-league' ), count( $result ) );
 				}
+				break;
+			case 'nt_find':
+				$country = sanitize_text_field( wp_unslash( $_POST['nt_country'] ?? 'Senegal' ) );
+				$teams   = gsf_nt_find_team( $country );
+				if ( is_wp_error( $teams ) ) {
+					$report( $teams, '' );
+					break;
+				}
+				if ( ! $teams ) {
+					$success = false;
+					/* translators: %s country */
+					$notice = sprintf( __( 'Aucune équipe nationale trouvée pour « %s ». Utilisez le nom anglais du pays (ex. Senegal).', 'galsenfoot-league' ), $country );
+					break;
+				}
+				// The senior men's team is the one named exactly like the country (others: "Senegal U23", "Senegal W"…).
+				$team = $teams[0];
+				foreach ( $teams as $candidate ) {
+					if ( 0 === strcasecmp( $candidate['name'], $country ) ) {
+						$team = $candidate;
+						break;
+					}
+				}
+				$settings = array_merge(
+					gsf_settings(),
+					array(
+						'nt_country' => $country,
+						'nt_team'    => $team['id'],
+						'nt_name'    => $team['name'],
+						'nt_logo'    => $team['logo'],
+						'nt_league'  => 0,
+						'nt_season'  => 0,
+					)
+				);
+				$leagues  = gsf_nt_leagues( $team['id'] );
+				if ( ! is_wp_error( $leagues ) && $leagues ) {
+					set_transient( 'gsf_nt_leagues', $leagues, DAY_IN_SECONDS );
+					$settings['nt_league']      = $leagues[0]['id'];
+					$settings['nt_season']      = $leagues[0]['current'];
+					$settings['nt_league_name'] = $leagues[0]['name'];
+				}
+				update_option( 'gsf_settings', $settings );
+				/* translators: 1: team 2: id 3: competition */
+				$notice = sprintf( __( 'Sélection trouvée : %1$s (ID %2$d). Compétition présélectionnée : %3$s. Vérifiez-la puis lancez l’import.', 'galsenfoot-league' ), $team['name'], $team['id'], ! is_wp_error( $leagues ) && $leagues ? gsf_nt_competition_name( $leagues[0]['name'] ) . ' ' . $leagues[0]['current'] : '—' );
+				break;
+			case 'nt_leagues':
+				$leagues = gsf_nt_leagues( gsf_settings( 'nt_team' ) );
+				if ( is_wp_error( $leagues ) ) {
+					$report( $leagues, '' );
+				} else {
+					set_transient( 'gsf_nt_leagues', $leagues, DAY_IN_SECONDS );
+					/* translators: %d count */
+					$notice = sprintf( __( '%d compétition(s) disponibles pour la sélection.', 'galsenfoot-league' ), count( $leagues ) );
+				}
+				break;
+			case 'nt_save':
+				update_option(
+					'gsf_settings',
+					array_merge(
+						gsf_settings(),
+						array(
+							'nt_choice' => sanitize_text_field( wp_unslash( $_POST['nt_choice'] ?? '' ) ),
+							'nt_extra'  => empty( $_POST['nt_extra'] ) ? 0 : 1,
+							'nt_auto'   => empty( $_POST['nt_auto'] ) ? 0 : 1,
+						)
+					)
+				);
+				$notice = __( 'Réglages de la sélection enregistrés.', 'galsenfoot-league' );
+				break;
+			case 'nt_import':
+				if ( ! gsf_nt_ready() ) {
+					$success = false;
+					$notice  = __( 'Choisissez d’abord la sélection et la compétition.', 'galsenfoot-league' );
+					break;
+				}
+				$results = gsf_nt_import_all();
+				$parts   = array();
+				$labels  = array(
+					'squad'   => __( 'joueurs', 'galsenfoot-league' ),
+					'matches' => __( 'matchs', 'galsenfoot-league' ),
+					'table'   => __( 'équipes au classement', 'galsenfoot-league' ),
+					'details' => __( 'feuilles de match détaillées', 'galsenfoot-league' ),
+				);
+				foreach ( $results as $step => $result ) {
+					if ( is_wp_error( $result ) ) {
+						$success = 'squad' === $step ? $success : false;
+						$parts[] = $labels[ $step ] . ' : ' . $result->get_error_message();
+					} elseif ( is_array( $result ) ) {
+						$parts[] = $result['done'] . '/' . $result['total'] . ' ' . $labels[ $step ] . ( $result['finished'] ? '' : ' (' . __( 'la suite en arrière-plan', 'galsenfoot-league' ) . ')' );
+					} else {
+						$parts[] = (int) $result . ' ' . $labels[ $step ];
+					}
+				}
+				$notice = __( 'Import de la sélection', 'galsenfoot-league' ) . ' — ' . implode( ' · ', $parts );
 				break;
 			case 'demo_install':
 				$notice = gsf_demo_install();
@@ -388,6 +500,8 @@ function gsf_admin_page() {
 			?>
 		</div>
 
+		<?php gsf_admin_national_panel(); ?>
+
 		<div class="gsf-admin-panel">
 			<h2><?php esc_html_e( 'Données de démonstration', 'galsenfoot-league' ); ?></h2>
 			<p><?php esc_html_e( 'Installe un championnat fictif complet (clubs, joueurs, calendrier, résultats, buteurs) pour découvrir le thème et les widgets. Les joueurs et les scores sont inventés. Tout se supprime en un clic.', 'galsenfoot-league' ); ?></p>
@@ -415,6 +529,117 @@ function gsf_admin_page() {
 			</tbody></table>
 			<p class="description"><?php esc_html_e( 'Attributs communs : competition et season (ID ou identifiant), title.', 'galsenfoot-league' ); ?></p>
 		</div>
+	</div>
+	<?php
+}
+
+/**
+ * "National team" panel of the dashboard.
+ */
+function gsf_admin_national_panel() {
+	$s      = gsf_settings();
+	$action = esc_url( admin_url( 'admin-post.php' ) );
+	$hidden = static function ( $tool ) {
+		wp_nonce_field( 'gsf_tool' );
+		echo '<input type="hidden" name="action" value="gsf_tool"><input type="hidden" name="tool" value="' . esc_attr( $tool ) . '">';
+	};
+	?>
+	<div class="gsf-admin-panel" id="gsf-nt">
+		<h2><?php esc_html_e( 'Équipe nationale (API-Football)', 'galsenfoot-league' ); ?></h2>
+		<p><?php esc_html_e( 'Importe les matchs de la sélection pour une compétition (par exemple les éliminatoires de la CAN : matchs joués et à venir, scores, buteurs, classement du groupe) ainsi que la liste actuelle des joueurs. Les joueurs gardent leur club : l’appartenance à la sélection est enregistrée à part.', 'galsenfoot-league' ); ?></p>
+		<?php if ( '' === trim( (string) $s['api_key'] ) ) : ?>
+			<p><em><?php esc_html_e( 'Renseignez d’abord la clé API ci-dessus.', 'galsenfoot-league' ); ?></em></p>
+		</div>
+			<?php
+			return;
+		endif;
+		?>
+		<ol class="gsf-nt-steps">
+			<li>
+				<form method="post" action="<?php echo $action; // phpcs:ignore WordPress.Security.EscapeOutput ?>" class="gsf-tool-inline">
+					<?php $hidden( 'nt_find' ); ?>
+					<label><?php esc_html_e( 'Pays (nom anglais)', 'galsenfoot-league' ); ?> <input type="text" name="nt_country" value="<?php echo esc_attr( $s['nt_country'] ); ?>"></label>
+					<button class="button"><?php esc_html_e( 'Trouver la sélection', 'galsenfoot-league' ); ?></button>
+				</form>
+				<?php if ( $s['nt_team'] ) : ?>
+					<p class="gsf-nt-team">
+						<?php if ( $s['nt_logo'] ) : ?>
+							<img src="<?php echo esc_url( $s['nt_logo'] ); ?>" alt="" width="28" height="28">
+						<?php endif; ?>
+						<strong><?php echo esc_html( $s['nt_name'] ); ?></strong> <code>ID <?php echo (int) $s['nt_team']; ?></code>
+					</p>
+				<?php endif; ?>
+			</li>
+			<?php
+			if ( $s['nt_team'] ) :
+				$leagues = get_transient( 'gsf_nt_leagues' );
+				?>
+				<li>
+					<?php if ( is_array( $leagues ) && $leagues ) : ?>
+						<form method="post" action="<?php echo $action; // phpcs:ignore WordPress.Security.EscapeOutput ?>">
+							<?php $hidden( 'nt_save' ); ?>
+							<p><label for="gsf-nt-choice"><strong><?php esc_html_e( 'Compétition et saison', 'galsenfoot-league' ); ?></strong></label><br>
+								<select id="gsf-nt-choice" name="nt_choice">
+									<?php
+									foreach ( $leagues as $league ) {
+										echo '<optgroup label="' . esc_attr( $league['label'] . ( $league['label'] !== $league['name'] ? ' (' . $league['name'] . ')' : '' ) ) . '">';
+										foreach ( $league['seasons'] as $year ) {
+											$value = $league['id'] . ':' . $year;
+											printf(
+												'<option value="%s"%s>%s — %d%s</option>',
+												esc_attr( $value ),
+												selected( (int) $s['nt_league'] . ':' . (int) $s['nt_season'], $value, false ),
+												esc_html( $league['label'] ),
+												(int) $year,
+												$year === $league['current'] ? ' ' . esc_html__( '(en cours)', 'galsenfoot-league' ) : ''
+											);
+										}
+										echo '</optgroup>';
+									}
+									?>
+								</select>
+							</p>
+							<p class="description"><?php esc_html_e( 'Pour la CAN, l’API classe les éliminatoires sous « Africa Cup of Nations - Qualification » ; l’année est celle du début des éliminatoires, pas celle de la phase finale. Choisissez la saison marquée « en cours » pour la prochaine CAN.', 'galsenfoot-league' ); ?></p>
+							<p>
+								<label><input type="checkbox" name="nt_extra" value="1"<?php checked( $s['nt_extra'] ); ?>> <?php esc_html_e( 'Ajouter aussi les 10 derniers et 10 prochains matchs de la sélection, toutes compétitions (amicaux, éliminatoires Coupe du monde…)', 'galsenfoot-league' ); ?></label><br>
+								<label><input type="checkbox" name="nt_auto" value="1"<?php checked( $s['nt_auto'] ); ?>> <?php esc_html_e( 'Mettre à jour automatiquement (toutes les 6 heures, à chaque passage les jours de match) — nécessite une fréquence de mise à jour active ci-dessus', 'galsenfoot-league' ); ?></label>
+							</p>
+							<button class="button"><?php esc_html_e( 'Enregistrer', 'galsenfoot-league' ); ?></button>
+						</form>
+					<?php endif; ?>
+					<form method="post" action="<?php echo $action; // phpcs:ignore WordPress.Security.EscapeOutput ?>" class="gsf-tool-inline">
+						<?php $hidden( 'nt_leagues' ); ?>
+						<button class="button-link"><?php echo is_array( $leagues ) && $leagues ? esc_html__( 'Recharger la liste des compétitions', 'galsenfoot-league' ) : esc_html__( 'Charger la liste des compétitions', 'galsenfoot-league' ); ?></button>
+					</form>
+				</li>
+			<?php endif; ?>
+			<?php if ( gsf_nt_ready() ) : ?>
+				<li>
+					<form method="post" action="<?php echo $action; // phpcs:ignore WordPress.Security.EscapeOutput ?>">
+						<?php $hidden( 'nt_import' ); ?>
+						<button class="button button-primary button-hero"><?php esc_html_e( 'Importer / mettre à jour la sélection', 'galsenfoot-league' ); ?></button>
+					</form>
+					<?php
+					$team_id = gsf_find_by_api_id( 'gsf_club', $s['nt_team'] );
+					if ( $team_id ) {
+						$squad   = count( gsf_club_players( $team_id ) );
+						$matches = count( gsf_query_matches( array( 'club' => $team_id, 'any_term' => true, 'limit' => 500 ) ) );
+						$last    = (int) get_option( 'gsf_nt_last', 0 );
+						echo '<p>' . esc_html(
+							sprintf(
+								/* translators: 1: players 2: matches 3: date */
+								__( 'Actuellement : %1$d joueurs dans la liste, %2$d matchs importés. Dernière mise à jour : %3$s.', 'galsenfoot-league' ),
+								$squad,
+								$matches,
+								$last ? wp_date( 'd/m/Y H:i', $last ) : '—'
+							)
+						) . ' <a href="' . esc_url( get_permalink( $team_id ) ) . '">' . esc_html__( 'Voir la page de la sélection', 'galsenfoot-league' ) . '</a> · <a href="' . esc_url( get_edit_post_link( $team_id ) ) . '">' . esc_html__( 'Modifier (sélectionneur, couleurs…)', 'galsenfoot-league' ) . '</a></p>';
+					}
+					?>
+					<p class="description"><?php esc_html_e( 'Coût : environ 3 à 5 requêtes, plus 1 par match terminé pour les buteurs et les joueurs alignés (étalé en arrière-plan). L’offre gratuite d’API-Football ne couvre que d’anciennes saisons : pour les éliminatoires en cours, une offre payante est nécessaire.', 'galsenfoot-league' ); ?></p>
+				</li>
+			<?php endif; ?>
+		</ol>
 	</div>
 	<?php
 }

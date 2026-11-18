@@ -110,11 +110,15 @@ function gf_breadcrumb_items() {
 			}
 		} elseif ( 'page' !== $type ) {
 			$object = get_post_type_object( $type );
-			if ( $object && $object->has_archive ) {
+			$is_nt  = 'gsf_club' === $type && get_post_meta( $post->ID, '_gsf_national', true );
+			if ( $is_nt ) {
+				$items[] = array( __( 'Équipes nationales', 'galsenfoot' ), '' );
+			} elseif ( $object && $object->has_archive ) {
 				$items[] = array( $object->labels->name, get_post_type_archive_link( $type ) );
 			}
 			if ( 'gsf_player' === $type ) {
 				$club_id = (int) get_post_meta( $post->ID, '_gsf_club', true );
+				$club_id = $club_id ? $club_id : (int) get_post_meta( $post->ID, '_gsf_national_team', true );
 				if ( $club_id && 'publish' === get_post_status( $club_id ) ) {
 					$items[] = array( get_the_title( $club_id ), get_permalink( $club_id ) );
 				}

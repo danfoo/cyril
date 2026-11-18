@@ -96,7 +96,7 @@ function gsf_find_by_api_id( $post_type, $api_id ) {
  */
 function gsf_upsert( $post_type, $data ) {
 	$post_id = gsf_find_by_api_id( $post_type, $data['api_id'] ?? 0 );
-	if ( ! $post_id && ! empty( $data['title'] ) && 'gsf_match' !== $post_type ) {
+	if ( ! $post_id && ! empty( $data['title'] ) && 'gsf_match' !== $post_type && ( $data['match_title'] ?? true ) ) {
 		// Attach to an item created by hand with the same name.
 		$existing = get_posts(
 			array(
@@ -261,6 +261,89 @@ function gsf_api_sync_teams() {
 }
 
 /**
+ * Create or update one match from an API-Football fixture item.
+ *
+ * @param array $item     Fixture item (fixture, league, teams, goals).
+ * @param int   $comp     Competition term ID.
+ * @param int   $season   Season term ID.
+ * @param bool  $national Whether the teams are national teams.
+ * @return int Match ID (0 on failure).
+ */
+function gsf_api_save_fixture( $item, $comp, $season, $national = false ) {
+	$fixture = $item['fixture'] ?? array();
+	if ( empty( $fixture['id'] ) ) {
+		return 0;
+	}
+	$clubs = array();
+	foreach ( array( 'home', 'away' ) as $side ) {
+		$team           = $item['teams'][ $side ] ?? array();
+		$clubs[ $side ] = gsf_find_by_api_id( 'gsf_club', $team['id'] ?? 0 );
+		if ( ! $clubs[ $side ] && ! empty( $team['id'] ) ) {
+			$clubs[ $side ] = gsf_upsert(
+				'gsf_club',
+				array(
+					'api_id'      => $team['id'],
+					'title'       => $national && function_exists( 'gsf_nt_team_name' ) ? gsf_nt_team_name( sanitize_text_field( $team['name'] ?? '' ) ) : sanitize_text_field( $team['name'] ?? '' ),
+					'image'       => $team['logo'] ?? '',
+					'match_title' => ! $national,
+					'meta'        => $national ? array( '_gsf_national' => 1 ) : array(),
+				)
+			);
+		}
+	}
+	$status   = gsf_api_status( $fixture['status']['short'] ?? '' );
+	$matchday = 0;
+	$round    = (string) ( $item['league']['round'] ?? '' );
+	// "Regular Season - 12", "Group Stage - 3"… but not "Friendlies 1" or knockout rounds.
+	if ( preg_match( '/(season|group|matchday)\D*(\d+)\s*$/i', $round, $found ) ) {
+		$matchday = (int) $found[2];
+	}
+	$venue    = trim( ( $fixture['venue']['name'] ?? '' ) . ( ! empty( $fixture['venue']['city'] ) ? ', ' . $fixture['venue']['city'] : '' ) );
+	$match_id = gsf_find_by_api_id( 'gsf_match', $fixture['id'] );
+	if ( ! $match_id ) {
+		$match_id = wp_insert_post(
+			array(
+				'post_type'   => 'gsf_match',
+				'post_status' => 'publish',
+				'post_title'  => 'match',
+			)
+		);
+		if ( ! $match_id || is_wp_error( $match_id ) ) {
+			return 0;
+		}
+		update_post_meta( $match_id, '_gsf_api_id', (string) $fixture['id'] );
+	}
+	$has_score = isset( $item['goals']['home'], $item['goals']['away'] );
+	update_post_meta( $match_id, '_gsf_home', $clubs['home'] );
+	update_post_meta( $match_id, '_gsf_away', $clubs['away'] );
+	update_post_meta( $match_id, '_gsf_ts', absint( $fixture['timestamp'] ?? 0 ) );
+	update_post_meta( $match_id, '_gsf_status', $status );
+	update_post_meta( $match_id, '_gsf_minute', absint( $fixture['status']['elapsed'] ?? 0 ) );
+	update_post_meta( $match_id, '_gsf_home_score', $has_score ? (int) $item['goals']['home'] : '' );
+	update_post_meta( $match_id, '_gsf_away_score', $has_score ? (int) $item['goals']['away'] : '' );
+	if ( $matchday ) {
+		update_post_meta( $match_id, '_gsf_matchday', $matchday );
+	}
+	if ( $venue ) {
+		update_post_meta( $match_id, '_gsf_venue', sanitize_text_field( $venue ) );
+	}
+	if ( ! empty( $item['league']['round'] ) ) {
+		update_post_meta( $match_id, '_gsf_round', sanitize_text_field( $item['league']['round'] ) );
+	}
+	if ( $national ) {
+		update_post_meta( $match_id, '_gsf_national_match', 1 );
+	}
+	if ( $comp ) {
+		wp_set_object_terms( $match_id, array( (int) $comp ), 'gsf_competition' );
+	}
+	if ( $season ) {
+		wp_set_object_terms( $match_id, array( (int) $season ), 'gsf_season' );
+	}
+	gsf_sync_match_title( $match_id );
+	return (int) $match_id;
+}
+
+/**
  * Import fixtures and results (one request for the whole season).
  *
  * @return int|WP_Error Number of matches.
@@ -279,66 +362,53 @@ function gsf_api_sync_fixtures() {
 	list( $comp, $season ) = gsf_api_terms();
 	$count                 = 0;
 	foreach ( (array) $body['response'] as $item ) {
-		$fixture = $item['fixture'] ?? array();
-		if ( empty( $fixture['id'] ) ) {
-			continue;
-		}
-		$clubs = array();
-		foreach ( array( 'home', 'away' ) as $side ) {
-			$team           = $item['teams'][ $side ] ?? array();
-			$clubs[ $side ] = gsf_find_by_api_id( 'gsf_club', $team['id'] ?? 0 );
-			if ( ! $clubs[ $side ] && ! empty( $team['id'] ) ) {
-				$clubs[ $side ] = gsf_upsert(
-					'gsf_club',
-					array(
-						'api_id' => $team['id'],
-						'title'  => sanitize_text_field( $team['name'] ?? '' ),
-						'image'  => $team['logo'] ?? '',
-					)
-				);
-			}
-		}
-		$status   = gsf_api_status( $fixture['status']['short'] ?? '' );
-		$matchday = 0;
-		if ( preg_match( '/(\d+)\s*$/', (string) ( $item['league']['round'] ?? '' ), $found ) ) {
-			$matchday = (int) $found[1];
-		}
-		$venue    = trim( ( $fixture['venue']['name'] ?? '' ) . ( ! empty( $fixture['venue']['city'] ) ? ', ' . $fixture['venue']['city'] : '' ) );
-		$match_id = gsf_find_by_api_id( 'gsf_match', $fixture['id'] );
-		if ( ! $match_id ) {
-			$match_id = wp_insert_post(
-				array(
-					'post_type'   => 'gsf_match',
-					'post_status' => 'publish',
-					'post_title'  => 'match',
-				)
-			);
-			if ( ! $match_id || is_wp_error( $match_id ) ) {
-				continue;
-			}
-			update_post_meta( $match_id, '_gsf_api_id', (string) $fixture['id'] );
-		}
-		$has_score = isset( $item['goals']['home'], $item['goals']['away'] );
-		update_post_meta( $match_id, '_gsf_home', $clubs['home'] );
-		update_post_meta( $match_id, '_gsf_away', $clubs['away'] );
-		update_post_meta( $match_id, '_gsf_ts', absint( $fixture['timestamp'] ?? 0 ) );
-		update_post_meta( $match_id, '_gsf_status', $status );
-		update_post_meta( $match_id, '_gsf_minute', absint( $fixture['status']['elapsed'] ?? 0 ) );
-		update_post_meta( $match_id, '_gsf_home_score', $has_score ? (int) $item['goals']['home'] : '' );
-		update_post_meta( $match_id, '_gsf_away_score', $has_score ? (int) $item['goals']['away'] : '' );
-		if ( $matchday ) {
-			update_post_meta( $match_id, '_gsf_matchday', $matchday );
-		}
-		if ( $venue ) {
-			update_post_meta( $match_id, '_gsf_venue', sanitize_text_field( $venue ) );
-		}
-		wp_set_object_terms( $match_id, array( $comp ), 'gsf_competition' );
-		wp_set_object_terms( $match_id, array( $season ), 'gsf_season' );
-		gsf_sync_match_title( $match_id );
-		++$count;
+		$count += gsf_api_save_fixture( $item, $comp, $season ) ? 1 : 0;
 	}
 	gsf_flush_cache();
 	return $count;
+}
+
+/**
+ * Convert API-Football events into local events (goals and cards only).
+ *
+ * @param array  $list     API events.
+ * @param string $home_api Remote ID of the home team.
+ * @return array[]
+ */
+function gsf_api_parse_events( $list, $home_api ) {
+	$events = array();
+	foreach ( (array) $list as $event ) {
+		$kind   = strtolower( (string) ( $event['type'] ?? '' ) );
+		$detail = strtolower( (string) ( $event['detail'] ?? '' ) );
+		$type   = '';
+		if ( 'goal' === $kind ) {
+			if ( false !== strpos( $detail, 'missed' ) ) {
+				continue;
+			}
+			$type = false !== strpos( $detail, 'own' ) ? 'own_goal' : ( false !== strpos( $detail, 'penalty' ) ? 'penalty' : 'goal' );
+		} elseif ( 'card' === $kind ) {
+			$type = false !== strpos( $detail, 'yellow' ) && false === strpos( $detail, 'second' ) ? 'yellow' : 'red';
+		}
+		if ( ! $type ) {
+			continue;
+		}
+		$events[] = array(
+			'minute'      => absint( $event['time']['elapsed'] ?? 0 ) + absint( $event['time']['extra'] ?? 0 ),
+			'type'        => $type,
+			'side'        => (string) ( $event['team']['id'] ?? '' ) === (string) $home_api ? 'home' : 'away',
+			'player'      => gsf_find_by_api_id( 'gsf_player', $event['player']['id'] ?? 0 ),
+			'player_name' => sanitize_text_field( $event['player']['name'] ?? '' ),
+			'assist'      => gsf_find_by_api_id( 'gsf_player', $event['assist']['id'] ?? 0 ),
+			'assist_name' => sanitize_text_field( $event['assist']['name'] ?? '' ),
+		);
+	}
+	usort(
+		$events,
+		static function ( $a, $b ) {
+			return $a['minute'] <=> $b['minute'];
+		}
+	);
+	return $events;
 }
 
 /**
@@ -369,6 +439,10 @@ function gsf_api_sync_events( $max = 6 ) {
 					'compare' => 'IN',
 				),
 				array(
+					'key'     => '_gsf_national_match',
+					'compare' => 'NOT EXISTS',
+				),
+				array(
 					'relation' => 'OR',
 					array(
 						'key'     => '_gsf_events_synced',
@@ -389,32 +463,7 @@ function gsf_api_sync_events( $max = 6 ) {
 			return $count ? $count : $body;
 		}
 		$home_api = (string) get_post_meta( (int) get_post_meta( $match_id, '_gsf_home', true ), '_gsf_api_id', true );
-		$events   = array();
-		foreach ( (array) $body['response'] as $event ) {
-			$kind   = strtolower( (string) ( $event['type'] ?? '' ) );
-			$detail = strtolower( (string) ( $event['detail'] ?? '' ) );
-			$type   = '';
-			if ( 'goal' === $kind ) {
-				if ( false !== strpos( $detail, 'missed' ) ) {
-					continue;
-				}
-				$type = false !== strpos( $detail, 'own' ) ? 'own_goal' : ( false !== strpos( $detail, 'penalty' ) ? 'penalty' : 'goal' );
-			} elseif ( 'card' === $kind ) {
-				$type = false !== strpos( $detail, 'yellow' ) && false === strpos( $detail, 'second' ) ? 'yellow' : 'red';
-			}
-			if ( ! $type ) {
-				continue;
-			}
-			$events[] = array(
-				'minute'      => absint( $event['time']['elapsed'] ?? 0 ) + absint( $event['time']['extra'] ?? 0 ),
-				'type'        => $type,
-				'side'        => (string) ( $event['team']['id'] ?? '' ) === $home_api ? 'home' : 'away',
-				'player'      => gsf_find_by_api_id( 'gsf_player', $event['player']['id'] ?? 0 ),
-				'player_name' => sanitize_text_field( $event['player']['name'] ?? '' ),
-				'assist'      => gsf_find_by_api_id( 'gsf_player', $event['assist']['id'] ?? 0 ),
-				'assist_name' => sanitize_text_field( $event['assist']['name'] ?? '' ),
-			);
-		}
+		$events   = gsf_api_parse_events( (array) $body['response'], $home_api );
 		usort(
 			$events,
 			static function ( $a, $b ) {
@@ -671,7 +720,7 @@ add_action(
 add_action(
 	'gsf_api_continue',
 	static function ( $step ) {
-		if ( ! gsf_api_ready() ) {
+		if ( ! in_array( $step, array( 'squads', 'stats' ), true ) || ! gsf_api_ready() ) {
 			return;
 		}
 		$result = 'squads' === $step ? gsf_api_sync_squads() : gsf_api_sync_player_stats();

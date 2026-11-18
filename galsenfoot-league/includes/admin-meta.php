@@ -26,6 +26,7 @@ function gsf_admin_fields( $post_type ) {
 			'_gsf_website'   => array( __( 'Site web', 'galsenfoot-league' ), 'url' ),
 			'_gsf_color'     => array( __( 'Couleur principale', 'galsenfoot-league' ), 'color' ),
 			'_gsf_color2'    => array( __( 'Couleur secondaire', 'galsenfoot-league' ), 'color' ),
+			'_gsf_national'  => array( __( 'Équipe nationale (sélection)', 'galsenfoot-league' ), 'checkbox' ),
 		);
 	}
 	return array(
@@ -44,6 +45,8 @@ function gsf_admin_fields( $post_type ) {
 				'B' => __( 'Les deux', 'galsenfoot-league' ),
 			),
 		),
+		'_gsf_national_team' => array( __( 'Sélection nationale', 'galsenfoot-league' ), 'club' ),
+		'_gsf_nt_number'     => array( __( 'Numéro en sélection', 'galsenfoot-league' ), 'number' ),
 	);
 }
 
@@ -69,7 +72,8 @@ function gsf_admin_club_select( $name, $selected, $attrs = '' ) {
 	}
 	echo '<select name="' . esc_attr( $name ) . '" ' . $attrs . '><option value="">— ' . esc_html__( 'Choisir', 'galsenfoot-league' ) . ' —</option>'; // phpcs:ignore WordPress.Security.EscapeOutput
 	foreach ( $clubs as $club ) {
-		printf( '<option value="%d"%s>%s</option>', (int) $club->ID, selected( (int) $selected, $club->ID, false ), esc_html( $club->post_title ) );
+		$suffix = get_post_meta( $club->ID, '_gsf_national', true ) ? ' ' . __( '(sélection)', 'galsenfoot-league' ) : '';
+		printf( '<option value="%d"%s>%s</option>', (int) $club->ID, selected( (int) $selected, $club->ID, false ), esc_html( $club->post_title . $suffix ) );
 	}
 	echo '</select>';
 }
@@ -108,6 +112,9 @@ function gsf_admin_fields_box( $post ) {
 				break;
 			case 'color':
 				printf( '<input type="color" id="%1$s" name="%1$s" value="%2$s">', esc_attr( $key ), esc_attr( $value ?: ( '_gsf_color' === $key ? '#00853f' : '#ffffff' ) ) );
+				break;
+			case 'checkbox':
+				printf( '<input type="checkbox" id="%1$s" name="%1$s" value="1"%2$s>', esc_attr( $key ), checked( (bool) $value, true, false ) );
 				break;
 			default:
 				printf( '<input type="%3$s" id="%1$s" name="%1$s" value="%2$s" class="widefat">', esc_attr( $key ), esc_attr( $value ), esc_attr( $field[1] ) );
@@ -308,6 +315,9 @@ add_action(
 					case 'color':
 						$value = sanitize_hex_color( $raw );
 						break;
+					case 'checkbox':
+						$value = $raw ? 1 : '';
+						break;
 					case 'date':
 						$value = preg_match( '/^\d{4}-\d{2}-\d{2}$/', $raw ) ? $raw : '';
 						break;
@@ -319,6 +329,10 @@ add_action(
 				}
 				if ( '_gsf_short' === $key ) {
 					$value = strtoupper( function_exists( 'mb_substr' ) ? mb_substr( $value, 0, 4 ) : substr( $value, 0, 4 ) );
+				}
+				if ( '' === $value && in_array( $key, array( '_gsf_national', '_gsf_national_team' ), true ) ) {
+					delete_post_meta( $post_id, $key );
+					continue;
 				}
 				update_post_meta( $post_id, $key, $value );
 			}

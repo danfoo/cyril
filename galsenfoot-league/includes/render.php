@@ -113,10 +113,12 @@ function gsf_render_standings( $args = array() ) {
 	if ( ! $rows ) {
 		return gsf_block_title( $args['title'] ) . gsf_empty( __( 'Le classement sera disponible dès les premiers matchs.', 'galsenfoot-league' ) );
 	}
-	$total   = count( $rows );
-	$top     = (int) gsf_settings( 'zone_top' );
-	$top2    = (int) gsf_settings( 'zone_top2' );
-	$bottom  = (int) gsf_settings( 'zone_bottom' );
+	$total    = count( $rows );
+	$national = (bool) get_term_meta( (int) $args['competition'], '_gsf_national', true );
+	$top      = $national ? 0 : (int) gsf_settings( 'zone_top' );
+	$top2     = $national ? 0 : (int) gsf_settings( 'zone_top2' );
+	$bottom   = $national ? 0 : (int) gsf_settings( 'zone_bottom' );
+	$group    = (string) ( $rows[0]['group'] ?? '' );
 	$compact = ! empty( $args['compact'] ) && 'no' !== $args['compact'];
 	$form    = ! empty( $args['form'] ) && 'no' !== $args['form'] && ! $compact;
 	if ( (int) $args['limit'] > 0 ) {
@@ -126,6 +128,9 @@ function gsf_render_standings( $args = array() ) {
 
 	ob_start();
 	echo gsf_block_title( $args['title'] ); // phpcs:ignore WordPress.Security.EscapeOutput
+	if ( '' !== $group ) {
+		echo '<p class="gsf-group-name">' . esc_html( trim( ( get_term( $args['competition'] )->name ?? '' ) . ' · ' . str_ireplace( 'Group', __( 'Groupe', 'galsenfoot-league' ), $group ), ' ·' ) ) . '</p>';
+	}
 	?>
 	<div class="gsf-table-wrap<?php echo $compact ? ' is-compact' : ''; ?>">
 		<table class="gsf-table gsf-standings">
@@ -191,7 +196,7 @@ function gsf_render_standings( $args = array() ) {
 			</tbody>
 		</table>
 	</div>
-	<?php if ( ! $compact ) : ?>
+	<?php if ( ! $compact && ( $top || $top2 || $bottom ) ) : ?>
 		<ul class="gsf-legend">
 			<?php if ( $top ) : ?><li class="zone-top"><?php esc_html_e( 'Champion / Ligue des champions CAF', 'galsenfoot-league' ); ?></li><?php endif; ?>
 			<?php if ( $top2 ) : ?><li class="zone-top2"><?php esc_html_e( 'Coupe de la Confédération', 'galsenfoot-league' ); ?></li><?php endif; ?>
@@ -662,9 +667,23 @@ function gsf_render_clubs( $args = array() ) {
 				'orderby'        => 'title',
 				'order'          => 'ASC',
 				'fields'         => 'ids',
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery
+					array(
+						'key'     => '_gsf_national',
+						'compare' => 'NOT EXISTS',
+					),
+				),
 			)
 		);
 	}
+	$clubs = array_values(
+		array_filter(
+			$clubs,
+			static function ( $id ) {
+				return ! gsf_is_national( $id );
+			}
+		)
+	);
 	if ( ! $clubs ) {
 		return gsf_block_title( $args['title'] ) . gsf_empty( __( 'Aucun club pour le moment.', 'galsenfoot-league' ) );
 	}
@@ -697,7 +716,8 @@ function gsf_render_squad( $args = array() ) {
 	if ( ! $players ) {
 		return gsf_block_title( $args['title'] ) . gsf_empty( __( 'Effectif non renseigné.', 'galsenfoot-league' ) );
 	}
-	$stats     = gsf_get_player_stats_table( $args['competition'], $args['season'] );
+	$national  = gsf_is_national( $club_id );
+	$stats     = $national ? gsf_get_team_player_stats( $club_id ) : gsf_get_player_stats_table( $args['competition'], $args['season'] );
 	$positions = gsf_positions();
 	$plural    = array(
 		'GK' => __( 'Gardiens', 'galsenfoot-league' ),
@@ -717,14 +737,19 @@ function gsf_render_squad( $args = array() ) {
 		$html .= '<h3 class="gsf-squad__pos">' . esc_html( $plural[ $pos ] ) . '</h3><ul class="gsf-squad__list">';
 		foreach ( $group as $player ) {
 			$s      = $stats[ $player->ID ] ?? array( 'apps' => 0, 'goals' => 0 );
-			$number = get_post_meta( $player->ID, '_gsf_number', true );
+			$number = gsf_player_number( $player->ID, $national );
+			$line   = sprintf( /* translators: 1: appearances 2: goals */ __( '%1$d matchs · %2$d buts', 'galsenfoot-league' ), $s['apps'], $s['goals'] );
+			if ( $national ) {
+				$own = gsf_club( (int) get_post_meta( $player->ID, '_gsf_club', true ) );
+				$line = $own['id'] ? $own['name'] . ' · ' . $line : $line;
+			}
 			$html  .= sprintf(
 				'<li><a class="gsf-player-card" href="%s"><span class="gsf-player-card__num">%s</span>%s<span class="gsf-player-card__name">%s</span><span class="gsf-player-card__stats">%s</span></a></li>',
 				esc_url( get_permalink( $player ) ),
-				'' !== $number ? (int) $number : '–',
+				'' !== $number ? esc_html( $number ) : '–',
 				gsf_player_photo( $player->ID ),
 				esc_html( get_the_title( $player ) ),
-				esc_html( sprintf( /* translators: 1: appearances 2: goals */ __( '%1$d matchs · %2$d buts', 'galsenfoot-league' ), $s['apps'], $s['goals'] ) )
+				esc_html( $line )
 			);
 		}
 		$html .= '</ul>';
@@ -753,6 +778,9 @@ function gsf_facts( $facts ) {
  * @return string
  */
 function gsf_render_club_profile( $club_id ) {
+	if ( gsf_is_national( $club_id ) ) {
+		return gsf_render_national_profile( $club_id );
+	}
 	$capacity = (int) get_post_meta( $club_id, '_gsf_capacity', true );
 	$website  = get_post_meta( $club_id, '_gsf_website', true );
 	$facts    = gsf_facts(
@@ -778,6 +806,68 @@ function gsf_render_club_profile( $club_id ) {
 }
 
 /**
+ * National team page body: match centre, official group table(s), current squad and scorers.
+ *
+ * @param int $team_id Team post ID.
+ * @return string
+ */
+function gsf_render_national_profile( $team_id ) {
+	$facts = gsf_facts(
+		array(
+			__( 'Sélectionneur', 'galsenfoot-league' ) => esc_html( get_post_meta( $team_id, '_gsf_coach', true ) ),
+			__( 'Stade', 'galsenfoot-league' )         => esc_html( get_post_meta( $team_id, '_gsf_stadium', true ) ),
+			__( 'Fédération', 'galsenfoot-league' )    => esc_html( get_post_meta( $team_id, '_gsf_president', true ) ),
+		)
+	);
+	$html  = $facts;
+	$html .= '<section>' . gsf_render_match_center(
+		array(
+			'club'     => $team_id,
+			'title'    => __( 'Matchs de la sélection', 'galsenfoot-league' ),
+			'results'  => 8,
+			'fixtures' => 8,
+		)
+	) . '</section>';
+
+	// Official group tables of the competitions this team plays in (latest season first).
+	$tables = array();
+	foreach ( get_terms( array( 'taxonomy' => 'gsf_competition', 'hide_empty' => false, 'meta_key' => '_gsf_api_tables' ) ) as $term ) { // phpcs:ignore WordPress.DB.SlowDBQuery
+		$all = get_term_meta( $term->term_id, '_gsf_api_tables', true );
+		if ( ! is_array( $all ) ) {
+			continue;
+		}
+		foreach ( $all as $season_id => $data ) {
+			foreach ( (array) ( $data['tables'] ?? array() ) as $table ) {
+				if ( in_array( (int) $team_id, array_map( 'intval', wp_list_pluck( $table, 'club' ) ), true ) ) {
+					$tables[] = array( (int) $data['time'], $term->term_id, (int) $season_id );
+					break;
+				}
+			}
+		}
+	}
+	rsort( $tables );
+	if ( $tables ) {
+		add_filter( 'gsf_standings_focus_team', $focus = static function () use ( $team_id ) {
+			return (int) $team_id;
+		} );
+		foreach ( array_slice( $tables, 0, 2 ) as $i => $table ) {
+			$html .= '<section>' . gsf_render_standings(
+				array(
+					'competition' => $table[1],
+					'season'      => $table[2],
+					'highlight'   => $team_id,
+					'title'       => 0 === $i ? __( 'Classement du groupe', 'galsenfoot-league' ) : '',
+				)
+			) . '</section>';
+		}
+		remove_filter( 'gsf_standings_focus_team', $focus );
+	}
+	$html .= '<section>' . gsf_render_squad( array( 'club' => $team_id, 'title' => __( 'Liste des joueurs', 'galsenfoot-league' ) ) ) . '</section>';
+	$html .= '<section>' . gsf_render_leaders( array( 'club' => $team_id, 'limit' => 5, 'title' => __( 'Buteurs en sélection', 'galsenfoot-league' ) ) ) . '</section>';
+	return $html;
+}
+
+/**
  * Player page body.
  *
  * @param int $player_id Player ID.
@@ -786,6 +876,9 @@ function gsf_render_club_profile( $club_id ) {
 function gsf_render_player_profile( $player_id ) {
 	$club_id   = (int) get_post_meta( $player_id, '_gsf_club', true );
 	$club      = gsf_club( $club_id );
+	$nt_id     = (int) get_post_meta( $player_id, '_gsf_national_team', true );
+	$nt_former = ! $nt_id ? (int) get_post_meta( $player_id, '_gsf_nt_former', true ) : 0;
+	$nt        = gsf_club( $nt_id ? $nt_id : $nt_former );
 	$positions = gsf_positions();
 	$pos       = get_post_meta( $player_id, '_gsf_position', true );
 	$birth     = get_post_meta( $player_id, '_gsf_birth', true );
@@ -797,23 +890,74 @@ function gsf_render_player_profile( $player_id ) {
 		'B' => __( 'Les deux', 'galsenfoot-league' ),
 	);
 	$foot      = get_post_meta( $player_id, '_gsf_foot', true );
-	$number    = get_post_meta( $player_id, '_gsf_number', true );
+	$number    = gsf_player_number( $player_id );
+	$nt_number = gsf_player_number( $player_id, true );
 	$season    = gsf_resolve_term( '', 'gsf_season' );
 	$comp      = gsf_resolve_term( '', 'gsf_competition' );
-	$s         = gsf_get_player_stats( $player_id, 'api' === ( gsf_get_player_stats( $player_id, 0, $season )['source'] ?? '' ) ? 0 : $comp, $season );
 
+	$nt_fact = '';
+	if ( $nt['id'] ) {
+		$nt_fact = '<a href="' . esc_url( $nt['url'] ) . '">' . esc_html( $nt['name'] ) . '</a>';
+		if ( $nt_id && '' !== $nt_number ) {
+			$nt_fact .= ' <small>(' . esc_html( sprintf( /* translators: %s shirt number */ __( 'n° %s', 'galsenfoot-league' ), $nt_number ) ) . ')</small>';
+		} elseif ( $nt_former ) {
+			$nt_fact .= ' <small>(' . esc_html__( 'ancien appelé', 'galsenfoot-league' ) . ')</small>';
+		}
+	}
 	$facts = gsf_facts(
 		array(
 			__( 'Club', 'galsenfoot-league' )              => $club['id'] ? '<a href="' . esc_url( $club['url'] ) . '">' . esc_html( $club['name'] ) . '</a>' : '',
+			__( 'Sélection', 'galsenfoot-league' )         => $nt_fact,
 			__( 'Poste', 'galsenfoot-league' )             => esc_html( $positions[ $pos ] ?? '' ),
-			__( 'Numéro', 'galsenfoot-league' )            => '' !== $number ? (string) (int) $number : '',
+			__( 'Numéro', 'galsenfoot-league' )            => $club['id'] ? $number : '',
 			__( 'Date de naissance', 'galsenfoot-league' ) => $birth ? esc_html( wp_date( get_option( 'date_format' ), strtotime( $birth . ' 12:00:00' ) ) ) . ( null !== $age ? ' <small>(' . esc_html( sprintf( /* translators: %d age */ __( '%d ans', 'galsenfoot-league' ), $age ) ) . ')</small>' : '' ) : '',
 			__( 'Nationalité', 'galsenfoot-league' )       => esc_html( get_post_meta( $player_id, '_gsf_nationality', true ) ),
 			__( 'Taille', 'galsenfoot-league' )            => $height ? esc_html( number_format_i18n( $height / 100, 2 ) . ' m' ) : '',
 			__( 'Pied fort', 'galsenfoot-league' )         => esc_html( $feet[ $foot ] ?? '' ),
 		)
 	);
+	$html = $facts;
 
+	// Club performances (only for players attached to a club of the site).
+	if ( $club['id'] && ! $club['national'] ) {
+		$s           = gsf_get_player_stats( $player_id, 'api' === ( gsf_get_player_stats( $player_id, 0, $season )['source'] ?? '' ) ? 0 : $comp, $season );
+		$season_name = $season ? get_term( $season )->name : '';
+		$html       .= gsf_block_title( trim( __( 'Performances', 'galsenfoot-league' ) . ' ' . $season_name ) ) . gsf_stat_tiles( $s );
+		if ( $s['rating'] > 0 ) {
+			$html .= '<p class="gsf-rating">' . esc_html__( 'Note moyenne', 'galsenfoot-league' ) . ' <b>' . esc_html( number_format_i18n( $s['rating'], 2 ) ) . '</b></p>';
+		}
+		if ( $s['apps'] > 0 ) {
+			$html .= '<p class="gsf-ratio">' . esc_html( sprintf( /* translators: %s ratio */ __( 'Ratio : %s but par match', 'galsenfoot-league' ), number_format_i18n( $s['goals'] / $s['apps'], 2 ) ) ) . '</p>';
+		}
+		$html .= gsf_goal_log( $player_id, gsf_query_matches( array( 'season' => $season, 'club' => $club_id, 'status' => 'ft', 'order' => 'DESC', 'limit' => 60 ) ), __( 'Ses buts cette saison', 'galsenfoot-league' ) );
+	}
+
+	// National team performances, over the imported matches of the national team.
+	if ( $nt['id'] ) {
+		$team_stats = gsf_get_team_player_stats( $nt['id'] );
+		$s          = $team_stats[ (int) $player_id ] ?? array(
+			'apps'    => 0,
+			'goals'   => 0,
+			'assists' => 0,
+			'yellow'  => 0,
+			'red'     => 0,
+			'minutes' => 0,
+		);
+		/* translators: %s national team */
+		$html .= gsf_block_title( sprintf( __( 'En sélection — %s', 'galsenfoot-league' ), $nt['name'] ) ) . gsf_stat_tiles( $s );
+		$html .= '<p class="gsf-ratio">' . esc_html__( 'Calculé sur les matchs de la sélection importés sur le site.', 'galsenfoot-league' ) . '</p>';
+		$html .= gsf_goal_log( $player_id, gsf_query_matches( array( 'club' => $nt['id'], 'any_term' => true, 'status' => 'ft', 'order' => 'DESC', 'limit' => 100 ) ), __( 'Ses buts en sélection', 'galsenfoot-league' ) );
+	}
+	return $html;
+}
+
+/**
+ * Statistic tiles (matches, goals, assists, cards, minutes).
+ *
+ * @param array $s Stats.
+ * @return string
+ */
+function gsf_stat_tiles( $s ) {
 	$tiles = array(
 		array( $s['apps'], __( 'Matchs', 'galsenfoot-league' ) ),
 		array( $s['goals'], __( 'Buts', 'galsenfoot-league' ) ),
@@ -821,28 +965,30 @@ function gsf_render_player_profile( $player_id ) {
 		array( $s['yellow'], __( 'Cartons jaunes', 'galsenfoot-league' ) ),
 		array( $s['red'], __( 'Cartons rouges', 'galsenfoot-league' ) ),
 	);
-	if ( $s['minutes'] > 0 ) {
+	if ( ! empty( $s['minutes'] ) ) {
 		$tiles[] = array( $s['minutes'], __( 'Minutes', 'galsenfoot-league' ) );
 	}
-	$season_name = $season ? get_term( $season )->name : '';
-	$html        = $facts . gsf_block_title( trim( __( 'Performances', 'galsenfoot-league' ) . ' ' . $season_name ) ) . '<ul class="gsf-tiles">';
+	$html = '<ul class="gsf-tiles">';
 	foreach ( $tiles as $tile ) {
 		$html .= sprintf( '<li><b data-gsf-count="%1$d">%1$d</b><span>%2$s</span></li>', (int) $tile[0], esc_html( $tile[1] ) );
 	}
-	$html .= '</ul>';
-	if ( $s['rating'] > 0 ) {
-		$html .= '<p class="gsf-rating">' . esc_html__( 'Note moyenne', 'galsenfoot-league' ) . ' <b>' . esc_html( number_format_i18n( $s['rating'], 2 ) ) . '</b></p>';
-	}
-	if ( $s['apps'] > 0 ) {
-		$html .= '<p class="gsf-ratio">' . esc_html( sprintf( /* translators: %s ratio */ __( 'Ratio : %s but par match', 'galsenfoot-league' ), number_format_i18n( $s['goals'] / $s['apps'], 2 ) ) ) . '</p>';
-	}
+	return $html . '</ul>';
+}
 
-	// Goals match by match.
+/**
+ * List of the matches in which a player scored.
+ *
+ * @param int    $player_id Player ID.
+ * @param int[]  $match_ids Matches to scan.
+ * @param string $title     Block title.
+ * @return string
+ */
+function gsf_goal_log( $player_id, $match_ids, $title ) {
 	$log = '';
-	foreach ( gsf_query_matches( array( 'season' => $season, 'club' => $club_id, 'status' => 'ft', 'order' => 'DESC', 'limit' => 60 ) ) as $match_id ) {
+	foreach ( $match_ids as $match_id ) {
 		$mine = array();
 		foreach ( (array) get_post_meta( $match_id, '_gsf_events', true ) as $event ) {
-			if ( (int) ( $event['player'] ?? 0 ) === (int) $player_id && in_array( $event['type'], array( 'goal', 'penalty' ), true ) ) {
+			if ( (int) ( $event['player'] ?? 0 ) === (int) $player_id && in_array( $event['type'] ?? '', array( 'goal', 'penalty' ), true ) ) {
 				$mine[] = (int) $event['minute'] . '’' . ( 'penalty' === $event['type'] ? ' (pen.)' : '' );
 			}
 		}
@@ -850,10 +996,7 @@ function gsf_render_player_profile( $player_id ) {
 			$log .= '<li><a href="' . esc_url( get_permalink( $match_id ) ) . '">' . esc_html( get_the_title( $match_id ) ) . '</a> <span>⚽ ' . esc_html( implode( ', ', $mine ) ) . '</span></li>';
 		}
 	}
-	if ( $log ) {
-		$html .= gsf_block_title( __( 'Ses buts cette saison', 'galsenfoot-league' ) ) . '<ul class="gsf-goal-log">' . $log . '</ul>';
-	}
-	return $html;
+	return $log ? gsf_block_title( $title ) . '<ul class="gsf-goal-log">' . $log . '</ul>' : '';
 }
 
 /**
@@ -921,7 +1064,7 @@ function gsf_render_match_detail( $match_id ) {
 		$lineups .= '<div class="gsf-lineup"><h3>' . gsf_crest( $club['id'], 24 ) . ' ' . esc_html( $club['name'] ) . '</h3><ul>';
 		foreach ( $ids as $player_id ) {
 			if ( 'gsf_player' === get_post_type( $player_id ) ) {
-				$number   = get_post_meta( $player_id, '_gsf_number', true );
+				$number   = gsf_player_number( $player_id, $club['national'] );
 				$lineups .= '<li><span>' . ( '' !== $number ? (int) $number : '' ) . '</span><a href="' . esc_url( get_permalink( $player_id ) ) . '">' . esc_html( get_the_title( $player_id ) ) . '</a></li>';
 			}
 		}

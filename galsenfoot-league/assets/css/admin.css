@@ -34,3 +34,7 @@
 .gsf-log .is-error { color: #b32d2e; }
 .gsf-log .is-ok b { color: #0a5c2b; }
 @media (max-width: 782px) { .gsf-admin-lineups { grid-template-columns: 1fr; } }
+.gsf-nt-steps { margin: 12px 0 0 20px; }
+.gsf-nt-steps > li { margin-bottom: 18px; padding-left: 6px; }
+.gsf-nt-team { display: flex; align-items: center; gap: 8px; }
+.gsf-nt-steps select { min-width: 360px; max-width: 100%; }

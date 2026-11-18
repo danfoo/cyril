@@ -23,6 +23,28 @@ function gsf_get_standings( $competition, $season ) {
 		return $cached;
 	}
 
+	// Official table imported from the API (national competitions are played in groups and only
+	// the matches of our national team are imported, so a computed table would be incomplete).
+	$official = gsf_get_api_tables( $competition, $season );
+	if ( $official ) {
+		$focus = (int) apply_filters( 'gsf_standings_focus_team', 0, $competition, $season );
+		$rows  = $official[0];
+		foreach ( $official as $table ) {
+			foreach ( $table as $row ) {
+				if ( ( $focus && $row['club'] === $focus ) || ( ! $focus && gsf_is_national( $row['club'] ) && get_post_meta( $row['club'], '_gsf_api_id', true ) === (string) gsf_settings( 'nt_team' ) ) ) {
+					$rows = $table;
+					break 2;
+				}
+			}
+		}
+		foreach ( $rows as &$row ) {
+			$row['name'] = gsf_club( $row['club'] )['name'];
+		}
+		unset( $row );
+		set_transient( $cache_key, $rows, DAY_IN_SECONDS );
+		return $rows;
+	}
+
 	$ids = gsf_query_matches(
 		array(
 			'competition' => $competition,
@@ -121,6 +143,96 @@ function gsf_get_standings( $competition, $season ) {
 
 	set_transient( $cache_key, $rows, DAY_IN_SECONDS );
 	return $rows;
+}
+
+/**
+ * Official group tables stored by the API import for a competition / season.
+ *
+ * @param int $competition Competition term ID.
+ * @param int $season      Season term ID.
+ * @return array[] List of tables (each a list of rows).
+ */
+function gsf_get_api_tables( $competition, $season ) {
+	if ( ! $competition || ! $season ) {
+		return array();
+	}
+	$all = get_term_meta( (int) $competition, '_gsf_api_tables', true );
+	return ( is_array( $all ) && ! empty( $all[ (int) $season ]['tables'] ) ) ? $all[ (int) $season ]['tables'] : array();
+}
+
+/**
+ * Statistics of the players of one team over all its finished matches (any competition):
+ * appearances from the players who took part, goals, assists and cards from the events of its side.
+ * Used for national teams, whose players do not belong to the team as their club.
+ *
+ * @param int $team_id     Team post ID.
+ * @param int $competition Optional competition term ID.
+ * @return array[] player_id => stats.
+ */
+function gsf_get_team_player_stats( $team_id, $competition = 0 ) {
+	$team_id   = (int) $team_id;
+	$cache_key = gsf_cache_key( "teamstats|$team_id|$competition" );
+	$cached    = get_transient( $cache_key );
+	if ( is_array( $cached ) ) {
+		return $cached;
+	}
+	$blank = array(
+		'apps'    => 0,
+		'goals'   => 0,
+		'assists' => 0,
+		'yellow'  => 0,
+		'red'     => 0,
+		'minutes' => 0,
+		'rating'  => 0,
+		'source'  => 'matches',
+	);
+	$stats = array();
+	$add   = static function ( $player_id, $key ) use ( &$stats, $blank ) {
+		$player_id = (int) $player_id;
+		if ( $player_id ) {
+			$stats[ $player_id ] = $stats[ $player_id ] ?? $blank;
+			++$stats[ $player_id ][ $key ];
+		}
+	};
+	$ids = gsf_query_matches(
+		array(
+			'club'        => $team_id,
+			'competition' => (int) $competition,
+			'any_term'    => ! $competition,
+			'status'      => 'ft',
+			'limit'       => 1000,
+		)
+	);
+	foreach ( $ids as $id ) {
+		$side = (int) get_post_meta( $id, '_gsf_home', true ) === $team_id ? 'home' : 'away';
+		$seen = array();
+		foreach ( (array) get_post_meta( $id, '_gsf_lineup_' . $side, true ) as $player_id ) {
+			if ( $player_id && ! isset( $seen[ $player_id ] ) ) {
+				$seen[ $player_id ] = true;
+				$add( $player_id, 'apps' );
+			}
+		}
+		foreach ( (array) get_post_meta( $id, '_gsf_events', true ) as $event ) {
+			if ( ( $event['side'] ?? '' ) !== $side ) {
+				continue;
+			}
+			$type = $event['type'] ?? '';
+			foreach ( array( (int) ( $event['player'] ?? 0 ), (int) ( $event['assist'] ?? 0 ) ) as $pid ) {
+				if ( $pid && ! isset( $seen[ $pid ] ) ) {
+					$seen[ $pid ] = true;
+					$add( $pid, 'apps' );
+				}
+			}
+			if ( 'goal' === $type || 'penalty' === $type ) {
+				$add( $event['player'] ?? 0, 'goals' );
+				$add( $event['assist'] ?? 0, 'assists' );
+			} elseif ( 'yellow' === $type || 'red' === $type ) {
+				$add( $event['player'] ?? 0, $type );
+			}
+		}
+	}
+	set_transient( $cache_key, $stats, DAY_IN_SECONDS );
+	return $stats;
 }
 
 /**
@@ -261,14 +373,19 @@ function gsf_get_leaders( $stat, $competition, $season, $limit = 10, $club = 0 )
 	if ( ! in_array( $stat, $allowed, true ) ) {
 		$stat = 'goals';
 	}
-	$rows = array();
-	foreach ( gsf_get_player_stats_table( $competition, $season ) as $player_id => $s ) {
+	$rows     = array();
+	$national = $club && gsf_is_national( $club );
+	$table    = $national ? gsf_get_team_player_stats( $club ) : gsf_get_player_stats_table( $competition, $season );
+	foreach ( $table as $player_id => $s ) {
 		if ( $s[ $stat ] <= 0 || 'publish' !== get_post_status( $player_id ) ) {
 			continue;
 		}
 		$player_club = (int) get_post_meta( $player_id, '_gsf_club', true );
-		if ( $club && $player_club !== (int) $club ) {
+		if ( $club && ! $national && $player_club !== (int) $club ) {
 			continue;
+		}
+		if ( $national ) {
+			$player_club = (int) $club;
 		}
 		$rows[] = array(
 			'player' => $player_id,

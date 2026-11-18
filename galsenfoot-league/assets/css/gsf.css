@@ -346,3 +346,4 @@
 @media (prefers-reduced-motion: reduce) {
 	.gsf *, .gsf-single * { animation: none !important; transition: none !important; }
 }
+.gsf-group-name { margin: -.4rem 0 .7rem; font: 700 .85rem/1.2 var(--gsf-display); text-transform: uppercase; letter-spacing: .12em; color: var(--gsf-muted); }

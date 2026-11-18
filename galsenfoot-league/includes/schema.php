@@ -89,9 +89,15 @@ function gsf_schema_node() {
 			if ( has_post_thumbnail( $id ) ) {
 				$node['image'] = get_the_post_thumbnail_url( $id, 'large' );
 			}
-			$club_id = (int) get_post_meta( $id, '_gsf_club', true );
-			if ( $club_id ) {
-				$node['memberOf'] = $team( $club_id );
+			$member = array();
+			foreach ( array( '_gsf_club', '_gsf_national_team' ) as $key ) {
+				$team_id = (int) get_post_meta( $id, $key, true );
+				if ( $team_id ) {
+					$member[] = $team( $team_id );
+				}
+			}
+			if ( $member ) {
+				$node['memberOf'] = 1 === count( $member ) ? $member[0] : $member;
 			}
 			break;
 
