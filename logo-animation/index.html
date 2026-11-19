@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Angel's Entertainment — Logo Reveal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  body.transparent{background:transparent}
+  svg{display:block;width:100vw;height:100vh}
+  #ui{position:fixed;left:16px;bottom:14px;font:12px/1.4 system-ui,sans-serif;color:#8a90c0;opacity:.75;user-select:none}
+  #ui a{color:inherit;margin-right:10px;cursor:pointer;text-decoration:underline}
+  body.capture #ui{display:none}
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="75%">
+      <stop id="bg0" offset="0%"/>
+      <stop id="bg1" offset="55%"/>
+      <stop id="bg2" offset="100%"/>
+    </radialGradient>
+    <radialGradient id="vignette" cx="50%" cy="50%" r="72%">
+      <stop offset="55%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity=".65"/>
+    </radialGradient>
+    <radialGradient id="dotGrad">
+      <stop offset="0%" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="lineGrad" x1="0" x2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="vGrad" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="shineGrad" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-opacity="0" class="shineStop"/>
+      <stop offset=".42" stop-opacity="0" class="shineStop"/>
+      <stop offset=".5" stop-opacity="1" class="shineStop"/>
+      <stop offset=".58" stop-opacity="0" class="shineStop"/>
+      <stop offset="1" stop-opacity="0" class="shineStop"/>
+    </linearGradient>
+    <radialGradient id="leakA"><stop offset="0" stop-color="#4a63ff" stop-opacity="1"/><stop offset="1" stop-color="#4a63ff" stop-opacity="0"/></radialGradient>
+    <radialGradient id="leakB"><stop offset="0" stop-color="#8fa0ff" stop-opacity="1"/><stop offset="1" stop-color="#8fa0ff" stop-opacity="0"/></radialGradient>
+    <filter id="glow" x="-30%" y="-60%" width="160%" height="220%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence id="grainTurb" type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="1" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <clipPath id="rowClip"><rect x="540" y="150" width="1120" height="200"/></clipPath>
+    <clipPath id="logoClip"></clipPath>
+  </defs>
+
+  <rect id="bg" width="1920" height="1080" fill="url(#bgGrad)"/>
+  <g id="lightLeak"></g>
+  <g id="particles"></g>
+
+  <g id="camera">
+    <!-- horizontal lens line (intro) -->
+    <rect id="lensLine" x="0" y="539" width="1920" height="2" fill="url(#lineGrad)"/>
+    <rect id="lensGlow" x="0" y="520" width="1920" height="40" fill="url(#lineGrad)" filter="url(#softGlow)"/>
+    <circle id="ring" cx="960" cy="540" r="0" fill="none"/>
+    <circle id="ring2" cx="960" cy="540" r="0" fill="none"/>
+
+    <g id="logo">
+      <g id="logoGlow" filter="url(#glow)"></g>
+      <g id="mono"></g>
+      <g id="divider"></g>
+      <g id="rowTop" clip-path="url(#rowClip)"></g>
+      <g id="rowBottom"></g>
+      <rect id="shine" x="0" y="100" width="2200" height="440" fill="url(#shineGrad)" clip-path="url(#logoClip)"/>
+    </g>
+  </g>
+
+  <rect id="vig" width="1920" height="1080" fill="url(#vignette)" pointer-events="none"/>
+  <rect id="grainRect" width="1920" height="1080" filter="url(#grain)" opacity=".07" pointer-events="none" style="mix-blend-mode:overlay"/>
+  <rect id="fade" width="1920" height="1080" fill="#000" pointer-events="none"/>
+</svg>
+<div id="ui">
+  <a id="replay">Rejouer</a><a href="?theme=dark">Sombre</a><a href="?theme=light">Clair</a>
+</div>
+
+<script src="pieces.js"></script>
+<script>
+(() => {
+'use strict';
+const NS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+const el = (tag, attrs = {}, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+
+/* ---------------- options ---------------- */
+const params = new URLSearchParams(location.search);
+const THEME = params.get('theme') === 'light' ? 'light' : 'dark';
+const TRANSPARENT = params.get('bg') === '0';
+const DURATION = 8.0;
+
+const THEMES = {
+  dark: {
+    bg: ['#0b1bd6', '#020a7a', '#00021c'],
+    logo: '#e9ecff', logoFinal: '#ffffff', shine: '#ffffff', glow: '#3d55ff',
+    accent: '#ffffff', particle: '#bcc6ff', fade: '#000', grain: .07, vig: 1
+  },
+  light: {
+    bg: ['#ffffff', '#eef0fb', '#c9cdec'],
+    logo: '#000996', logoFinal: '#000996', shine: '#5a6bff', glow: '#5867ff',
+    accent: '#000996', particle: '#000996', fade: '#fff', grain: .04, vig: .25
+  }
+};
+const T = THEMES[THEME];
+if (TRANSPARENT) { document.body.classList.add('transparent'); document.documentElement.style.background = 'transparent'; }
+['bg0','bg1','bg2'].forEach((id,i)=>$(id).setAttribute('stop-color', T.bg[i]));
+document.querySelectorAll('.shineStop').forEach(s => s.setAttribute('stop-color', T.shine));
+$('fade').setAttribute('fill', T.fade);
+$('vig').setAttribute('opacity', T.vig);
+$('grainRect').setAttribute('opacity', T.grain);
+['lensLine','lensGlow'].forEach(id => $(id).style.mixBlendMode = THEME === 'dark' ? 'screen' : 'normal');
+if (THEME === 'light') {
+  // accent gradients in brand blue for the light theme
+  document.querySelectorAll('#lineGrad stop, #vGrad stop, #dotGrad stop').forEach(s => s.setAttribute('stop-color', T.accent));
+}
+if (TRANSPARENT) ['bg','vig','grainRect','fade','lightLeak','particles'].forEach(id => $(id).style.display = 'none');
+
+/* ---------------- easing ---------------- */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const expoOut = x => x >= 1 ? 1 : 1 - Math.pow(2, -10 * x);
+const expoIn = x => x <= 0 ? 0 : Math.pow(2, 10 * x - 10);
+const quartInOut = x => x < .5 ? 8 * x ** 4 : 1 - Math.pow(-2 * x + 2, 4) / 2;
+const cubicOut = x => 1 - Math.pow(1 - x, 3);
+const sineInOut = x => -(Math.cos(Math.PI * x) - 1) / 2;
+// cubic-bezier solver (for a crisp "motion design" curve)
+function bezier(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx;
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by;
+  const sx = t => ((ax * t + bx) * t + cx) * t;
+  const sy = t => ((ay * t + by) * t + cy) * t;
+  const dx = t => (3 * ax * t + 2 * bx) * t + cx;
+  return x => {
+    if (x <= 0) return 0; if (x >= 1) return 1;
+    let t = x;
+    for (let i = 0; i < 8; i++) { const e = sx(t) - x; const d = dx(t); if (Math.abs(e) < 1e-6 || !d) break; t -= e / d; }
+    return sy(clamp(t));
+  };
+}
+const snap = bezier(.16, 1, .3, 1);       // fast attack, long silky settle
+const swish = bezier(.83, 0, .17, 1);     // strong in-out for camera moves
+
+/* ---------------- deterministic RNG ---------------- */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+/* ---------------- build logo ---------------- */
+const P = window.LOGO_PIECES;
+const mono = [], top = [], bottom = []; let divider = null;
+for (const p of P) {
+  if (p.x + p.w <= 440) mono.push(p);
+  else if (p.h > 300) divider = p;
+  else if (p.y < 355) top.push(p);
+  else bottom.push(p);
+}
+function groupLetters(list) {
+  list.sort((a, b) => a.x - b.x);
+  const out = [];
+  for (const p of list) {
+    const last = out[out.length - 1];
+    if (last && p.x < last.x1 + 4) { last.pieces.push(p); last.x1 = Math.max(last.x1, p.x + p.w); }
+    else out.push({ x0: p.x, x1: p.x + p.w, pieces: [p] });
+  }
+  out.forEach(L => { L.y0 = Math.min(...L.pieces.map(p => p.y)); L.y1 = Math.max(...L.pieces.map(p => p.y + p.h)); L.cx = (L.x0 + L.x1) / 2; L.cy = (L.y0 + L.y1) / 2; });
+  return out;
+}
+const topLetters = groupLetters(top);
+const bottomLetters = groupLetters(bottom);
+
+const MONO_C = { x: 271, y: 315 };
+const LOGO_C = { x: 868, y: 315 };
+const LOGO_SCALE = .95;
+$('logo').setAttribute('transform', `translate(${960 - LOGO_C.x * LOGO_SCALE} ${540 - LOGO_C.y * LOGO_SCALE}) scale(${LOGO_SCALE})`);
+
+// static copies for the shine clip and glow
+const clip = $('logoClip');
+for (const p of P) { el('path', { d: p.d }, clip); el('path', { d: p.d, fill: T.glow }, $('logoGlow')); }
+
+// monogram: each slab slides in along its own axis
+const LEG_L = [-0.279, 0.960], LEG_R = [0.293, 0.956];
+const monoDirs = {
+  '119,179': { v: [0, 1], d: 380, t: .55 },          // E spine (rises from below)
+  '154,333': { v: LEG_L, d: 420, t: .62 },           // A left foot
+  '204,124': { v: [-LEG_L[0], -LEG_L[1]], d: 420, t: .50 }, // A apex
+  '279,212': { v: [-LEG_R[0], -LEG_R[1]], d: 460, t: .70 }, // A right leg
+  '342,468': { v: LEG_R, d: 380, t: .80 },           // A right foot
+  '260,180': { v: [1, 0], d: 520, t: .86 },          // E top bar
+  '339,303': { v: [1, 0], d: 420, t: .96 },          // E mid bar
+  '200,436': { v: [1, 0], d: 560, t: 1.04 }          // E bottom bar
+};
+const monoG = $('mono'); const monoItems = [];
+mono.forEach((p, i) => {
+  const key = `${p.x},${p.y}`;
+  const cfg = monoDirs[key] || { v: [0, 1], d: 300, t: .6 + i * .06 };
+  const f = el('filter', { id: 'mb' + i, x: '-60%', y: '-60%', width: '220%', height: '220%' }, document.querySelector('defs'));
+  const blur = el('feGaussianBlur', { stdDeviation: '0 0' }, f);
+  const path = el('path', { d: p.d, fill: T.logo, filter: `url(#mb${i})` }, monoG);
+  monoItems.push({ p, cfg, path, blur });
+});
+
+// divider
+const divG = $('divider');
+const divRect = el('rect', { x: divider.x, y: divider.y, width: divider.w, height: divider.h, fill: T.logo }, divG);
+const divFlareA = el('ellipse', { cx: divider.x + divider.w / 2, rx: 26, ry: 6, fill: 'url(#dotGrad)' }, divG);
+const divFlareB = el('ellipse', { cx: divider.x + divider.w / 2, rx: 26, ry: 6, fill: 'url(#dotGrad)' }, divG);
+const divGlow = el('rect', { x: divider.x - 20, y: divider.y, width: divider.w + 40, height: divider.h, fill: 'url(#vGrad)', filter: 'url(#softGlow)', opacity: 0 }, divG);
+if (THEME === 'dark') [divFlareA, divFlareB, divGlow].forEach(e => e.style.mixBlendMode = 'screen');
+
+// top row: ANGEL'S — masked rise, per-piece stagger inside letters (E bars)
+const topItems = [];
+topLetters.forEach((L, i) => {
+  const g = el('g', {}, $('rowTop'));
+  const parts = L.pieces.sort((a, b) => a.y - b.y).map((p, j) => ({ p, j, path: el('path', { d: p.d, fill: T.logo }, g) }));
+  topItems.push({ L, i, g, parts });
+});
+
+// bottom row: ENTERTAINMENT — converge + focus pull
+const bottomItems = [];
+const rowMid = (bottomLetters[0].x0 + bottomLetters[bottomLetters.length - 1].x1) / 2;
+bottomLetters.forEach((L, i) => {
+  const f = el('filter', { id: 'bb' + i, x: '-80%', y: '-80%', width: '260%', height: '260%' }, document.querySelector('defs'));
+  const blur = el('feGaussianBlur', { stdDeviation: '0' }, f);
+  const g = el('g', { filter: `url(#bb${i})` }, $('rowBottom'));
+  L.pieces.forEach(p => el('path', { d: p.d, fill: T.logo }, g));
+  const order = Math.abs(L.cx - rowMid) / (rowMid - bottomLetters[0].x0); // 0 centre → 1 edges
+  bottomItems.push({ L, i, g, blur, order });
+});
+
+// particles
+const R = rng(7);
+const parts = [];
+for (let i = 0; i < 90; i++) {
+  const c = el('circle', { r: 0, fill: T.particle }, $('particles'));
+  parts.push({ c, x: R() * 1920, y: R() * 1080, r: .6 + R() * 2.2 * R(), s: 8 + R() * 30, ph: R() * 6.28, dr: (R() - .5) * 14, depth: R() });
+}
+// soft light leaks (dark theme only)
+const leaks = [];
+if (THEME === 'dark') {
+  for (let i = 0; i < 3; i++) {
+    const e = el('ellipse', { rx: 640, ry: 360, fill: i === 1 ? 'url(#leakB)' : 'url(#leakA)', opacity: 0 }, $('lightLeak'));
+    e.style.mixBlendMode = 'screen';
+    leaks.push(e);
+  }
+}
+
+const ring = $('ring'), ring2 = $('ring2');
+[ring, ring2].forEach(r => { r.setAttribute('stroke', T.accent); if (THEME === 'dark') r.style.mixBlendMode = 'screen'; });
+
+/* ---------------- render(t) : pure function of time ---------------- */
+function render(t) {
+  // global fade in / scene
+  $('fade').setAttribute('opacity', TRANSPARENT ? 0 : 1 - cubicOut(prog(t, 0, .7)));
+
+  // camera: slow continuous push + micro settle after the lock-in
+  const push = 1 + .045 * sineInOut(prog(t, 0, DURATION));
+  const kick = Math.sin(prog(t, 1.32, 1.7) * Math.PI) * .012 * (1 - prog(t, 1.32, 1.7));
+  const cs = push + kick;
+  $('camera').setAttribute('transform', `translate(960 540) scale(${cs}) translate(-960 -540)`);
+
+  // lens line intro
+  const ll = prog(t, .05, .9);
+  const lw = expoOut(ll) * 1920;
+  const lo = Math.sin(clamp(prog(t, .05, 1.35)) * Math.PI) * (THEME === 'dark' ? .9 : .5);
+  for (const id of ['lensLine', 'lensGlow']) {
+    $(id).setAttribute('x', 960 - lw / 2); $(id).setAttribute('width', lw);
+    $(id).setAttribute('opacity', id === 'lensGlow' ? lo * .5 : lo);
+  }
+
+  // monogram position: centred & big at first, then glides into place
+  const mv = swish(prog(t, 1.85, 2.85));
+  const mScale = lerp(1.32, 1, mv);
+  const mdx = lerp(LOGO_C.x - MONO_C.x, 0, mv);
+  monoG.setAttribute('transform', `translate(${MONO_C.x + mdx} ${MONO_C.y}) scale(${mScale}) translate(${-MONO_C.x} ${-MONO_C.y})`);
+
+  // monogram slabs
+  for (const m of monoItems) {
+    const s = .38 + (m.cfg.t - .5) * .9;     // start time
+    const dur = .75;
+    const x = prog(t, s, s + dur);
+    const e = snap(x);
+    const off = (1 - e) * m.cfg.d;
+    const vel = (snap(clamp(x + .02)) - e) / .02; // derivative ≈ velocity
+    const tx = m.cfg.v[0] * off * -1, ty = m.cfg.v[1] * off * -1;
+    // pieces come FROM the direction v (outside) toward rest
+    m.path.setAttribute('transform', `translate(${-tx} ${-ty})`);
+    m.path.setAttribute('opacity', x <= 0 ? 0 : clamp(x * 6));
+    const b = Math.min(28, vel * 9);
+    m.blur.setAttribute('stdDeviation', `${(Math.abs(m.cfg.v[0]) * b).toFixed(2)} ${(Math.abs(m.cfg.v[1]) * b).toFixed(2)}`);
+    m.path.setAttribute('fill', t > 4.2 ? T.logoFinal : T.logo);
+  }
+
+  // lock-in shockwave
+  const rp = prog(t, 1.32, 2.3);
+  const rp2 = prog(t, 1.42, 2.6);
+  const ringC = { x: 960, y: 540 };
+  [[ring, rp, 620, 2.4, .7], [ring2, rp2, 900, 1.2, .35]].forEach(([r, p, R, w, o]) => {
+    r.setAttribute('cx', ringC.x); r.setAttribute('cy', ringC.y);
+    r.setAttribute('r', expoOut(p) * R);
+    r.setAttribute('stroke-width', (1 - p) * w + .01);
+    r.setAttribute('opacity', p <= 0 || p >= 1 ? 0 : (1 - p) * o);
+  });
+
+  // divider grows from centre with travelling flares
+  const dp = snap(prog(t, 2.35, 3.15));
+  const dh = divider.h * dp, dyc = divider.y + divider.h / 2;
+  divRect.setAttribute('y', dyc - dh / 2); divRect.setAttribute('height', Math.max(.001, dh));
+  const flareO = Math.sin(prog(t, 2.35, 3.5) * Math.PI) * (THEME === 'dark' ? 1 : .6);
+  divFlareA.setAttribute('cy', dyc - dh / 2); divFlareB.setAttribute('cy', dyc + dh / 2);
+  divFlareA.setAttribute('opacity', flareO); divFlareB.setAttribute('opacity', flareO);
+  divGlow.setAttribute('opacity', Math.sin(prog(t, 2.5, 3.6) * Math.PI) * (THEME === 'dark' ? .55 : .2));
+  divGlow.setAttribute('y', dyc - dh / 2); divGlow.setAttribute('height', Math.max(.001, dh));
+  divRect.setAttribute('fill', t > 4.2 ? T.logoFinal : T.logo);
+
+  // ANGEL'S — letters rise through the mask, staggered
+  for (const it of topItems) {
+    for (const part of it.parts) {
+      const s = 2.55 + it.i * .075 + part.j * .045;
+      const x = prog(t, s, s + .95);
+      const e = snap(x);
+      const dy = (1 - e) * 215;
+      const rot = (1 - e) * 4;
+      part.path.setAttribute('transform', `translate(0 ${dy}) rotate(${rot} ${it.L.cx} ${it.L.y1})`);
+      part.path.setAttribute('fill', t > 4.2 ? T.logoFinal : T.logo);
+    }
+  }
+
+  // ENTERTAINMENT — tracking collapse from the centre outward + focus pull
+  for (const it of bottomItems) {
+    const s = 3.05 + it.order * .32;
+    const x = prog(t, s, s + 1.1);
+    const e = snap(x);
+    const spread = (it.L.cx - rowMid) * .55 * (1 - e);
+    it.g.setAttribute('transform', `translate(${spread} ${(1 - e) * 10})`);
+    it.g.setAttribute('opacity', cubicOut(clamp(x * 1.8)));
+    it.blur.setAttribute('stdDeviation', ((1 - e) * 14).toFixed(2));
+    it.g.querySelectorAll('path').forEach(p => p.setAttribute('fill', t > 4.2 ? T.logoFinal : T.logo));
+  }
+
+  // halo behind the logo breathes in once everything is placed
+  const gl = prog(t, 3.6, 5.2);
+  $('logoGlow').setAttribute('opacity', (THEME === 'dark' ? .55 : .18) * sineInOut(gl) * (0.85 + .15 * Math.sin(t * 2.2)));
+
+  // shine sweep across the full lock-up
+  const sp = quartInOut(prog(t, 4.35, 5.55));
+  $('shine').setAttribute('x', lerp(-1900, 1500, sp));
+  $('shine').setAttribute('opacity', sp <= 0 || sp >= 1 ? 0 : (THEME === 'dark' ? 1 : .85));
+
+  // particles (parallax drift, flicker, fade in)
+  const pa = cubicOut(prog(t, .3, 2.5));
+  for (const q of parts) {
+    const y = ((q.y - t * q.s * (0.5 + q.depth)) % 1080 + 1080) % 1080;
+    const x = q.x + Math.sin(t * .7 + q.ph) * q.dr;
+    q.c.setAttribute('cx', x.toFixed(1)); q.c.setAttribute('cy', y.toFixed(1));
+    q.c.setAttribute('r', q.r);
+    const tw = .45 + .55 * Math.sin(t * (1.5 + q.depth * 2) + q.ph) ** 2;
+    q.c.setAttribute('opacity', (pa * tw * (.15 + .45 * q.depth) * (THEME === 'dark' ? 1 : .35)).toFixed(3));
+  }
+
+  // light leaks drifting slowly
+  leaks.forEach((e, i) => {
+    const a = t * (.12 + i * .05) + i * 2.1;
+    e.setAttribute('cx', 960 + Math.cos(a) * (520 + i * 120));
+    e.setAttribute('cy', 540 + Math.sin(a * 1.3) * (260 + i * 40));
+    e.setAttribute('opacity', (.10 + i * .03) * cubicOut(prog(t, .2, 2)));
+  });
+
+  // film grain
+  $('grainTurb').setAttribute('seed', Math.floor(t * 24) % 97 + 1);
+}
+
+/* ---------------- playback ---------------- */
+window.renderAt = render;
+window.DURATION = DURATION;
+if (params.get('capture') === '1') {
+  document.body.classList.add('capture');
+  render(0);
+  return;
+}
+let t0 = performance.now();
+const loop = now => {
+  const t = (now - t0) / 1000;
+  render(Math.min(t, DURATION));
+  if (t > DURATION + 1.2) t0 = now;   // auto-loop after a short hold
+  requestAnimationFrame(loop);
+};
+requestAnimationFrame(loop);
+$('replay').onclick = () => { t0 = performance.now(); };
+})();
+</script>
+</body>
+</html>
