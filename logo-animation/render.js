@@ -1,4 +1,5 @@
 // Usage: node render.js <theme dark|light> <out file> [transparent=0|1] [fps=60] [format=horizontal|vertical]
+// ProRes 4444 is written with premultiplied alpha (what QuickTime, Final Cut, CapCut… expect).
 // Renders index.html frame by frame (deterministic) and encodes with ffmpeg.
 const { chromium } = require('playwright');
 const { spawn } = require('child_process');
@@ -14,7 +15,7 @@ const path = require('path');
   const n = Math.round(dur * fps);
   const args = ['-y', '-f', 'image2pipe', '-framerate', String(fps), '-i', '-'];
   if (alpha && out.endsWith('.webm')) args.push('-c:v', 'libvpx-vp9', '-pix_fmt', 'yuva420p', '-b:v', '0', '-crf', '24', '-row-mt', '1', out);
-  else if (alpha) args.push('-c:v', 'prores_ks', '-profile:v', '4444', '-qscale:v', '9', '-alpha_bits', '8', '-pix_fmt', 'yuva444p10le', '-vendor', 'apl0', out);
+  else if (alpha) args.push('-vf', 'premultiply=inplace=1', '-c:v', 'prores_ks', '-profile:v', '4444', '-qscale:v', '9', '-alpha_bits', '8', '-pix_fmt', 'yuva444p10le', '-vendor', 'apl0', out);
   else args.push('-c:v', 'libx264', '-preset', 'slow', '-crf', '14', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-movflags', '+faststart', out);
   const ff = spawn('ffmpeg', args, { stdio: ['pipe', 'ignore', 'inherit'] });
   for (let i = 0; i < n; i++) {
