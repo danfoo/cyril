@@ -88,7 +88,7 @@
   <rect id="fade" width="1920" height="1080" fill="#000" pointer-events="none"/>
 </svg>
 <div id="ui">
-  <a id="replay">Rejouer</a><a href="?theme=dark">Sombre</a><a href="?theme=light">Clair</a>
+  <a id="replay">Rejouer</a><a href="?theme=dark">Sombre</a><a href="?theme=light">Clair</a><a href="?format=vertical">Vertical</a>
 </div>
 
 <script src="pieces.js"></script>
@@ -109,6 +109,11 @@ const params = new URLSearchParams(location.search);
 const THEME = params.get('theme') === 'light' ? 'light' : 'dark';
 const TRANSPARENT = params.get('bg') === '0';
 const DURATION = 8.0;
+const VERTICAL = params.get('format') === 'vertical';
+const W = VERTICAL ? 1080 : 1920, H = VERTICAL ? 1920 : 1080, CX = W / 2, CY = H / 2;
+$('stage').setAttribute('viewBox', `0 0 ${W} ${H}`);
+['bg','vig','grainRect','fade'].forEach(id => { $(id).setAttribute('width', W); $(id).setAttribute('height', H); });
+$('lensLine').setAttribute('y', CY - 1); $('lensGlow').setAttribute('y', CY - 20);
 
 const THEMES = {
   dark: {
@@ -190,8 +195,9 @@ const bottomLetters = groupLetters(bottom);
 
 const MONO_C = { x: 271, y: 315 };
 const LOGO_C = { x: 868, y: 315 };
-const LOGO_SCALE = .95;
-$('logo').setAttribute('transform', `translate(${960 - LOGO_C.x * LOGO_SCALE} ${540 - LOGO_C.y * LOGO_SCALE}) scale(${LOGO_SCALE})`);
+const LOGO_SCALE = VERTICAL ? .58 : .95;
+const MONO_INTRO = VERTICAL ? 2.2 : 1.32;
+$('logo').setAttribute('transform', `translate(${CX - LOGO_C.x * LOGO_SCALE} ${CY - LOGO_C.y * LOGO_SCALE}) scale(${LOGO_SCALE})`);
 
 // static copies for the shine clip and glow
 const clip = $('logoClip');
@@ -252,7 +258,7 @@ const R = rng(7);
 const parts = [];
 for (let i = 0; i < 90; i++) {
   const c = el('circle', { r: 0, fill: T.particle }, $('particles'));
-  parts.push({ c, x: R() * 1920, y: R() * 1080, r: .6 + R() * 2.2 * R(), s: 8 + R() * 30, ph: R() * 6.28, dr: (R() - .5) * 14, depth: R() });
+  parts.push({ c, x: R() * W, y: R() * H, r: .6 + R() * 2.2 * R(), s: 8 + R() * 30, ph: R() * 6.28, dr: (R() - .5) * 14, depth: R() });
 }
 // soft light leaks (dark theme only)
 const leaks = [];
@@ -276,20 +282,20 @@ function render(t) {
   const push = 1 + .045 * sineInOut(prog(t, 0, DURATION));
   const kick = Math.sin(prog(t, 1.32, 1.7) * Math.PI) * .012 * (1 - prog(t, 1.32, 1.7));
   const cs = push + kick;
-  $('camera').setAttribute('transform', `translate(960 540) scale(${cs}) translate(-960 -540)`);
+  $('camera').setAttribute('transform', `translate(${CX} ${CY}) scale(${cs}) translate(${-CX} ${-CY})`);
 
   // lens line intro
   const ll = prog(t, .05, .9);
-  const lw = expoOut(ll) * 1920;
+  const lw = expoOut(ll) * W;
   const lo = Math.sin(clamp(prog(t, .05, 1.35)) * Math.PI) * (THEME === 'dark' ? .9 : .5);
   for (const id of ['lensLine', 'lensGlow']) {
-    $(id).setAttribute('x', 960 - lw / 2); $(id).setAttribute('width', lw);
+    $(id).setAttribute('x', CX - lw / 2); $(id).setAttribute('width', lw);
     $(id).setAttribute('opacity', id === 'lensGlow' ? lo * .5 : lo);
   }
 
   // monogram position: centred & big at first, then glides into place
   const mv = swish(prog(t, 1.85, 2.85));
-  const mScale = lerp(1.32, 1, mv);
+  const mScale = lerp(MONO_INTRO, 1, mv);
   const mdx = lerp(LOGO_C.x - MONO_C.x, 0, mv);
   monoG.setAttribute('transform', `translate(${MONO_C.x + mdx} ${MONO_C.y}) scale(${mScale}) translate(${-MONO_C.x} ${-MONO_C.y})`);
 
@@ -313,7 +319,7 @@ function render(t) {
   // lock-in shockwave
   const rp = prog(t, 1.32, 2.3);
   const rp2 = prog(t, 1.42, 2.6);
-  const ringC = { x: 960, y: 540 };
+  const ringC = { x: CX, y: CY };
   [[ring, rp, 620, 2.4, .7], [ring2, rp2, 900, 1.2, .35]].forEach(([r, p, R, w, o]) => {
     r.setAttribute('cx', ringC.x); r.setAttribute('cy', ringC.y);
     r.setAttribute('r', expoOut(p) * R);
@@ -369,7 +375,7 @@ function render(t) {
   // particles (parallax drift, flicker, fade in)
   const pa = cubicOut(prog(t, .3, 2.5));
   for (const q of parts) {
-    const y = ((q.y - t * q.s * (0.5 + q.depth)) % 1080 + 1080) % 1080;
+    const y = ((q.y - t * q.s * (0.5 + q.depth)) % H + H) % H;
     const x = q.x + Math.sin(t * .7 + q.ph) * q.dr;
     q.c.setAttribute('cx', x.toFixed(1)); q.c.setAttribute('cy', y.toFixed(1));
     q.c.setAttribute('r', q.r);
@@ -380,8 +386,8 @@ function render(t) {
   // light leaks drifting slowly
   leaks.forEach((e, i) => {
     const a = t * (.12 + i * .05) + i * 2.1;
-    e.setAttribute('cx', 960 + Math.cos(a) * (520 + i * 120));
-    e.setAttribute('cy', 540 + Math.sin(a * 1.3) * (260 + i * 40));
+    e.setAttribute('cx', CX + Math.cos(a) * (W * .27 + i * 120));
+    e.setAttribute('cy', CY + Math.sin(a * 1.3) * (H * .24 + i * 40));
     e.setAttribute('opacity', (.10 + i * .03) * cubicOut(prog(t, .2, 2)));
   });
 
