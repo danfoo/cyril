@@ -1,0 +1,79 @@
+# Éternelle + Wedding RSVP Pass
+
+Un thème WordPress de mariage animé et un plugin de gestion des invités avec cartons d'invitation à QR code et scanner hors connexion pour le jour J.
+
+```
+themes/eternelle/            → le thème
+plugins/wedding-rsvp-pass/   → le plugin
+dist/*.zip                   → archives prêtes à téléverser (régénérer avec ./build.sh)
+```
+
+## Installation
+
+1. **Apparence → Thèmes → Ajouter → Téléverser** : `dist/eternelle.zip`, puis Activer.
+2. **Extensions → Ajouter → Téléverser** : `dist/wedding-rsvp-pass.zip`, puis Activer.
+3. **Réglages → Permaliens** : choisir « Titre de la publication » puis enregistrer. Les liens `/rsvp/…`, `/invitation/…` et `/wrp-scanner/` en ont besoin.
+4. **Utilisateurs → Ajouter** : créer un compte pour chacun des mariés avec le rôle **Marié(e)**.
+5. **Invités → Messages & réglages** : associer chaque compte à un prénom, régler la date limite de réponse, les messages et les couleurs du carton.
+6. **Apparence → Personnaliser → 💍 Notre mariage** : prénoms, photos, date, lieu, histoire, programme, galerie, musique et effets.
+   Les prénoms, la date et le lieu saisis ici servent aussi de valeurs par défaut au plugin, donc pas besoin de les saisir deux fois.
+
+> Le site doit être en **HTTPS** : la caméra du scanner et le mode hors ligne (service worker) l'exigent.
+
+## Le thème « Éternelle »
+
+- **Intro « enveloppe »** avec sceau de cire aux initiales : au clic, le rabat s'ouvre, la carte « Save the date » sort de l'enveloppe et la musique démarre. Elle n'est montrée qu'une fois par visite.
+- **Hero animé** :
+  - pétales de rose dessinés sur canvas, poussière d'or scintillante et halos de lumière qui suivent la souris ;
+  - monogramme doré qui se dessine, prénoms qui apparaissent lettre par lettre, date au reflet doré ;
+  - compte à rebours en verre dépoli ;
+  - effet Ken Burns et parallaxe sur la photo de couverture.
+- Sections : les mariés, notre histoire (frise), programme, lieu (carte + itinéraire), galerie (visionneuse au clavier et au swipe), RSVP (« recevoir à nouveau mon lien »), liste de mariage, pied de page avec cœurs qui montent.
+- Petits effets : cœurs au clic, traînée d'étincelles au curseur, lecteur de musique façon vinyle. Chaque effet peut être désactivé, et `prefers-reduced-motion` est respecté.
+- Le menu se crée automatiquement à partir des sections. Un menu WordPress classique peut aussi être assigné.
+
+## Le plugin « Wedding RSVP Pass »
+
+### Chaque marié·e gère sa liste
+- Le rôle **Marié(e)** ne voit et ne modifie que **ses** invités. L'administrateur (ou le rôle *Organisateur·rice*) voit tout, avec des onglets par liste.
+- Tableau de bord : invitations, personnes présentes, en attente, absents, arrivés le jour J, taux de réponse.
+- Pour chaque invité : places, groupe, table, régime alimentaire, notes privées. Import et export CSV (compatible Excel).
+
+### Envoi des invitations
+- **E-mail** HTML élégant, à l'unité ou en masse.
+- **WhatsApp** (lien `wa.me` avec message prérempli et indicatif pays automatique), **SMS** ou **copie du lien**. L'invité est automatiquement marqué « invité ».
+- Messages modifiables avec des variables : `{prenom} {maries} {date} {lieu} {places} {date_limite} {lien} {carton} {code} {table}`…
+
+### La page de réponse de l'invité (`/rsvp/{lien-personnel}`)
+- Page « papier » avec pétales qui tombent et choix « Avec joie ! » / « À regret ».
+- L'invité indique le nombre de personnes, le nom des accompagnants, ses allergies et un petit mot pour les mariés.
+- Il peut modifier sa réponse jusqu'à la date limite (option désactivable).
+
+### Le carton d'invitation (`/invitation/{lien-personnel}`)
+- Généré dès la confirmation, avec une animation de confettis et de cœurs. Il est aussi envoyé par e-mail.
+- Carton nominatif : prénoms des mariés, date, lieu, nom de l'invité et des accompagnants, nombre de places, table, **QR code** et code lisible (ex. `7SAS NCCE`).
+- Boutons : **Télécharger en image PNG** (dessinée en haute définition), **Imprimer / PDF** (format A5), **Ajouter au calendrier** (.ics), **Itinéraire**.
+
+### Le jour J : scanner hors connexion (`/wrp-scanner/`)
+1. Dans **Invités → Jour J – Scanner**, scannez le premier QR code avec le téléphone d'accueil, puis « Ajouter à l'écran d'accueil ».
+2. Activez l'application en scannant le **QR d'activation** (ou en tapant la clé). La liste est alors téléchargée dans le téléphone.
+3. Ensuite, **tout fonctionne sans réseau**, même en mode avion :
+   - 🟢 **Bienvenue** : nom, accompagnants, nombre de places, table, régime alimentaire ;
+   - 🟠 **Déjà validé** : heure du passage, et si c'était ce téléphone ou un autre ;
+   - 🔴 **Carton inconnu** ou invité ayant décliné.
+4. Un bip et une vibration accompagnent chaque résultat. Le scanner propose aussi une **recherche par nom** (pour l'invité sans téléphone), un historique et un compteur de personnes arrivées.
+5. Dès que le réseau revient, les validations sont envoyées au serveur. L'envoi peut être répété sans risque de doublon, et les doubles passages entre plusieurs téléphones sont signalés. Les arrivées s'affichent en direct dans l'admin.
+
+**Sécurité**
+- Le téléphone ne stocke que des empreintes SHA-256 des codes, jamais les codes eux-mêmes.
+- L'API est protégée par la clé du scanner, avec une limite contre les essais en série. La clé peut être régénérée.
+- Les liens personnels sont aléatoires (128 bits) et exclus des moteurs de recherche.
+
+## Personnalisation avancée
+- Pour remplacer les gabarits du plugin, copiez `templates/rsvp.php`, `invitation.php` ou `scanner.php` dans `votre-theme/wedding-rsvp-pass/`.
+- Filtres disponibles : `wrp_settings_defaults`, `wrp_slugs` (changer `/rsvp/`, `/invitation/`…), `wrp_fonts_url`, `eternelle_fonts_url`, `eternelle_sections`.
+- Shortcodes : `[wrp_find_invitation]`, `[wrp_countdown]`.
+
+## Bibliothèques incluses
+- [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (MIT) : génération des QR codes.
+- [jsQR](https://github.com/cozmo/jsQR) (Apache-2.0) : lecture des QR codes quand le navigateur ne propose pas `BarcodeDetector`.
