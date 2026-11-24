@@ -129,3 +129,5 @@ html,body{margin:0;height:100%;background:#1d1714;color:#f6eee6;font-family:-app
 .topbar{gap:4px}
 .topbar__title{flex:1}
 .setup .btn--ghost{margin-bottom:14px;text-decoration:none}
+
+.update-bar{display:block;width:100%;border:0;background:var(--wrp-accent);color:#1d1714;padding:11px 14px;font-weight:700;font-size:13px;cursor:pointer}

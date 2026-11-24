@@ -285,6 +285,7 @@
 		return push.then(function () {
 			return api('guests');
 		}).then(function (list) {
+			if (list.build && CFG.build && list.build !== CFG.build) { $('[data-update]').hidden = false; }
 			S.list = list;
 			indexList();
 			S.lastSync = new Date().toISOString();
@@ -722,6 +723,16 @@
 	});
 
 	window.addEventListener('online', function () { render(); sync(false); });
+	document.addEventListener('visibilitychange', function () { if (!document.hidden && S.key && navigator.onLine) { sync(false); } });
+
+	// Update to the latest version (validations waiting to be sent are kept in the phone).
+	$('[data-update]').addEventListener('click', function () {
+		var clear = window.caches ? caches.keys().then(function (keys) {
+			return Promise.all(keys.filter(function (k) { return k.indexOf('wrp-') === 0; }).map(function (k) { return caches.delete(k); }));
+		}) : Promise.resolve();
+		var upd = navigator.serviceWorker ? navigator.serviceWorker.getRegistration(CFG.scope).then(function (r) { return r && r.update(); }).catch(function () {}) : Promise.resolve();
+		Promise.all([clear, upd]).catch(function () {}).then(function () { location.replace(location.pathname + '?v=' + Date.now().toString(36)); });
+	});
 	window.addEventListener('offline', render);
 	setInterval(function () { if (navigator.onLine) { sync(false); } }, 45000);
 

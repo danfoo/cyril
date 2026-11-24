@@ -74,6 +74,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</button>
 		</header>
 
+		<button type="button" class="update-bar" data-update hidden>✨ <?php esc_html_e( 'Nouvelle version du scanner – toucher pour mettre à jour', 'wedding-rsvp-pass' ); ?></button>
 		<div class="counter">
 			<div class="counter__ring">
 				<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="bg"/><circle cx="60" cy="60" r="52" class="fg" data-ring/></svg>

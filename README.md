@@ -104,6 +104,13 @@ L'application s'ouvre à l'adresse **`votresite.com/espace-maries/`**. C'est une
 - **Hors connexion** : l'application s'ouvre avec la dernière liste enregistrée, en lecture seule, et le scanner fonctionne entièrement.
   - Conseil : ouvrez le scanner une fois avec du réseau avant le jour J pour télécharger la liste.
 - L'ancienne adresse du scanner (`/wrp-scanner/`) redirige vers `/espace-maries/scanner/`.
+- **Actualisation** :
+  - glisser l'écran vers le bas recharge les données ;
+  - les données se rafraîchissent aussi automatiquement à chaque retour dans l'application.
+- **Mises à jour** :
+  - après une mise à jour du plugin, l'application installée détecte la nouvelle version et s'actualise toute seule. Le scanner affiche un bandeau « Nouvelle version ».
+  - en secours : Compte → « Actualiser l'application ».
+  - les pages de l'application sont exclues des extensions de cache (WP Rocket, LiteSpeed, W3TC, WP Super Cache…).
 
 ## Elementor
 

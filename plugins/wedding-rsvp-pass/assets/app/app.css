@@ -188,3 +188,10 @@ a{color:inherit}
 .alert-wishes b{display:block;font-size:14px}
 .alert-wishes small{display:block;color:#8b7b71;font-size:12px;margin-top:2px}
 .alert-wishes__go{margin-left:auto;font-size:26px;color:var(--wrp-accent)}
+
+/* Pull to refresh & update bar */
+.ptr{position:fixed;top:calc(52px + env(safe-area-inset-top));left:50%;z-index:30;width:40px;height:40px;margin-top:-40px;border-radius:50%;background:#fff;color:var(--wrp-accent);box-shadow:0 6px 18px -6px rgba(59,47,42,.45);display:flex;align-items:center;justify-content:center;font-size:22px;opacity:0;transform:translate(-50%,0);transition:opacity .2s;pointer-events:none}
+.ptr.is-ready{color:var(--wrp-dark)}
+.ptr.is-spinning{opacity:1!important;transition:transform .25s;animation:ptrSpin .8s linear infinite}
+@keyframes ptrSpin{to{rotate:360deg}}
+.update-bar{display:block;width:100%;border:0;background:var(--wrp-dark);color:#fff;padding:11px 14px;font:600 13px Montserrat,sans-serif;cursor:pointer}

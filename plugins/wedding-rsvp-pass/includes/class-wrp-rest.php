@@ -138,6 +138,7 @@ class WRP_REST {
 		return rest_ensure_response(
 			array(
 				'generatedAt' => gmdate( 'Y-m-d\TH:i:s\Z' ),
+				'build'       => WRP_Public::pwa_build(),
 				'wedding'     => self::wedding(),
 				'stats'       => WRP_Guests::stats(),
 				'guests'      => $guests,

@@ -36,8 +36,8 @@ class WRP_App {
 
 	public static function view() {
 		WRP_Public::enforce_trailing_slash( WRP_Public::url( 'app' ) );
+		WRP_Public::no_page_cache();
 		header( 'X-Robots-Tag: noindex, nofollow', true );
-		header( 'Cache-Control: no-cache', true );
 		WRP_Public::render(
 			'app',
 			array(
@@ -63,7 +63,7 @@ class WRP_App {
 
 	public static function session_data() {
 		if ( ! is_user_logged_in() ) {
-			return array( 'loggedIn' => false );
+			return array( 'loggedIn' => false, 'build' => WRP_Public::pwa_build() );
 		}
 		$u        = wp_get_current_user();
 		$can_scan = user_can( $u, 'wrp_scan' ) || user_can( $u, 'wrp_manage_guests' );
@@ -83,6 +83,7 @@ class WRP_App {
 
 		return array(
 			'loggedIn'   => true,
+			'build'      => WRP_Public::pwa_build(),
 			'user'       => array(
 				'id'       => $u->ID,
 				'name'     => $u->display_name,

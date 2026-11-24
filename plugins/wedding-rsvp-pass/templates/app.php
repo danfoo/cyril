@@ -75,6 +75,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 			<button type="button" class="avatar" data-go="account" aria-label="<?php esc_attr_e( 'Mon compte', 'wedding-rsvp-pass' ); ?>"><span data-initials></span></button>
 		</header>
+		<div class="ptr" data-ptr aria-hidden="true">⟳</div>
+		<button type="button" class="update-bar" data-update hidden>✨ <?php esc_html_e( 'Nouvelle version disponible – toucher pour mettre à jour', 'wedding-rsvp-pass' ); ?></button>
 		<div class="offline-bar" data-offline hidden><?php esc_html_e( 'Hors connexion – affichage de la dernière liste enregistrée', 'wedding-rsvp-pass' ); ?></div>
 
 		<main class="views">
@@ -151,9 +153,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<a class="menu__item" data-scanner-link href="<?php echo esc_url( $config['scannerUrl'] ); ?>">▣ <?php esc_html_e( 'Scanner du jour J', 'wedding-rsvp-pass' ); ?></a>
 					<a class="menu__item" data-admin-link href="#" target="_blank" rel="noopener">⚙ <?php esc_html_e( 'Administration complète (import, messages…)', 'wedding-rsvp-pass' ); ?></a>
 					<a class="menu__item" href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener">♥ <?php esc_html_e( 'Voir le site du mariage', 'wedding-rsvp-pass' ); ?></a>
+					<button type="button" class="menu__item" data-force-update>⟳ <?php esc_html_e( 'Actualiser l’application (dernière version)', 'wedding-rsvp-pass' ); ?></button>
 					<button type="button" class="menu__item menu__item--danger" data-logout>⎋ <?php esc_html_e( 'Se déconnecter', 'wedding-rsvp-pass' ); ?></button>
 				</div>
-				<p class="muted small center">v<?php echo esc_html( WRP_VERSION ); ?></p>
+				<p class="muted small center">v<?php echo esc_html( WRP_VERSION ); ?> · <?php echo esc_html( $config['build'] ); ?></p>
 			</div>
 		</main>
 

@@ -91,6 +91,7 @@
 	function refreshSession() {
 		return ajax('session').then(function (res) {
 			S.session = res && res.success ? res.data : { loggedIn: false };
+			checkBuild(S.session.build);
 			if (S.session.loggedIn) {
 				store('session', S.session);
 				if (S.session.scannerKey) { shareScannerKey(S.session); }
@@ -108,6 +109,90 @@
 			localStorage.setItem('wrp_autokey_' + CFG.siteId, JSON.stringify({ key: sess.scannerKey, name: sess.user.name }));
 		} catch (e) {}
 	}
+
+	/* ------------------------------------------------------------------
+	 * Updates: new plugin version → the installed app updates itself
+	 * ---------------------------------------------------------------- */
+	function hardUpdate() {
+		show('loading');
+		var clear = window.caches ? caches.keys().then(function (keys) {
+			return Promise.all(keys.filter(function (k) { return k.indexOf('wrp-') === 0; }).map(function (k) { return caches.delete(k); }));
+		}) : Promise.resolve();
+		var upd = navigator.serviceWorker ? navigator.serviceWorker.getRegistration(CFG.scope).then(function (r) { return r && r.update(); }).catch(function () {}) : Promise.resolve();
+		Promise.all([clear, upd]).catch(function () {}).then(function () {
+			var u = new URL(location.href);
+			u.searchParams.set('v', Date.now().toString(36));
+			location.replace(u.toString());
+		});
+	}
+	function checkBuild(build) {
+		if (!build || !CFG.build || build === CFG.build) { return; }
+		// Auto-update once per new build (no loop if a cache keeps serving an old page).
+		var flag = 'wrp_upd_' + build;
+		var tried = false;
+		try { tried = sessionStorage.getItem(flag) === '1'; sessionStorage.setItem(flag, '1'); } catch (e) { tried = true; }
+		var busy = !$('[data-sheet]').hidden || document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+		if (!tried && !busy) { hardUpdate(); return; }
+		$('[data-update]').hidden = false;
+	}
+	$('[data-update]').addEventListener('click', hardUpdate);
+	$('[data-force-update]').addEventListener('click', hardUpdate);
+	// Clean the ?v= cache-buster from the address bar.
+	if (location.search.indexOf('v=') > -1 && window.history.replaceState) {
+		var cu = new URL(location.href); cu.searchParams.delete('v'); history.replaceState(null, '', cu.toString());
+	}
+
+	/* ------------------------------------------------------------------
+	 * Refresh: pull-to-refresh + when the app comes back to the foreground
+	 * ---------------------------------------------------------------- */
+	var lastRefresh = Date.now();
+	function refreshAll(manual) {
+		if (!navigator.onLine) { if (manual) { toast('Pas de connexion internet'); } return Promise.resolve(); }
+		lastRefresh = Date.now();
+		return refreshSession().then(function (s) {
+			if (!s.loggedIn) { show('login'); return; }
+			var jobs = [loadGuests(false), loadWishes(true)];
+			if (S.view === 'team') { loadTeam(); }
+			return Promise.all(jobs).then(function () { if (manual) { toast('À jour ✓'); } });
+		}).catch(function () { if (manual) { toast('Actualisation impossible'); } });
+	}
+	document.addEventListener('visibilitychange', function () {
+		if (!document.hidden && S.session && S.session.loggedIn && Date.now() - lastRefresh > 20000) { refreshAll(false); }
+	});
+	window.addEventListener('pageshow', function (e) { if (e.persisted && S.session && S.session.loggedIn) { refreshAll(false); } });
+
+	(function pullToRefresh() {
+		var ptr = $('[data-ptr]');
+		var startY = null, dist = 0, active = false, LIMIT = 80;
+		var main = $('.screen--main');
+		main.addEventListener('touchstart', function (e) {
+			if (window.scrollY > 0 || !$('[data-sheet]').hidden || e.touches.length > 1) { startY = null; return; }
+			startY = e.touches[0].clientY; dist = 0; active = false;
+		}, { passive: true });
+		main.addEventListener('touchmove', function (e) {
+			if (startY === null) { return; }
+			dist = e.touches[0].clientY - startY;
+			if (dist > 8 && window.scrollY <= 0) {
+				active = true;
+				var d = Math.min(dist * 0.5, LIMIT + 20);
+				ptr.style.transform = 'translate(-50%,' + d + 'px) rotate(' + d * 3 + 'deg)';
+				ptr.style.opacity = Math.min(1, d / LIMIT);
+				ptr.classList.toggle('is-ready', d >= LIMIT);
+			}
+		}, { passive: true });
+		main.addEventListener('touchend', function () {
+			if (startY === null) { return; }
+			var go = active && dist * 0.5 >= LIMIT;
+			startY = null;
+			if (!go) { ptr.style.transform = ''; ptr.style.opacity = '0'; ptr.classList.remove('is-ready'); return; }
+			ptr.classList.add('is-spinning');
+			ptr.style.transform = 'translate(-50%,60px)';
+			refreshAll(true).then(function () {
+				ptr.classList.remove('is-spinning', 'is-ready');
+				ptr.style.transform = ''; ptr.style.opacity = '0';
+			});
+		});
+	})();
 
 	/* ------------------------------------------------------------------
 	 * Install (PWA)

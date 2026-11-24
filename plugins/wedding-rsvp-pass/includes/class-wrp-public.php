@@ -422,6 +422,31 @@ class WRP_Public {
 	/**
 	 * Config shared by the app and the scanner.
 	 */
+	/**
+	 * Build id of the installable app: changes whenever the plugin or one of its
+	 * app files changes, so installed apps know they must update.
+	 */
+	public static function pwa_build() {
+		return substr( md5( WRP_VERSION . '|' . implode( '|', self::pwa_assets() ) . '|' . filemtime( WRP_DIR . 'templates/app.php' ) . '|' . filemtime( WRP_DIR . 'templates/scanner.php' ) ), 0, 10 );
+	}
+
+	/**
+	 * Make sure no page-cache plugin / host cache keeps an old copy of the app.
+	 */
+	public static function no_page_cache() {
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true ); // WP Rocket, W3TC, WP Super Cache…
+		}
+		if ( ! defined( 'DONOTCACHEOBJECT' ) ) {
+			define( 'DONOTCACHEOBJECT', true );
+		}
+		nocache_headers();
+		header( 'Cache-Control: no-cache, no-store, must-revalidate, max-age=0', true );
+		header( 'X-LiteSpeed-Cache-Control: no-cache', true );
+		header( 'CDN-Cache-Control: no-store', true );
+		do_action( 'litespeed_control_set_nocache', 'wedding app' );
+	}
+
 	public static function pwa_config() {
 		return array(
 			'ajax'      => admin_url( 'admin-ajax.php' ),
@@ -434,13 +459,14 @@ class WRP_Public {
 			'timestamp' => WRP_Settings::wedding_timestamp() * 1000,
 			'siteId'    => substr( md5( home_url() ), 0, 10 ),
 			'version'   => WRP_VERSION,
+			'build'     => self::pwa_build(),
 		);
 	}
 
 	private static function view_scanner() {
 		self::enforce_trailing_slash( self::url( 'scanner' ) );
+		self::no_page_cache();
 		header( 'X-Robots-Tag: noindex, nofollow', true );
-		header( 'Cache-Control: no-cache', true );
 		self::render(
 			'scanner',
 			array(
@@ -459,6 +485,7 @@ class WRP_Public {
 	}
 
 	private static function serve_service_worker() {
+		self::no_page_cache();
 		header( 'Content-Type: application/javascript; charset=utf-8' );
 		header( 'Service-Worker-Allowed: ' . wp_parse_url( self::url( 'app' ), PHP_URL_PATH ) );
 		header( 'Cache-Control: no-cache' );
@@ -466,7 +493,7 @@ class WRP_Public {
 
 		$shells   = array( self::url( 'app' ), self::url( 'scanner' ) );
 		$assets   = array_merge( self::pwa_assets(), $shells, array( self::url( 'manifest' ) ) );
-		$version  = WRP_VERSION . '-' . substr( md5( implode( '|', $assets ) ), 0, 8 );
+		$version  = WRP_VERSION . '-' . self::pwa_build();
 
 		$sw = file_get_contents( WRP_DIR . 'assets/scanner/sw.js' ); // phpcs:ignore
 		$sw = str_replace(
@@ -478,6 +505,7 @@ class WRP_Public {
 	}
 
 	private static function serve_manifest() {
+		self::no_page_cache();
 		header( 'Content-Type: application/manifest+json; charset=utf-8' );
 		header( 'Cache-Control: no-cache' );
 		$manifest = array(
