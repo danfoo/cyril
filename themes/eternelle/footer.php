@@ -16,6 +16,7 @@ if ( ! $music ) {
 ?>
 </div><!-- .et-site -->
 
+<?php if ( ! eternelle_elementor_location( 'footer' ) ) : ?>
 <footer class="et-footer">
 	<div class="et-footer__hearts" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
 	<p class="et-kicker"><?php echo esc_html( eternelle_mod( 'et_footer_text' ) ); ?></p>
@@ -26,6 +27,7 @@ if ( ! $music ) {
 	<?php endif; ?>
 	<p class="et-footer__small">&copy; <?php echo esc_html( wp_date( 'Y' ) ); ?> · <?php bloginfo( 'name' ); ?></p>
 </footer>
+<?php endif; ?>
 
 <?php if ( $music ) : ?>
 	<button class="et-music" type="button" data-music aria-pressed="false" aria-label="<?php esc_attr_e( 'Musique', 'eternelle' ); ?>">

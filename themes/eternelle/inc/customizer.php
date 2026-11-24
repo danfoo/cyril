@@ -189,6 +189,31 @@ function eternelle_customize_register( WP_Customize_Manager $wp ) {
 	eternelle_add( $wp, 'et_s_rsvp', 'et_hashtag', __( 'Hashtag (ex : #SarahEtCyril2027)', 'eternelle' ) );
 
 	// Style & sections.
+	$wp->add_setting(
+		'et_front_mode',
+		array(
+			'default'           => 'auto',
+			'sanitize_callback' => function ( $v ) {
+				return in_array( $v, array( 'auto', 'theme', 'elementor', 'hero_elementor', 'theme_elementor' ), true ) ? $v : 'auto';
+			},
+		)
+	);
+	$wp->add_control(
+		'et_front_mode',
+		array(
+			'label'       => __( 'Page d’accueil', 'eternelle' ),
+			'section'     => 'et_s_style',
+			'type'        => 'select',
+			'description' => __( 'Pour Elementor : Réglages → Lecture → « Une page statique », puis modifiez cette page avec Elementor.', 'eternelle' ),
+			'choices'     => array(
+				'auto'            => __( 'Automatique (Elementor si la page d’accueil est faite avec Elementor)', 'eternelle' ),
+				'theme'           => __( 'Sections du thème uniquement', 'eternelle' ),
+				'elementor'       => __( 'Contenu de la page (Elementor) uniquement', 'eternelle' ),
+				'hero_elementor'  => __( 'Hero animé du thème + contenu Elementor', 'eternelle' ),
+				'theme_elementor' => __( 'Sections du thème + contenu Elementor en dessous', 'eternelle' ),
+			),
+		)
+	);
 	eternelle_add( $wp, 'et_s_style', 'et_color_gold', __( 'Doré (accent)', 'eternelle' ), 'color' );
 	eternelle_add( $wp, 'et_s_style', 'et_color_blush', __( 'Rose poudré', 'eternelle' ), 'color' );
 	eternelle_add( $wp, 'et_s_style', 'et_color_ink', __( 'Texte', 'eternelle' ), 'color' );

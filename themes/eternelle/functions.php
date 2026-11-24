@@ -9,13 +9,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ETERNELLE_VERSION', '1.0.0' );
+define( 'ETERNELLE_VERSION', '1.1.0' );
 define( 'ETERNELLE_DIR', get_template_directory() );
 define( 'ETERNELLE_URI', get_template_directory_uri() );
 
 require ETERNELLE_DIR . '/inc/helpers.php';
 require ETERNELLE_DIR . '/inc/customizer.php';
 require ETERNELLE_DIR . '/inc/icons.php';
+require ETERNELLE_DIR . '/inc/elementor.php';
 
 /**
  * Theme setup.
@@ -31,6 +32,8 @@ function eternelle_setup() {
 	add_theme_support( 'align-wide' );
 	add_theme_support( 'wp-block-styles' );
 	add_theme_support( 'editor-styles' );
+	// Elementor: let page templates span the full width.
+	add_theme_support( 'elementor' );
 	add_editor_style( 'assets/css/editor.css' );
 
 	add_image_size( 'eternelle-portrait', 700, 900, true );

@@ -112,26 +112,24 @@
 	/* ------------------------------------------------------------------
 	 * Countdown
 	 * ---------------------------------------------------------------- */
-	var cd = $('[data-countdown]');
-	if (cd && C.date) {
+	function initCountdown(cd) {
+		if (cd.getAttribute('data-et-cd')) { return; }
+		cd.setAttribute('data-et-cd', '1');
+		var target = parseInt(cd.getAttribute('data-countdown'), 10) || C.date;
+		if (!target) { return; }
 		var els = { d: $('[data-cd=d]', cd), h: $('[data-cd=h]', cd), m: $('[data-cd=m]', cd), s: $('[data-cd=s]', cd) };
 		var prev = {};
 		var tickCd = function () {
-			var diff = C.date - Date.now();
+			var diff = target - Date.now();
 			if (diff <= 0) {
 				cd.classList.add('is-done');
 				cd.textContent = (C.i18n && C.i18n.married) || '♥';
 				return false;
 			}
-			var v = {
-				d: Math.floor(diff / 864e5),
-				h: Math.floor(diff / 36e5) % 24,
-				m: Math.floor(diff / 6e4) % 60,
-				s: Math.floor(diff / 1e3) % 60
-			};
+			var v = { d: Math.floor(diff / 864e5), h: Math.floor(diff / 36e5) % 24, m: Math.floor(diff / 6e4) % 60, s: Math.floor(diff / 1e3) % 60 };
 			Object.keys(v).forEach(function (k) {
 				var txt = k === 'd' ? String(v[k]) : ('0' + v[k]).slice(-2);
-				if (prev[k] !== txt) {
+				if (prev[k] !== txt && els[k]) {
 					els[k].textContent = txt;
 					if (prev[k] !== undefined && !reduce) {
 						els[k].classList.remove('tick');
@@ -144,37 +142,40 @@
 			return true;
 		};
 		if (tickCd()) {
-			var cdTimer = setInterval(function () { if (!tickCd()) { clearInterval(cdTimer); } }, 1000);
+			var t = setInterval(function () { if (!cd.isConnected || !tickCd()) { clearInterval(t); } }, 1000);
 		}
 	}
 
 	/* ------------------------------------------------------------------
 	 * Reveal on scroll
 	 * ---------------------------------------------------------------- */
-	var revealEls = $$('[data-reveal]');
-	if ('IntersectionObserver' in window && !reduce) {
-		var io = new IntersectionObserver(function (entries) {
-			entries.forEach(function (en) {
-				if (en.isIntersecting) {
-					en.target.classList.add('is-visible');
-					var section = en.target.closest('.et-section');
-					if (section) { section.classList.add('is-visible'); }
-					io.unobserve(en.target);
-				}
-			});
-		}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-		revealEls.forEach(function (el) { io.observe(el); });
-	} else {
-		revealEls.forEach(function (el) { el.classList.add('is-visible'); });
-		$$('.et-section').forEach(function (s) { s.classList.add('is-visible'); });
+	var io = ('IntersectionObserver' in window && !reduce) ? new IntersectionObserver(function (entries) {
+		entries.forEach(function (en) {
+			if (en.isIntersecting) {
+				en.target.classList.add('is-visible');
+				var section = en.target.closest('.et-section');
+				if (section) { section.classList.add('is-visible'); }
+				io.unobserve(en.target);
+			}
+		});
+	}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }) : null;
+	function initReveal(el) {
+		if (io && !document.body.classList.contains('elementor-editor-active')) {
+			io.observe(el);
+		} else {
+			el.classList.add('is-visible');
+			var section = el.closest('.et-section');
+			if (section) { section.classList.add('is-visible'); }
+		}
 	}
 
 	/* ------------------------------------------------------------------
 	 * Hero FX: rose petals, golden dust, bokeh
 	 * ---------------------------------------------------------------- */
-	var canvas = $('[data-fx]');
-	var hero = $('[data-hero]');
-	if (canvas && hero && !reduce && (C.petals || C.sparkles)) {
+	function initHeroFx(hero) {
+		var canvas = $('[data-fx]', hero);
+		if (!canvas || reduce || !(C.petals || C.sparkles) || hero.getAttribute('data-et-fx')) { return; }
+		hero.setAttribute('data-et-fx', '1');
 		var ctx = canvas.getContext('2d');
 		var dpr = Math.min(window.devicePixelRatio || 1, 2);
 		var W = 0, H = 0, petals = [], dust = [], bokeh = [];
@@ -236,12 +237,14 @@
 			ctx.restore();
 		};
 
-		var visible = true;
+		var visible = true, raf = 0;
+		var kick = function () { if (!raf) { raf = requestAnimationFrame(frame); } };
 		if ('IntersectionObserver' in window) {
-			new IntersectionObserver(function (en) { visible = en[0].isIntersecting; if (visible) { requestAnimationFrame(frame); } }).observe(hero);
+			new IntersectionObserver(function (en) { visible = en[0].isIntersecting; if (visible) { kick(); } }).observe(hero);
 		}
 		var frame = function () {
-			if (!visible || document.hidden) { return; }
+			raf = 0;
+			if (!visible || document.hidden || !hero.isConnected) { return; }
 			mouse.x += (mouse.tx - mouse.x) * 0.05;
 			mouse.y += (mouse.ty - mouse.y) * 0.05;
 			ctx.clearRect(0, 0, W, H);
@@ -285,15 +288,16 @@
 				if (p.y > H + 40 || p.x < -80 || p.x > W + 80) { petals[i] = newPetal(false); }
 				drawPetal(p);
 			}
-			requestAnimationFrame(frame);
+			kick();
 		};
-		document.addEventListener('visibilitychange', function () { if (!document.hidden) { requestAnimationFrame(frame); } });
-		requestAnimationFrame(frame);
+		document.addEventListener('visibilitychange', function () { if (!document.hidden) { kick(); } });
+		kick();
 	}
 
 	// Parallax for the hero photo.
-	var px = $('[data-parallax]');
-	if (px && !reduce) {
+	function initParallax(px) {
+		if (reduce || px.getAttribute('data-et-px')) { return; }
+		px.setAttribute('data-et-px', '1');
 		var ticking = false;
 		window.addEventListener('scroll', function () {
 			if (ticking) { return; }
@@ -309,9 +313,11 @@
 	/* ------------------------------------------------------------------
 	 * Gallery lightbox
 	 * ---------------------------------------------------------------- */
-	var gallery = $('[data-gallery]');
-	var lb = $('[data-lightbox]');
-	if (gallery && lb) {
+	function initGallery(gallery) {
+		var wrap = gallery.closest('.et-gallery');
+		var lb = wrap ? $('[data-lightbox]', wrap) : null;
+		if (!lb || gallery.getAttribute('data-et-gal')) { return; }
+		gallery.setAttribute('data-et-gal', '1');
 		var items = $$('a', gallery);
 		var img = $('[data-lb-img]', lb);
 		var idx = 0;
@@ -358,6 +364,25 @@
 			if (Math.abs(dx) > 50) { showImg(idx + (dx < 0 ? 1 : -1)); }
 		});
 	}
+
+
+	/* ------------------------------------------------------------------
+	 * Init (also called by Elementor for each rendered widget)
+	 * ---------------------------------------------------------------- */
+	function each(root, sel, fn) {
+		if (!root) { return; }
+		if (root.matches && root.matches(sel)) { fn(root); }
+		$$(sel, root).forEach(fn);
+	}
+	window.EternelleInit = function (root) {
+		root = root || document;
+		each(root, '[data-countdown]', initCountdown);
+		each(root, '[data-reveal]', initReveal);
+		each(root, '[data-hero]', initHeroFx);
+		each(root, '[data-parallax]', initParallax);
+		each(root, '[data-gallery]', initGallery);
+	};
+	window.EternelleInit(document);
 
 	/* ------------------------------------------------------------------
 	 * Little magic: hearts on click, golden sparkles following the cursor

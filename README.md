@@ -69,6 +69,28 @@ dist/*.zip                   → archives prêtes à téléverser (régénérer 
 - L'API est protégée par la clé du scanner, avec une limite contre les essais en série. La clé peut être régénérée.
 - Les liens personnels sont aléatoires (128 bits) et exclus des moteurs de recherche.
 
+## Elementor
+
+Le thème est compatible avec Elementor (gratuit) et Elementor Pro.
+
+- **Pages faites avec Elementor** : elles s'affichent en pleine largeur, sans le titre du thème. Elementor contrôle toute la mise en page. Les modèles « Elementor Canvas » et « Elementor pleine largeur » fonctionnent aussi.
+- **Elementor Pro, Theme Builder** : les emplacements En-tête, Pied de page, Article et Archive sont déclarés. Un en-tête ou un pied de page créé dans Elementor remplace celui du thème.
+- **Page d'accueil** (Personnaliser → Notre mariage → Couleurs & sections → « Page d'accueil ») :
+  - *Automatique* : contenu Elementor si la page d'accueil est faite avec Elementor, sinon les sections du thème ;
+  - *Hero animé du thème + contenu Elementor* ;
+  - *Sections du thème + contenu Elementor en dessous* ;
+  - *Sections du thème uniquement* ou *Elementor uniquement*.
+- **Widgets « Éternelle – Mariage »** dans le panneau Elementor :
+  - Hero animé (pétales, poussière d'or, monogramme, prénoms animés, compte à rebours) ;
+  - Compte à rebours (style clair ou verre) ;
+  - Titre décoré (police manuscrite + ornement doré) ;
+  - Les mariés, Notre histoire, Programme, Lieu, Galerie, RSVP, Liste de mariage ;
+  - Retrouver mon invitation (plugin RSVP).
+
+  Leur contenu vient du Customizer : les prénoms, la date et le lieu sont donc les mêmes partout (site, cartons, e-mails).
+- **Couleurs et polices** : le thème désactive les couleurs et polices par défaut d'Elementor (bleu, Roboto) pour que les widgets standard prennent celles du thème. Vous pouvez les réactiver dans Elementor → Réglages.
+- **Plugin RSVP** : la page de réponse, le carton et le scanner sont des pages autonomes. Elles fonctionnent pareil avec ou sans Elementor.
+
 ## Personnalisation avancée
 - Pour remplacer les gabarits du plugin, copiez `templates/rsvp.php`, `invitation.php` ou `scanner.php` dans `votre-theme/wedding-rsvp-pass/`.
 - Filtres disponibles : `wrp_settings_defaults`, `wrp_slugs` (changer `/rsvp/`, `/invitation/`…), `wrp_fonts_url`, `eternelle_fonts_url`, `eternelle_sections`.

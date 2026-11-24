@@ -117,6 +117,9 @@ function eternelle_defaults() {
 		'et_color_ink'      => '#2e2420',
 		'et_color_sage'     => '#a3b18a',
 
+		// Front page.
+		'et_front_mode'     => 'auto',
+
 		// Sections.
 		'et_show_couple'    => 1,
 		'et_show_story'     => 1,

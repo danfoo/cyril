@@ -9,6 +9,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 get_header();
+if ( eternelle_elementor_location( 'archive' ) ) {
+	get_footer();
+	return;
+}
 ?>
 <main class="et-page">
 	<header class="et-page__head">

@@ -28,7 +28,8 @@ if ( is_front_page() && eternelle_mod( 'et_envelope' ) ) {
 }
 ?>
 
-<header class="et-header<?php echo is_front_page() ? ' is-transparent' : ''; ?>" data-header>
+<?php if ( ! eternelle_elementor_location( 'header' ) ) : ?>
+<header class="et-header<?php echo eternelle_hero_on_top() ? ' is-transparent' : ''; ?>" data-header>
 	<div class="et-header__inner">
 		<a class="et-brand" href="<?php echo esc_url( home_url( '/' ) ); ?>" rel="home">
 			<?php if ( has_custom_logo() ) : ?>
@@ -56,4 +57,6 @@ if ( is_front_page() && eternelle_mod( 'et_envelope' ) ) {
 		</nav>
 	</div>
 </header>
+<?php if ( ! eternelle_hero_on_top() ) : ?><div class="et-header-spacer" aria-hidden="true"></div><?php endif; ?>
+<?php endif; ?>
 <div id="content" class="et-site">
