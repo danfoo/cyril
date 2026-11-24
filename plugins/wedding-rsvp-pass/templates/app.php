@@ -80,6 +80,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<main class="views">
 			<!-- Home -->
 			<div class="view" data-view="home">
+				<button type="button" class="alert-wishes" data-go="wishes" data-wishes-alert hidden>
+					<span class="alert-wishes__icon">✒</span>
+					<span><b data-wishes-alert-text></b><small><?php esc_html_e( 'Touchez ici pour les lire et les publier sur le site', 'wedding-rsvp-pass' ); ?></small></span>
+					<span class="alert-wishes__go">›</span>
+				</button>
 				<div class="hello">
 					<p class="kicker" data-hello-kicker></p>
 					<h2 class="script" data-hello></h2>
@@ -155,9 +160,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<nav class="tabbar" data-tabbar>
 			<button type="button" data-go="home" class="is-active"><i>⌂</i><span><?php esc_html_e( 'Accueil', 'wedding-rsvp-pass' ); ?></span></button>
 			<button type="button" data-go="guests"><i>♥</i><span><?php esc_html_e( 'Invités', 'wedding-rsvp-pass' ); ?></span></button>
+			<button type="button" data-go="wishes" class="tab-wishes"><i>✒</i><span><?php esc_html_e( 'Livre d’or', 'wedding-rsvp-pass' ); ?></span><em class="tab-badge" data-wishes-tab-badge hidden></em></button>
 			<a data-scanner-link href="<?php echo esc_url( $config['scannerUrl'] ); ?>"><i>▣</i><span><?php esc_html_e( 'Scanner', 'wedding-rsvp-pass' ); ?></span></a>
 			<button type="button" data-go="team"><i>☺</i><span><?php esc_html_e( 'Équipe', 'wedding-rsvp-pass' ); ?></span></button>
-			<button type="button" data-go="account"><i>◎</i><span><?php esc_html_e( 'Compte', 'wedding-rsvp-pass' ); ?></span></button>
 		</nav>
 	</section>
 

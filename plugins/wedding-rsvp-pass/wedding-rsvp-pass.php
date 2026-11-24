@@ -3,7 +3,7 @@
  * Plugin Name:       Wedding RSVP Pass
  * Plugin URI:        https://example.com/wedding-rsvp-pass
  * Description:       Gestion des invités pour les mariés : chaque marié(e) gère sa liste, envoie les invitations, les invités confirment sur une page élégante, un carton d'invitation avec QR code est généré et validé le jour J par un scanner qui fonctionne hors connexion.
- * Version:           1.2.0
+ * Version:           1.2.1
  * Requires at least: 6.2
  * Requires PHP:      7.4
  * Author:            Wedding RSVP Pass
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'WRP_VERSION', '1.2.0' );
+define( 'WRP_VERSION', '1.2.1' );
 define( 'WRP_DB_VERSION', '1.2.0' );
 define( 'WRP_FILE', __FILE__ );
 define( 'WRP_DIR', plugin_dir_path( __FILE__ ) );

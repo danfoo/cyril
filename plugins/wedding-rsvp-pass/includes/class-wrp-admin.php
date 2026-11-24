@@ -23,13 +23,15 @@ class WRP_Admin {
 			add_action( 'admin_post_wrp_' . $action, array( __CLASS__, 'handle_' . $action ) );
 		}
 		add_action( 'wp_ajax_wrp_mark_invited', array( __CLASS__, 'ajax_mark_invited' ) );
+		add_action( 'admin_notices', array( __CLASS__, 'wishes_notice' ) );
 		add_action( 'wp_ajax_wrp_live_stats', array( __CLASS__, 'ajax_live_stats' ) );
 	}
 
 	public static function menu() {
+		$waiting = WRP_Wishes::moderated() ? WRP_Wishes::counts()['pending'] : 0;
 		add_menu_page(
 			__( 'Invités du mariage', 'wedding-rsvp-pass' ),
-			__( 'Invités', 'wedding-rsvp-pass' ),
+			__( 'Invités', 'wedding-rsvp-pass' ) . ( $waiting ? ' <span class="awaiting-mod">' . (int) $waiting . '</span>' : '' ),
 			'wrp_manage_guests',
 			self::PAGE_GUESTS,
 			array( __CLASS__, 'page_guests' ),
@@ -958,6 +960,29 @@ class WRP_Admin {
 			echo '</p></div>';
 		}
 		echo '</div></div>';
+	}
+
+	/**
+	 * Visible reminder on every admin screen while wishes wait for approval.
+	 */
+	public static function wishes_notice() {
+		if ( ! current_user_can( 'wrp_manage_guests' ) || ! WRP_Wishes::moderated() ) {
+			return;
+		}
+		$screen = get_current_screen();
+		if ( $screen && false !== strpos( (string) $screen->id, 'wrp-wishes' ) ) {
+			return;
+		}
+		$n = WRP_Wishes::counts()['pending'];
+		if ( ! $n ) {
+			return;
+		}
+		printf(
+			'<div class="notice notice-warning"><p>✒ <strong>%1$s</strong> <a class="button button-primary" style="margin-left:8px" href="%2$s">%3$s</a></p></div>',
+			esc_html( sprintf( _n( '%d message du livre d’or attend votre validation avant d’apparaître sur le site.', '%d messages du livre d’or attendent votre validation avant d’apparaître sur le site.', $n, 'wedding-rsvp-pass' ), $n ) ),
+			esc_url( self::page_url( 'wrp-wishes', array( 'status' => 'pending' ) ) ),
+			esc_html__( 'Lire et valider', 'wedding-rsvp-pass' )
+		);
 	}
 
 	public static function handle_wish() {

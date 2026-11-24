@@ -517,6 +517,11 @@
 		var c = S.wishCounts || { pending: 0, approved: 0, hidden: 0 };
 		var badge = $('[data-wishes-badge]');
 		badge.hidden = !c.pending; badge.textContent = c.pending;
+		var tb = $('[data-wishes-tab-badge]');
+		tb.hidden = !c.pending; tb.textContent = c.pending;
+		var al = $('[data-wishes-alert]');
+		al.hidden = !c.pending;
+		$('[data-wishes-alert-text]').textContent = c.pending === 1 ? '1 message du livre d’or attend votre validation' : c.pending + ' messages du livre d’or attendent votre validation';
 		var F = [['pending', 'À valider'], ['approved', 'Publiés'], ['hidden', 'Masqués']];
 		$('[data-wish-filters]').innerHTML = F.map(function (f) {
 			return '<button type="button" class="chip' + (f[0] === S.wishFilter ? ' is-active' : '') + '" data-wish-filter="' + f[0] + '">' + f[1] + '<b>' + (c[f[0]] || 0) + '</b></button>';
