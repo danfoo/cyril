@@ -387,6 +387,16 @@
 	/* ------------------------------------------------------------------
 	 * Little magic: hearts on click, golden sparkles following the cursor
 	 * ---------------------------------------------------------------- */
+	var fxLayer = null;
+	function layer() {
+		if (!fxLayer || !fxLayer.isConnected) {
+			fxLayer = document.createElement('div');
+			fxLayer.className = 'et-fx-layer';
+			fxLayer.setAttribute('aria-hidden', 'true');
+			document.body.appendChild(fxLayer);
+		}
+		return fxLayer;
+	}
 	function burst(x, y, n) {
 		if (reduce) { return; }
 		var glyphs = ['♥', '♡', '✦'];
@@ -403,7 +413,7 @@
 			h.style.setProperty('--x', Math.cos(ang) * dist + 'px');
 			h.style.setProperty('--y', (Math.sin(ang) * dist - 40) + 'px');
 			h.style.setProperty('--r', (Math.random() * 120 - 60) + 'deg');
-			document.body.appendChild(h);
+			layer().appendChild(h);
 			setTimeout(h.remove.bind(h), 1100);
 		}
 	}
@@ -425,7 +435,7 @@
 			s.style.top = (e.clientY - 3) + 'px';
 			s.style.setProperty('--x', (Math.random() * 30 - 15) + 'px');
 			s.style.setProperty('--y', (Math.random() * 20 + 10) + 'px');
-			document.body.appendChild(s);
+			layer().appendChild(s);
 			setTimeout(s.remove.bind(s), 950);
 		}, { passive: true });
 	}

@@ -91,7 +91,7 @@ function eternelle_customize_register( WP_Customize_Manager $wp ) {
 		array(
 			'title'       => __( '💍 Notre mariage', 'eternelle' ),
 			'priority'    => 20,
-			'description' => __( 'Personnalisez votre site de mariage. Les informations des mariés, la date et le lieu sont aussi utilisées par le plugin Wedding RSVP Pass (cartons d’invitation).', 'eternelle' ),
+			'description' => __( 'Personnalisez votre site de mariage. Les informations des mariés, la date et le lieu sont aussi utilisées par le plugin Wedding RSVP Pass (cartons d’invitation).', 'eternelle' ) . ' ' . __( 'Le menu se règle dans la section « Menu du site » ci-dessous (ou Apparence → Menus).', 'eternelle' ),
 		)
 	);
 
@@ -212,6 +212,25 @@ function eternelle_customize_register( WP_Customize_Manager $wp ) {
 				'hero_elementor'  => __( 'Hero animé du thème + contenu Elementor', 'eternelle' ),
 				'theme_elementor' => __( 'Sections du thème + contenu Elementor en dessous', 'eternelle' ),
 			),
+		)
+	);
+	// Menu shortcut inside our panel.
+	$wp->add_section(
+		'et_s_menu',
+		array(
+			'title'       => __( 'Menu du site', 'eternelle' ),
+			'panel'       => 'eternelle',
+			'priority'    => 5,
+			'description' => __( 'Par défaut, le menu affiche automatiquement les sections de la page d’accueil (Les mariés, Programme, RSVP…). Pour le personnaliser : créez un menu, ajoutez des « Liens personnalisés » vers #couple, #story, #program, #venue, #gallery, #rsvp, #gifts ou vers vos pages, puis cochez l’emplacement « Menu principal ».', 'eternelle' ),
+		)
+	);
+	$wp->add_setting( 'et_menu_link', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+	$wp->add_control(
+		'et_menu_link',
+		array(
+			'section'     => 'et_s_menu',
+			'type'        => 'hidden',
+			'description' => '<a class="button button-primary" href="javascript:wp.customize.panel(\'nav_menus\').focus()">' . esc_html__( 'Ouvrir les réglages du menu', 'eternelle' ) . '</a> <a class="button" href="' . esc_url( admin_url( 'nav-menus.php' ) ) . '">' . esc_html__( 'Apparence → Menus', 'eternelle' ) . '</a>',
 		)
 	);
 	eternelle_add( $wp, 'et_s_style', 'et_color_gold', __( 'Doré (accent)', 'eternelle' ), 'color' );
