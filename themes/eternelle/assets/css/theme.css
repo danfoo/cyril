@@ -434,3 +434,13 @@ a{color:inherit}
 	.et-btn{padding:14px 24px;letter-spacing:.14em}
 	.et-title__h{word-break:break-word}
 }
+
+/* ==========================================================================
+   Guest book
+   ========================================================================== */
+.et-guestbook-page{max-width:1180px}
+.et-guestbook-page .wrp-gb__form{margin-top:10px}
+.et-wishes .wrp-carousel{background:linear-gradient(170deg,var(--et-blush),#fbf3ee 55%,#f1e5d6)}
+.et-wishes .wrp-carousel__title,.wrp-gb__title{color:var(--et-ink)}
+.et-wishes .wrp-carousel__cta a,.wrp-gb__form button,.wrp-gb__more button{background:var(--et-ink)}
+.et-wishes .wrp-carousel__cta a:hover,.wrp-gb__form button:hover,.wrp-gb__more button:hover{background:var(--et-gold)}

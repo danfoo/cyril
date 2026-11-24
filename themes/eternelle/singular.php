@@ -32,7 +32,8 @@ if ( ! eternelle_elementor_location( 'single' ) ) :
 				<h1 class="et-page__title"><?php the_title(); ?></h1>
 				<?php echo eternelle_icon( 'flourish', 'et-title__flourish' ); // phpcs:ignore ?>
 			</header>
-			<article <?php post_class( 'et-container et-container--narrow et-prose' ); ?>>
+			<?php $et_wide = has_shortcode( get_post()->post_content, 'wrp_guestbook' ) || has_shortcode( get_post()->post_content, 'wrp_wishes_carousel' ); ?>
+			<article <?php post_class( 'et-container et-prose' . ( $et_wide ? ' et-guestbook-page' : ' et-container--narrow' ) ); ?>>
 				<?php if ( has_post_thumbnail() ) : ?>
 					<figure class="et-page__thumb"><?php the_post_thumbnail( 'large' ); ?></figure>
 				<?php endif; ?>

@@ -201,6 +201,7 @@
 		show('main');
 		go(S.view);
 		loadGuests(true);
+		loadWishes(true);
 	}
 
 	function go(view) {
@@ -208,6 +209,7 @@
 		$$('[data-view]').forEach(function (v) { v.hidden = v.getAttribute('data-view') !== view; });
 		$$('[data-tabbar] [data-go]').forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-go') === view); });
 		if (view === 'team') { loadTeam(); }
+		if (view === 'wishes') { loadWishes(); }
 		if (view === 'guests') { renderGuests(); }
 		window.scrollTo(0, 0);
 	}
@@ -495,6 +497,54 @@
 		});
 		setTimeout(function () { var f = form.firstName; if (f && isNew) { f.focus(); } }, 350);
 	}
+
+	/* ------------------------------------------------------------------
+	 * Guest book moderation
+	 * ---------------------------------------------------------------- */
+	S.wishes = []; S.wishFilter = 'pending'; S.wishCounts = null;
+	function loadWishes(silent) {
+		if (!S.online) { return Promise.resolve(); }
+		return rest('wishes').then(function (d) {
+			S.wishes = d.items; S.wishCounts = d.counts;
+			if (!silent && S.wishFilter === 'pending' && !d.counts.pending) { S.wishFilter = 'approved'; }
+			$('[data-wishes-help]').textContent = d.moderated ? 'Les nouveaux messages attendent votre validation avant d’apparaître sur le site.' : 'Les nouveaux messages sont publiés immédiatement. Vous pouvez masquer ceux que vous ne souhaitez pas afficher.';
+			var pg = $('[data-wishes-page]');
+			pg.hidden = !d.pageUrl; pg.href = d.pageUrl || '#';
+			renderWishes();
+		}).catch(function (e) { if (!silent) { toast(e.message); } });
+	}
+	function renderWishes() {
+		var c = S.wishCounts || { pending: 0, approved: 0, hidden: 0 };
+		var badge = $('[data-wishes-badge]');
+		badge.hidden = !c.pending; badge.textContent = c.pending;
+		var F = [['pending', 'À valider'], ['approved', 'Publiés'], ['hidden', 'Masqués']];
+		$('[data-wish-filters]').innerHTML = F.map(function (f) {
+			return '<button type="button" class="chip' + (f[0] === S.wishFilter ? ' is-active' : '') + '" data-wish-filter="' + f[0] + '">' + f[1] + '<b>' + (c[f[0]] || 0) + '</b></button>';
+		}).join('');
+		var list = S.wishes.filter(function (w) { return w.status === S.wishFilter; });
+		$('[data-wishes]').innerHTML = list.length ? list.map(function (w) {
+			return '<li class="wish is-' + w.status + '"><p>' + esc(w.message) + '</p><div class="wish__who"><b>' + esc(w.name) + '</b>' + (w.relation ? '<span>' + esc(w.relation) + '</span>' : '') + '<span>· ' + esc(w.ago) + (w.source === 'rsvp' ? ' · via la réponse' : '') + '</span></div><div class="wish__actions">' +
+				(w.status !== 'approved' ? '<button type="button" class="btn btn--gold" data-wish="' + w.id + '" data-do="approved">Publier</button>' : '') +
+				(w.status !== 'hidden' ? '<button type="button" class="btn btn--ghost" data-wish="' + w.id + '" data-do="hidden">Masquer</button>' : '') +
+				'<button type="button" class="btn btn--danger" data-wish="' + w.id + '" data-do="delete">Supprimer</button></div></li>';
+		}).join('') : '<li class="empty">' + (S.wishFilter === 'pending' ? 'Aucun message à valider ♥' : 'Aucun message ici.') + '</li>';
+	}
+	$('[data-wish-filters]').addEventListener('click', function (e) {
+		var b = e.target.closest('[data-wish-filter]');
+		if (b) { S.wishFilter = b.getAttribute('data-wish-filter'); renderWishes(); }
+	});
+	$('[data-wishes]').addEventListener('click', function (e) {
+		var b = e.target.closest('[data-wish]');
+		if (!b) { return; }
+		var id = b.getAttribute('data-wish'), act = b.getAttribute('data-do');
+		if (act === 'delete' && !window.confirm('Supprimer définitivement ce message ?')) { return; }
+		b.classList.add('is-loading');
+		var req = act === 'delete' ? rest('wishes/' + id, 'DELETE') : rest('wishes/' + id, 'POST', { status: act });
+		req.then(function () {
+			toast(act === 'approved' ? 'Message publié ♥' : act === 'hidden' ? 'Message masqué' : 'Message supprimé');
+			loadWishes(true);
+		}).catch(function (err) { toast(err.message); b.classList.remove('is-loading'); });
+	});
 
 	/* ------------------------------------------------------------------
 	 * Team (welcome / scan accounts)

@@ -69,6 +69,21 @@ dist/*.zip                   → archives prêtes à téléverser (régénérer 
 - L'API est protégée par la clé du scanner, avec une limite contre les essais en série. La clé peut être régénérée.
 - Les liens personnels sont aléatoires (128 bits) et exclus des moteurs de recherche.
 
+## Livre d'or
+
+- **Page « Livre d'or »** : elle est créée automatiquement (`/livre-d-or/`) et ajoutée au menu automatique.
+  - Les invités y signent avec leur nom, leur lien (famille, ami·e…) et leur message.
+  - Les vœux validés s'affichent en mur de cartes, avec un bouton « Voir plus ».
+- **Carrousel des derniers vœux en bas de l'accueil** :
+  - il apparaît dans tous les modes de page d'accueil, Elementor compris ;
+  - défilement automatique, flèches, points et glisser au doigt sur mobile ;
+  - réglages dans Personnaliser → Notre mariage → « Réponses, livre d'or & liste » (titre, nombre de vœux, afficher ou masquer).
+- **Petits mots de la réponse RSVP** : ils sont ajoutés automatiquement au livre d'or (option désactivable).
+- **Validation** : par défaut, un message n'apparaît qu'après la validation des mariés. On valide depuis l'application (accueil → « Livre d'or », avec un badge du nombre de messages en attente) ou depuis Invités → Livre d'or dans l'administration. On peut aussi publier directement : Messages & réglages → Livre d'or.
+- **Anti-spam** : champ piège invisible pour les robots, délai minimum de saisie, et 5 messages au maximum par heure et par connexion.
+- **Shortcodes** : `[wrp_guestbook]` et `[wrp_wishes_carousel count="12"]`.
+- **Widgets Elementor** : « Carrousel des vœux (livre d'or) » et « Livre d'or (formulaire + messages) ».
+
 ## Application « Espace mariés » (installable sur téléphone)
 
 L'application s'ouvre à l'adresse **`votresite.com/espace-maries/`**. C'est une PWA : elle s'installe sur l'écran d'accueil depuis le navigateur, sans passer par un store.

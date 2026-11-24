@@ -19,7 +19,7 @@ class WRP_Admin {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'assets' ) );
 
-		foreach ( array( 'save_guest', 'delete_guest', 'bulk', 'send_one', 'import', 'export', 'save_settings', 'regen_key', 'reset_checkin' ) as $action ) {
+		foreach ( array( 'save_guest', 'delete_guest', 'bulk', 'send_one', 'import', 'export', 'save_settings', 'regen_key', 'reset_checkin', 'wish' ) as $action ) {
 			add_action( 'admin_post_wrp_' . $action, array( __CLASS__, 'handle_' . $action ) );
 		}
 		add_action( 'wp_ajax_wrp_mark_invited', array( __CLASS__, 'ajax_mark_invited' ) );
@@ -38,6 +38,8 @@ class WRP_Admin {
 		);
 		add_submenu_page( self::PAGE_GUESTS, __( 'Liste des invités', 'wedding-rsvp-pass' ), __( 'Liste des invités', 'wedding-rsvp-pass' ), 'wrp_manage_guests', self::PAGE_GUESTS, array( __CLASS__, 'page_guests' ) );
 		add_submenu_page( self::PAGE_GUESTS, __( 'Jour J – Scanner', 'wedding-rsvp-pass' ), __( 'Jour J – Scanner', 'wedding-rsvp-pass' ), 'wrp_manage_guests', self::PAGE_SCANNER, array( __CLASS__, 'page_scanner' ) );
+		$pending = WRP_Wishes::counts()['pending'];
+		add_submenu_page( self::PAGE_GUESTS, __( 'Livre d’or', 'wedding-rsvp-pass' ), __( 'Livre d’or', 'wedding-rsvp-pass' ) . ( $pending ? ' <span class="awaiting-mod">' . (int) $pending . '</span>' : '' ), 'wrp_manage_guests', 'wrp-wishes', array( __CLASS__, 'page_wishes' ) );
 		add_submenu_page( self::PAGE_GUESTS, __( 'Messages & réglages', 'wedding-rsvp-pass' ), __( 'Messages & réglages', 'wedding-rsvp-pass' ), 'wrp_manage_guests', self::PAGE_SETTINGS, array( __CLASS__, 'page_settings' ) );
 	}
 
@@ -905,6 +907,75 @@ class WRP_Admin {
 	}
 
 	/* ------------------------------------------------------------------
+	 * Guest book
+	 * ---------------------------------------------------------------- */
+
+	public static function page_wishes() {
+		self::require_cap();
+		$status = isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : 'all'; // phpcs:ignore
+		$status = in_array( $status, array( 'all', 'pending', 'approved', 'hidden' ), true ) ? $status : 'all';
+		$counts = WRP_Wishes::counts();
+		$res    = WRP_Wishes::query( $status, 200 );
+		$labels = array(
+			'all'      => __( 'Tous', 'wedding-rsvp-pass' ),
+			'pending'  => __( 'À valider', 'wedding-rsvp-pass' ),
+			'approved' => __( 'Publiés', 'wedding-rsvp-pass' ),
+			'hidden'   => __( 'Masqués', 'wedding-rsvp-pass' ),
+		);
+		echo '<div class="wrap wrp-wrap">';
+		self::header( __( 'Livre d’or', 'wedding-rsvp-pass' ), WRP_Wishes::moderated() ? __( 'Les nouveaux messages attendent votre validation avant d’être publiés.', 'wedding-rsvp-pass' ) : __( 'Les nouveaux messages sont publiés immédiatement.', 'wedding-rsvp-pass' ) );
+		if ( isset( $_GET['wrp_msg'] ) ) { // phpcs:ignore
+			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Livre d’or mis à jour.', 'wedding-rsvp-pass' ) . '</p></div>';
+		}
+		echo '<nav class="wrp-tabs">';
+		foreach ( $labels as $k => $l ) {
+			$n = 'all' === $k ? array_sum( $counts ) : $counts[ $k ];
+			printf( '<a class="%1$s" href="%2$s">%3$s (%4$d)</a>', $k === $status ? 'is-active' : '', esc_url( self::page_url( 'wrp-wishes', array( 'status' => $k ) ) ), esc_html( $l ), (int) $n );
+		}
+		$page = WRP_Wishes::page_url();
+		if ( $page ) {
+			printf( '<a href="%1$s" target="_blank" rel="noopener">%2$s ↗</a>', esc_url( $page ), esc_html__( 'Voir la page', 'wedding-rsvp-pass' ) );
+		}
+		echo '</nav><div class="wrp-wishes">';
+		if ( ! $res['items'] ) {
+			echo '<p class="wrp-card wrp-muted">' . esc_html__( 'Aucun message pour le moment.', 'wedding-rsvp-pass' ) . '</p>';
+		}
+		foreach ( $res['items'] as $w ) {
+			$act = function ( $do, $label, $class = '' ) use ( $w, $status ) {
+				return sprintf( '<a class="button %1$s" href="%2$s">%3$s</a>', esc_attr( $class ), esc_url( wp_nonce_url( add_query_arg( array( 'action' => 'wrp_wish', 'id' => $w->id, 'do' => $do, 'back' => $status ), admin_url( 'admin-post.php' ) ), 'wrp_wish_' . $w->id ) ), esc_html( $label ) );
+			};
+			echo '<div class="wrp-card wrp-wish-admin is-' . esc_attr( $w->status ) . '">';
+			echo '<blockquote class="wrp-quote">' . nl2br( esc_html( $w->message ) ) . '</blockquote>';
+			echo '<p><strong>' . esc_html( $w->name ) . '</strong>' . ( $w->relation ? ' · ' . esc_html( $w->relation ) : '' ) . ' · <span class="wrp-muted">' . esc_html( mysql2date( 'j F Y H:i', $w->created_at ) ) . ( 'rsvp' === $w->source ? ' · ' . esc_html__( 'depuis la réponse RSVP', 'wedding-rsvp-pass' ) : '' ) . '</span> <span class="wrp-badge wrp-badge--' . ( 'approved' === $w->status ? 'confirmed' : ( 'pending' === $w->status ? 'invited' : 'pending' ) ) . '">' . esc_html( $labels[ $w->status ] ) . '</span></p>';
+			echo '<p class="wrp-wish-admin__actions">';
+			if ( 'approved' !== $w->status ) {
+				echo $act( 'approve', __( 'Publier', 'wedding-rsvp-pass' ), 'button-primary wrp-btn' ); // phpcs:ignore
+			}
+			if ( 'hidden' !== $w->status ) {
+				echo $act( 'hide', __( 'Masquer', 'wedding-rsvp-pass' ) ); // phpcs:ignore
+			}
+			echo '<span data-wrp-confirm="del">' . $act( 'delete', __( 'Supprimer', 'wedding-rsvp-pass' ), 'wrp-icon--danger' ) . '</span>'; // phpcs:ignore
+			echo '</p></div>';
+		}
+		echo '</div></div>';
+	}
+
+	public static function handle_wish() {
+		self::require_cap();
+		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0;
+		check_admin_referer( 'wrp_wish_' . $id );
+		$do = isset( $_GET['do'] ) ? sanitize_key( $_GET['do'] ) : '';
+		if ( 'approve' === $do ) {
+			WRP_Wishes::set_status( $id, 'approved' );
+		} elseif ( 'hide' === $do ) {
+			WRP_Wishes::set_status( $id, 'hidden' );
+		} elseif ( 'delete' === $do ) {
+			WRP_Wishes::delete( $id );
+		}
+		self::redirect( 'wrp-wishes', array( 'status' => isset( $_GET['back'] ) ? sanitize_key( $_GET['back'] ) : 'all', 'wrp_msg' => 1 ) );
+	}
+
+	/* ------------------------------------------------------------------
 	 * Wedding-day page
 	 * ---------------------------------------------------------------- */
 
@@ -1007,6 +1078,13 @@ class WRP_Admin {
 					'country_code'    => array( 'text', __( 'Indicatif pays par défaut pour WhatsApp (ex : 33, 225, 237, 32, 41, 1)', 'wedding-rsvp-pass' ) ),
 					'email_from_name' => array( 'text', __( 'Nom de l’expéditeur (vide = prénoms des mariés)', 'wedding-rsvp-pass' ) ),
 					'email_from_address' => array( 'email', __( 'Adresse de l’expéditeur (optionnel)', 'wedding-rsvp-pass' ) ),
+				),
+			),
+			'guestbook' => array(
+				'title'  => __( 'Livre d’or', 'wedding-rsvp-pass' ),
+				'fields' => array(
+					'wishes_moderation' => array( 'checkbox', __( 'Les messages sont publiés seulement après votre validation (recommandé)', 'wedding-rsvp-pass' ) ),
+					'wishes_from_rsvp'  => array( 'checkbox', __( 'Ajouter au livre d’or les petits mots laissés lors de la réponse (RSVP)', 'wedding-rsvp-pass' ) ),
 				),
 			),
 			'card'     => array(

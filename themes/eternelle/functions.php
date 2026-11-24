@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'ETERNELLE_VERSION', '1.1.1' );
+define( 'ETERNELLE_VERSION', '1.2.0' );
 define( 'ETERNELLE_DIR', get_template_directory() );
 define( 'ETERNELLE_URI', get_template_directory_uri() );
 
@@ -93,6 +93,16 @@ function eternelle_assets() {
 	}
 }
 add_action( 'wp_enqueue_scripts', 'eternelle_assets' );
+
+/**
+ * Guest-book carousel on the front page: load the plugin assets in <head>.
+ */
+add_filter(
+	'wrp_enqueue_guestbook_assets',
+	function ( $load ) {
+		return $load || ( is_front_page() && eternelle_mod( 'et_show_wishes' ) );
+	}
+);
 
 /**
  * Preconnect to Google Fonts.

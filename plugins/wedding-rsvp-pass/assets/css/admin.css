@@ -135,3 +135,9 @@
 .wrp-toast.is-on{opacity:1;transform:translateX(-50%) translateY(0)}
 .wrp-wrap .button:not(.button-primary){background:#fff;border-color:#e2d3c7;color:var(--wrp-dark)}
 .wrp-wrap .button:not(.button-primary):hover{border-color:var(--wrp-accent);color:var(--wrp-accent)}
+
+.wrp-wishes{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.wrp-wish-admin.is-pending{border-color:#f0d9a6;box-shadow:0 0 0 3px #fff4dc}
+.wrp-wish-admin.is-hidden{opacity:.6}
+.wrp-wish-admin__actions{display:flex;gap:6px;flex-wrap:wrap;margin:0}
+.wrp-tabs a:last-child:not(.is-active){border-style:dashed}

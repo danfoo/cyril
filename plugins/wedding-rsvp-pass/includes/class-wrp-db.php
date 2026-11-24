@@ -79,6 +79,7 @@ class WRP_DB {
 
 		dbDelta( $sql_guests );
 		dbDelta( $sql_checkins );
+		WRP_Wishes::install();
 
 		update_option( 'wrp_db_version', WRP_DB_VERSION );
 	}

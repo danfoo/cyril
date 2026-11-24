@@ -53,6 +53,7 @@ function eternelle_add( $wp, $section, $id, $label, $type = 'text', $desc = '' )
 		'audio'    => 'eternelle_sanitize_media',
 		'color'    => 'sanitize_hex_color',
 		'icon'     => 'eternelle_sanitize_icon',
+		'number'   => 'absint',
 	);
 	$wp->add_setting(
 		$id,
@@ -178,6 +179,7 @@ function eternelle_customize_register( WP_Customize_Manager $wp ) {
 	}
 
 	// RSVP & gifts.
+	$wp->get_section( 'et_s_rsvp' )->title = __( 'Réponses, livre d’or & liste', 'eternelle' );
 	eternelle_add( $wp, 'et_s_rsvp', 'et_rsvp_title', __( 'Titre RSVP', 'eternelle' ) );
 	eternelle_add( $wp, 'et_s_rsvp', 'et_rsvp_text', __( 'Texte RSVP', 'eternelle' ), 'textarea' );
 	eternelle_add( $wp, 'et_s_rsvp', 'et_contact', __( 'Contact des mariés (téléphone ou e-mail)', 'eternelle' ) );
@@ -185,6 +187,8 @@ function eternelle_customize_register( WP_Customize_Manager $wp ) {
 	eternelle_add( $wp, 'et_s_rsvp', 'et_gifts_text', __( 'Texte liste de mariage', 'eternelle' ), 'textarea' );
 	eternelle_add( $wp, 'et_s_rsvp', 'et_gifts_url', __( 'Lien cagnotte / liste', 'eternelle' ), 'url' );
 	eternelle_add( $wp, 'et_s_rsvp', 'et_gifts_button', __( 'Texte du bouton', 'eternelle' ) );
+	eternelle_add( $wp, 'et_s_rsvp', 'et_wishes_title', __( 'Titre du carrousel des vœux (bas de l’accueil)', 'eternelle' ) );
+	eternelle_add( $wp, 'et_s_rsvp', 'et_wishes_count', __( 'Nombre de vœux dans le carrousel', 'eternelle' ), 'number' );
 	eternelle_add( $wp, 'et_s_rsvp', 'et_footer_text', __( 'Message de pied de page', 'eternelle' ) );
 	eternelle_add( $wp, 'et_s_rsvp', 'et_hashtag', __( 'Hashtag (ex : #SarahEtCyril2027)', 'eternelle' ) );
 
@@ -245,6 +249,7 @@ function eternelle_customize_register( WP_Customize_Manager $wp ) {
 		'gallery' => __( 'Afficher « Galerie »', 'eternelle' ),
 		'rsvp'    => __( 'Afficher « RSVP »', 'eternelle' ),
 		'gifts'   => __( 'Afficher « Liste de mariage »', 'eternelle' ),
+		'wishes'  => __( 'Afficher le carrousel du livre d’or en bas de l’accueil', 'eternelle' ),
 	) as $key => $label ) {
 		eternelle_add( $wp, 'et_s_style', 'et_show_' . $key, $label, 'checkbox' );
 	}

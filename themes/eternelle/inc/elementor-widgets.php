@@ -31,6 +31,8 @@ function eternelle_elementor_widget_classes() {
 		'Eternelle_W_Rsvp',
 		'Eternelle_W_Gifts',
 		'Eternelle_W_Find',
+		'Eternelle_W_Wishes',
+		'Eternelle_W_Guestbook',
 	);
 }
 
@@ -309,5 +311,71 @@ class Eternelle_W_Find extends Eternelle_W_Base {
 		}
 		$s = $this->get_settings_for_display();
 		echo '<div class="et-el-find">' . do_shortcode( '[wrp_find_invitation button="' . esc_attr( $s['button'] ) . '"]' ) . '</div>';
+	}
+}
+
+/**
+ * Latest wishes carousel (guest book).
+ */
+class Eternelle_W_Wishes extends Eternelle_W_Base {
+
+	public function get_name() {
+		return 'eternelle-wishes';
+	}
+
+	public function get_title() {
+		return __( 'Carrousel des vœux (livre d’or)', 'eternelle' );
+	}
+
+	public function get_icon() {
+		return 'eicon-testimonial-carousel';
+	}
+
+	protected function register_controls() {
+		$this->start_controls_section( 'content', array( 'label' => $this->get_title() ) );
+		$this->add_control( 'title', array( 'label' => __( 'Titre', 'eternelle' ), 'type' => Controls_Manager::TEXT, 'default' => eternelle_mod( 'et_wishes_title' ) ) );
+		$this->add_control( 'count', array( 'label' => __( 'Nombre de vœux', 'eternelle' ), 'type' => Controls_Manager::NUMBER, 'default' => 12, 'min' => 1, 'max' => 50 ) );
+		$this->add_control( 'link', array( 'label' => __( 'Bouton « Écrire dans le livre d’or »', 'eternelle' ), 'type' => Controls_Manager::SWITCHER, 'default' => 'yes' ) );
+		$this->end_controls_section();
+	}
+
+	protected function render() {
+		if ( ! shortcode_exists( 'wrp_wishes_carousel' ) ) {
+			return;
+		}
+		$s = $this->get_settings_for_display();
+		echo do_shortcode( sprintf( '[wrp_wishes_carousel count="%1$d" title="%2$s" link="%3$d"]', (int) $s['count'], esc_attr( $s['title'] ), $this->yes( $s, 'link' ) ? 1 : 0 ) ); // phpcs:ignore
+	}
+}
+
+/**
+ * Guest book (form + wall).
+ */
+class Eternelle_W_Guestbook extends Eternelle_W_Base {
+
+	public function get_name() {
+		return 'eternelle-guestbook';
+	}
+
+	public function get_title() {
+		return __( 'Livre d’or (formulaire + messages)', 'eternelle' );
+	}
+
+	public function get_icon() {
+		return 'eicon-comments';
+	}
+
+	protected function register_controls() {
+		$this->start_controls_section( 'content', array( 'label' => $this->get_title() ) );
+		$this->add_control( 'title', array( 'label' => __( 'Titre du formulaire', 'eternelle' ), 'type' => Controls_Manager::TEXT, 'default' => __( 'Laissez-nous un petit mot', 'eternelle' ) ) );
+		$this->end_controls_section();
+	}
+
+	protected function render() {
+		if ( ! shortcode_exists( 'wrp_guestbook' ) ) {
+			return;
+		}
+		$s = $this->get_settings_for_display();
+		echo do_shortcode( '[wrp_guestbook title="' . esc_attr( $s['title'] ) . '"]' ); // phpcs:ignore
 	}
 }

@@ -45,6 +45,8 @@ class WRP_Settings {
 			'scanner_key'        => '',
 			'allow_companion_names' => 1,
 			'allow_change_after_confirm' => 1,
+			'wishes_moderation'  => 1,
+			'wishes_from_rsvp'   => 1,
 		);
 
 		/**

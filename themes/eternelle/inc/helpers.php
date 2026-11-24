@@ -128,6 +128,9 @@ function eternelle_defaults() {
 		'et_show_gallery'   => 1,
 		'et_show_rsvp'      => 1,
 		'et_show_gifts'     => 1,
+		'et_show_wishes'    => 1,
+		'et_wishes_title'   => 'Vos plus beaux vœux',
+		'et_wishes_count'   => 12,
 	);
 	for ( $i = 1; $i <= 4; $i++ ) {
 		$d[ 'et_story_' . $i . '_image' ] = '';
@@ -271,6 +274,7 @@ function eternelle_sections() {
 		'gallery' => __( 'Galerie', 'eternelle' ),
 		'rsvp'    => __( 'RSVP', 'eternelle' ),
 		'gifts'   => __( 'Liste', 'eternelle' ),
+		'wishes'  => __( 'Livre d’or', 'eternelle' ),
 	);
 	$out = array();
 	foreach ( $all as $key => $label ) {
@@ -278,6 +282,9 @@ function eternelle_sections() {
 			continue;
 		}
 		if ( 'gallery' === $key && ! eternelle_gallery_images() && ! is_customize_preview() ) {
+			continue;
+		}
+		if ( 'wishes' === $key && ! shortcode_exists( 'wrp_wishes_carousel' ) ) {
 			continue;
 		}
 		$out[ $key ] = $label;
@@ -292,6 +299,11 @@ function eternelle_menu_fallback() {
 	$base = is_front_page() ? '' : home_url( '/' );
 	echo '<ul class="et-menu">';
 	foreach ( eternelle_sections() as $key => $label ) {
+		// The guest book has its own page.
+		if ( 'wishes' === $key && class_exists( 'WRP_Wishes' ) && WRP_Wishes::page_url() ) {
+			printf( '<li><a href="%1$s">%2$s</a></li>', esc_url( WRP_Wishes::page_url() ), esc_html( $label ) );
+			continue;
+		}
 		printf( '<li><a href="%1$s#%2$s">%3$s</a></li>', esc_url( $base ), esc_attr( $key ), esc_html( $label ) );
 	}
 	echo '</ul>';

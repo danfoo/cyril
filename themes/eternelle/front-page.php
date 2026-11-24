@@ -21,7 +21,9 @@ if ( in_array( $mode, array( 'theme', 'hero_elementor', 'theme_elementor' ), tru
 
 if ( in_array( $mode, array( 'theme', 'theme_elementor' ), true ) ) {
 	foreach ( array_keys( eternelle_sections() ) as $section ) {
-		get_template_part( 'template-parts/sections/' . $section );
+		if ( 'wishes' !== $section ) {
+			get_template_part( 'template-parts/sections/' . $section );
+		}
 	}
 }
 
@@ -41,6 +43,11 @@ if ( 'page' === get_option( 'show_on_front' ) ) {
 			echo '</div>';
 		}
 	}
+}
+
+// Latest guest-book wishes: always last, whatever the front-page mode.
+if ( array_key_exists( 'wishes', eternelle_sections() ) ) {
+	get_template_part( 'template-parts/sections/wishes' );
 }
 
 get_footer();

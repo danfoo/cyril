@@ -91,6 +91,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<button type="button" class="quick__btn" data-action="add"><b>＋</b><?php esc_html_e( 'Ajouter un invité', 'wedding-rsvp-pass' ); ?></button>
 					<button type="button" class="quick__btn" data-action="pending"><b>✉</b><?php esc_html_e( 'Inviter les retardataires', 'wedding-rsvp-pass' ); ?></button>
 					<a class="quick__btn" data-scanner-link href="<?php echo esc_url( $config['scannerUrl'] ); ?>"><b>▣</b><?php esc_html_e( 'Scanner le jour J', 'wedding-rsvp-pass' ); ?></a>
+					<button type="button" class="quick__btn" data-go="wishes"><b>✒</b><?php esc_html_e( 'Livre d’or', 'wedding-rsvp-pass' ); ?> <em class="badge-count" data-wishes-badge hidden></em></button>
 					<button type="button" class="quick__btn" data-install hidden><b>⤓</b><?php esc_html_e( 'Installer l’application', 'wedding-rsvp-pass' ); ?></button>
 				</div>
 				<h3 class="section-title"><?php esc_html_e( 'Dernières réponses', 'wedding-rsvp-pass' ); ?></h3>
@@ -107,6 +108,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<p class="muted small count" data-count></p>
 				<ul class="list" data-guests></ul>
 				<button type="button" class="fab" data-action="add" aria-label="<?php esc_attr_e( 'Ajouter un invité', 'wedding-rsvp-pass' ); ?>">＋</button>
+			</div>
+
+			<!-- Guest book -->
+			<div class="view" data-view="wishes" hidden>
+				<div class="panel">
+					<h2 class="script"><?php esc_html_e( 'Livre d’or', 'wedding-rsvp-pass' ); ?></h2>
+					<p class="muted" data-wishes-help></p>
+					<a class="btn btn--ghost" data-wishes-page href="#" target="_blank" rel="noopener" hidden><?php esc_html_e( 'Voir la page du livre d’or', 'wedding-rsvp-pass' ); ?></a>
+				</div>
+				<div class="chips" data-wish-filters></div>
+				<ul class="list" data-wishes></ul>
 			</div>
 
 			<!-- Team -->
@@ -130,6 +142,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<div class="menu">
 					<button type="button" class="menu__item" data-install hidden>⤓ <?php esc_html_e( 'Installer l’application sur ce téléphone', 'wedding-rsvp-pass' ); ?></button>
 					<button type="button" class="menu__item" data-ios-help hidden>⤓ <?php esc_html_e( 'Ajouter à l’écran d’accueil (iPhone)', 'wedding-rsvp-pass' ); ?></button>
+					<button type="button" class="menu__item" data-go="wishes">✒ <?php esc_html_e( 'Livre d’or (valider les messages)', 'wedding-rsvp-pass' ); ?></button>
 					<a class="menu__item" data-scanner-link href="<?php echo esc_url( $config['scannerUrl'] ); ?>">▣ <?php esc_html_e( 'Scanner du jour J', 'wedding-rsvp-pass' ); ?></a>
 					<a class="menu__item" data-admin-link href="#" target="_blank" rel="noopener">⚙ <?php esc_html_e( 'Administration complète (import, messages…)', 'wedding-rsvp-pass' ); ?></a>
 					<a class="menu__item" href="<?php echo esc_url( home_url( '/' ) ); ?>" target="_blank" rel="noopener">♥ <?php esc_html_e( 'Voir le site du mariage', 'wedding-rsvp-pass' ); ?></a>
