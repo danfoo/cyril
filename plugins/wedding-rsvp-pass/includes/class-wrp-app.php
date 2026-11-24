@@ -101,7 +101,7 @@ class WRP_App {
 			'lists'      => $lists,
 			'owners'     => self::owner_choices(),
 			'restNonce'  => wp_create_nonce( 'wp_rest' ),
-			'scannerKey' => $can_scan ? WRP_Settings::get( 'scanner_key' ) : '',
+			'scannerKey' => $can_scan ? self::personal_scan_key( $u->ID ) : '',
 			'adminUrl'   => admin_url( 'admin.php?page=wrp-guests' ),
 			'wedding'    => array(
 				'names'     => WRP_Settings::couple_names(),
@@ -111,6 +111,46 @@ class WRP_App {
 				'deadline'  => WRP_Settings::deadline_display(),
 			),
 		);
+	}
+
+	/**
+	 * Each logged-in person gets their own scanner key. It stops working as soon as
+	 * the account is removed (or its access revoked), unlike the shared key.
+	 *
+	 * @param int $user_id User.
+	 */
+	public static function personal_scan_key( $user_id ) {
+		$key = (string) get_user_meta( $user_id, 'wrp_scan_token', true );
+		if ( ! preg_match( '/^[A-Z0-9]{16}$/', $key ) ) {
+			$alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+			$key      = '';
+			for ( $i = 0; $i < 16; $i++ ) {
+				$key .= $alphabet[ random_int( 0, strlen( $alphabet ) - 1 ) ];
+			}
+			update_user_meta( $user_id, 'wrp_scan_token', $key );
+		}
+		return implode( '-', str_split( $key, 4 ) );
+	}
+
+	/**
+	 * User owning a personal scanner key (0 if none / no longer allowed).
+	 *
+	 * @param string $key Normalized key (A-Z0-9).
+	 */
+	public static function user_for_scan_key( $key ) {
+		if ( ! preg_match( '/^[A-Z0-9]{16}$/', $key ) ) {
+			return 0;
+		}
+		$ids = get_users(
+			array(
+				'meta_key'   => 'wrp_scan_token', // phpcs:ignore WordPress.DB.SlowDBQuery
+				'meta_value' => $key, // phpcs:ignore WordPress.DB.SlowDBQuery
+				'number'     => 1,
+				'fields'     => 'ID',
+			)
+		);
+		$uid = $ids ? (int) $ids[0] : 0;
+		return ( $uid && ( user_can( $uid, 'wrp_scan' ) || user_can( $uid, 'wrp_manage_guests' ) ) ) ? $uid : 0;
 	}
 
 	public static function ajax_session() {
@@ -530,6 +570,8 @@ class WRP_App {
 			return new WP_Error( 'wrp_forbidden', __( 'Seuls les comptes « Agent d’accueil » peuvent être supprimés ici.', 'wedding-rsvp-pass' ), array( 'status' => 403 ) );
 		}
 		require_once ABSPATH . 'wp-admin/includes/user.php';
+		WP_Session_Tokens::get_instance( $u->ID )->destroy_all();
+		delete_user_meta( $u->ID, 'wrp_scan_token' );
 		wp_delete_user( $u->ID );
 		return rest_ensure_response( array( 'deleted' => true ) );
 	}

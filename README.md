@@ -98,6 +98,8 @@ L'application s'ouvre à l'adresse **`votresite.com/espace-maries/`**. C'est une
 - **Équipe d'accueil** (rôle « Agent d'accueil (scan) ») :
   - après connexion, la personne arrive directement sur le scanner, **déjà configuré** (aucune clé à saisir) ;
   - elle n'a aucun accès à la liste des invités ni à l'administration WordPress.
+  - chaque personne a **sa propre clé de scanner**. La retirer dans l'onglet Équipe coupe son accès : à la synchronisation suivante, son téléphone est déconnecté et la liste en est effacée ;
+  - « Se déconnecter » dans le scanner ferme aussi la session WordPress : le téléphone ne se reconnecte pas tout seul.
 - **Installation** :
   - Android / Chrome : bouton « Installer l'application » ;
   - iPhone : Safari → Partager → « Sur l'écran d'accueil » (instructions dans l'application).

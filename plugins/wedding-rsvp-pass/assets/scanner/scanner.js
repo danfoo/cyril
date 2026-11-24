@@ -294,7 +294,12 @@
 			if (manual) { toast('Liste synchronisée ✓ (' + plural(S.list.guests.length, 'carton', 'cartons') + ')'); }
 		}).catch(function (e) {
 			if (e && e.status === 401) {
-				toast('Clé du scanner refusée : reconfigurez ce téléphone.');
+				// Access removed by the couple (or key changed): sign this phone out.
+				return forgetDevice().then(function () {
+					show('setup');
+					setupError('Votre accès au scanner a été retiré ou a changé. Reconnectez-vous avec le compte reçu des mariés.');
+					autoConfigure();
+				});
 			} else if (manual) {
 				toast('Pas de réseau : les validations seront envoyées plus tard.');
 			}
@@ -714,12 +719,34 @@
 		if (fn) { fn(); }
 	});
 	$('[data-result]').addEventListener('click', function (e) { if (e.target === e.currentTarget) { closeResult(); } });
+	/** Wipe everything this phone knows (scanner data + saved login hints). */
+	function forgetDevice() {
+		Cam.stop();
+		S.key = ''; S.list = null; S.scans = []; S.byHash = {}; S.byId = {};
+		try {
+			Object.keys(localStorage).forEach(function (k) {
+				if (k.indexOf('wrp_autokey_') === 0 || k.indexOf('wrp_app_') === 0 || k.indexOf(PREFIX) === 0) { localStorage.removeItem(k); }
+			});
+		} catch (e) {}
+		return Store.clear();
+	}
+
 	$('[data-logout]').addEventListener('click', function () {
 		var pending = S.scans.filter(function (s) { return !s.synced; }).length;
-		var msg = pending ? 'Attention : ' + pending + ' validation(s) pas encore envoyée(s) seront perdues. Déconnecter quand même ?' : 'Déconnecter ce téléphone et effacer la liste locale ?';
+		var msg = pending ? 'Attention : ' + pending + ' validation(s) pas encore envoyée(s) seront perdues. Se déconnecter quand même ?' : 'Se déconnecter et effacer la liste de ce téléphone ?';
 		if (!window.confirm(msg)) { return; }
-		Cam.stop();
-		Store.clear().then(function () { location.reload(); });
+		// Also close the WordPress session, otherwise the scanner would sign itself back in.
+		var wpLogout = navigator.onLine && CFG.ajax ? fetch(CFG.ajax, { method: 'POST', credentials: 'same-origin', body: new URLSearchParams({ action: 'wrp_app_session' }) })
+			.then(function (r) { return r.json(); })
+			.then(function (res) {
+				var d = res && res.success ? res.data : null;
+				if (d && d.loggedIn && d.restNonce) {
+					return fetch(CFG.ajax, { method: 'POST', credentials: 'same-origin', body: new URLSearchParams({ action: 'wrp_app_logout', nonce: d.restNonce }) });
+				}
+			}).catch(function () {}) : Promise.resolve();
+		Promise.all([wpLogout, forgetDevice()]).then(function () {
+			location.replace(CFG.appUrl || location.pathname);
+		});
 	});
 
 	window.addEventListener('online', function () { render(); sync(false); });
@@ -759,7 +786,7 @@
 		if (S.key) {
 			show('main');
 			render();
-			sync(false);
+			upgradeToPersonalKey().then(function () { sync(false); });
 		} else {
 			show('setup');
 			autoConfigure();
@@ -798,8 +825,26 @@
 			.then(function (res) {
 				var d = res && res.success ? res.data : null;
 				if (d && d.loggedIn && d.scannerKey) { useKey(d.scannerKey, d.user.name); }
-				else if (cached) { useKey(cached.key, cached.name); }
-			}).catch(function () { if (cached) { useKey(cached.key, cached.name); } });
+				else { try { localStorage.removeItem('wrp_autokey_' + CFG.siteId); } catch (e) {} }
+			}).catch(function () {});
+	}
+
+	/**
+	 * Phones set up before personal keys existed hold the shared key: if a team
+	 * member is logged in, switch to their own key so removing them revokes access.
+	 */
+	function upgradeToPersonalKey() {
+		if (!navigator.onLine || !CFG.ajax) { return Promise.resolve(); }
+		return fetch(CFG.ajax, { method: 'POST', credentials: 'same-origin', body: new URLSearchParams({ action: 'wrp_app_session' }) })
+			.then(function (r) { return r.json(); })
+			.then(function (res) {
+				var d = res && res.success ? res.data : null;
+				if (d && d.loggedIn && d.scannerKey && normalizeKey(d.scannerKey) !== S.key) {
+					S.key = normalizeKey(d.scannerKey);
+					if (!S.deviceName) { S.deviceName = d.user.name; }
+					return Promise.all([Store.set('key', S.key), Store.set('deviceName', S.deviceName)]);
+				}
+			}).catch(function () {});
 	}
 
 	function showBackLink() {

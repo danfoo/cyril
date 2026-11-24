@@ -117,7 +117,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<ul class="list" data-history></ul>
 			<div class="settings">
 				<p class="muted small" data-device-info></p>
-				<button type="button" class="btn btn--ghost btn--small" data-logout><?php esc_html_e( 'Déconnecter ce téléphone', 'wedding-rsvp-pass' ); ?></button>
+				<button type="button" class="btn btn--ghost btn--small" data-logout><?php esc_html_e( 'Se déconnecter', 'wedding-rsvp-pass' ); ?></button>
 			</div>
 		</div>
 	</section>

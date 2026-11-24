@@ -267,7 +267,10 @@
 		if (!window.confirm('Se déconnecter de l’espace des mariés ?')) { return; }
 		ajax('logout', { nonce: S.session ? S.session.restNonce : '' }).finally(function () {
 			try {
-				Object.keys(localStorage).forEach(function (k) { if (k.indexOf(KEY) === 0) { localStorage.removeItem(k); } });
+				Object.keys(localStorage).forEach(function (k) {
+					if (k.indexOf(KEY) === 0 || k.indexOf('wrp_autokey_') === 0 || k.indexOf('wrp_' + CFG.siteId + '_') === 0) { localStorage.removeItem(k); }
+				});
+				if (window.indexedDB) { indexedDB.deleteDatabase('wrp-scanner-' + CFG.siteId); }
 			} catch (e) {}
 			S.session = null; S.guests = [];
 			show('login');

@@ -71,6 +71,10 @@ class WRP_REST {
 		if ( '' !== $expected && '' !== $given && hash_equals( $expected, $given ) ) {
 			return true;
 		}
+		// Personal key of a team member (revoked when the account is removed).
+		if ( '' !== $given && WRP_App::user_for_scan_key( $given ) ) {
+			return true;
+		}
 		set_transient( $bucket, $fails + 1, 10 * MINUTE_IN_SECONDS );
 		return new WP_Error( 'wrp_key', __( 'Clé de scanner invalide.', 'wedding-rsvp-pass' ), array( 'status' => 401 ) );
 	}
