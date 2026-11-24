@@ -124,3 +124,8 @@ html,body{margin:0;height:100%;background:#1d1714;color:#f6eee6;font-family:-app
 
 @media (min-width:700px){.screen--main{max-width:560px;margin:0 auto}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.back{width:40px;height:40px;margin-right:8px;border-radius:50%;border:1.5px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;color:#fff;text-decoration:none;font-size:26px;line-height:1;flex:none}
+.topbar{gap:4px}
+.topbar__title{flex:1}
+.setup .btn--ghost{margin-bottom:14px;text-decoration:none}

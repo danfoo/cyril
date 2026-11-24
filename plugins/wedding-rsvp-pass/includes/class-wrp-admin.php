@@ -311,6 +311,7 @@ class WRP_Admin {
 				<button class="button"><?php esc_html_e( 'Filtrer', 'wedding-rsvp-pass' ); ?></button>
 			</form>
 			<div class="wrp-toolbar__actions">
+				<a class="button wrp-btn-ghost" href="<?php echo esc_url( WRP_Public::url( 'app' ) ); ?>" target="_blank" rel="noopener"><span class="dashicons dashicons-smartphone"></span> <?php esc_html_e( 'Application mobile', 'wedding-rsvp-pass' ); ?></a>
 				<a class="button button-primary wrp-btn" href="<?php echo esc_url( self::page_url( self::PAGE_GUESTS, array( 'action' => 'new' ) ) ); ?>"><span class="dashicons dashicons-plus-alt2"></span> <?php esc_html_e( 'Ajouter un invité', 'wedding-rsvp-pass' ); ?></a>
 				<a class="button wrp-btn-ghost" href="<?php echo esc_url( self::page_url( self::PAGE_GUESTS, array( 'action' => 'import' ) ) ); ?>"><span class="dashicons dashicons-upload"></span> <?php esc_html_e( 'Importer', 'wedding-rsvp-pass' ); ?></a>
 				<a class="button wrp-btn-ghost" href="<?php echo esc_url( wp_nonce_url( add_query_arg( array_merge( array( 'action' => 'wrp_export' ), $base_args ), admin_url( 'admin-post.php' ) ), 'wrp_export' ) ); ?>"><span class="dashicons dashicons-download"></span> <?php esc_html_e( 'Exporter', 'wedding-rsvp-pass' ); ?></a>
@@ -919,7 +920,13 @@ class WRP_Admin {
 		?>
 		<div class="wrp-dday">
 			<div class="wrp-card wrp-dday__setup">
-				<h2><?php esc_html_e( '1. Installez le scanner sur les téléphones', 'wedding-rsvp-pass' ); ?></h2>
+				<h2><?php esc_html_e( 'Le plus simple : l’application « Espace mariés »', 'wedding-rsvp-pass' ); ?></h2>
+				<p><?php esc_html_e( 'Dans l’application, onglet « Équipe », créez un accès pour chaque personne de l’accueil et envoyez-le-lui par WhatsApp. Elle ouvre ce lien, se connecte, installe l’application et arrive directement sur le scanner déjà configuré.', 'wedding-rsvp-pass' ); ?></p>
+				<div class="wrp-qr wrp-qr--big" data-wrp-qr="<?php echo esc_attr( WRP_Public::url( 'app' ) ); ?>"></div>
+				<div class="wrp-linkbox"><input type="text" readonly value="<?php echo esc_attr( WRP_Public::url( 'app' ) ); ?>" onclick="this.select()"><button type="button" class="button" data-wrp-copy="<?php echo esc_attr( WRP_Public::url( 'app' ) ); ?>"><?php esc_html_e( 'Copier', 'wedding-rsvp-pass' ); ?></button></div>
+				<p class="wrp-muted"><?php esc_html_e( 'Les comptes « Agent d’accueil (scan) » n’ont accès qu’au scanner, jamais à la liste des invités ni à l’administration.', 'wedding-rsvp-pass' ); ?></p>
+
+				<h2><?php esc_html_e( '1. Sans compte : installez le scanner seul', 'wedding-rsvp-pass' ); ?></h2>
 				<p><?php esc_html_e( 'Scannez ce QR code avec le téléphone de la personne qui accueillera les invités (ou ouvrez le lien), puis « Ajouter à l’écran d’accueil ».', 'wedding-rsvp-pass' ); ?></p>
 				<div class="wrp-qr wrp-qr--big" data-wrp-qr="<?php echo esc_attr( $url ); ?>"></div>
 				<div class="wrp-linkbox"><input type="text" readonly value="<?php echo esc_attr( $url ); ?>" onclick="this.select()"><button type="button" class="button" data-wrp-copy="<?php echo esc_attr( $url ); ?>"><?php esc_html_e( 'Copier', 'wedding-rsvp-pass' ); ?></button></div>

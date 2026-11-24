@@ -87,6 +87,9 @@ class WRP_DB {
 		if ( get_option( 'wrp_db_version' ) !== WRP_DB_VERSION ) {
 			self::install();
 			WRP_Roles::install();
+			WRP_Settings::ensure_scanner_key();
+			// New URLs (e.g. /espace-maries/) need a rewrite flush after an update.
+			update_option( 'wrp_flush_rules', 1 );
 		}
 	}
 }

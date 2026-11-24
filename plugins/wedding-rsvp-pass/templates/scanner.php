@@ -55,13 +55,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<button type="button" class="btn btn--ghost" data-scan-key><?php esc_html_e( 'Scanner le QR d’activation', 'wedding-rsvp-pass' ); ?></button>
 				<p class="setup__error" data-setup-error hidden></p>
 			</form>
-			<p class="muted small"><?php esc_html_e( 'La clé se trouve dans l’administration : Invités → Jour J – Scanner.', 'wedding-rsvp-pass' ); ?></p>
+			<a class="btn btn--ghost" href="<?php echo esc_url( $config['appUrl'] ); ?>"><?php esc_html_e( 'Se connecter avec mon compte', 'wedding-rsvp-pass' ); ?></a>
+			<p class="muted small"><?php esc_html_e( 'Connectez-vous avec le compte reçu des mariés : le scanner se configure tout seul. Sinon, la clé se trouve dans l’administration : Invités → Jour J – Scanner.', 'wedding-rsvp-pass' ); ?></p>
 		</div>
 	</section>
 
 	<!-- Main -->
 	<section class="screen screen--main" data-screen-id="main">
 		<header class="topbar">
+			<a class="back" data-back hidden href="<?php echo esc_url( $config['appUrl'] ); ?>" aria-label="<?php esc_attr_e( 'Retour à l’espace des mariés', 'wedding-rsvp-pass' ); ?>">‹</a>
 			<div class="topbar__title">
 				<strong class="script" data-names><?php echo esc_html( $config['names'] ); ?></strong>
 				<span class="net" data-net><i></i><b data-net-label></b></span>

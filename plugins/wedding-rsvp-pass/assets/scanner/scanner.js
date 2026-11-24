@@ -751,8 +751,53 @@
 			sync(false);
 		} else {
 			show('setup');
+			autoConfigure();
 		}
+		showBackLink();
 	});
+
+	/**
+	 * Logged in through the « Espace mariés »? Configure the scanner automatically
+	 * (no key to type).
+	 */
+	function autoConfigure() {
+		var cached = null;
+		try { cached = JSON.parse(localStorage.getItem('wrp_autokey_' + CFG.siteId)); } catch (e) {}
+		var useKey = function (k, name) {
+			if (!k) { return false; }
+			setupForm.key.value = k;
+			if (name && !setupForm.device.value) { setupForm.device.value = name; }
+			activate(normalizeKey(k), name || '');
+			return true;
+		};
+		if (!navigator.onLine || !CFG.ajax) {
+			// Offline: trust the key handed over by the app; the list will download at the first sync.
+			if (cached && cached.key) {
+				S.key = normalizeKey(cached.key);
+				S.deviceName = cached.name || '';
+				S.deviceId = S.deviceId || uuid();
+				Promise.all([Store.set('key', S.key), Store.set('deviceId', S.deviceId), Store.set('deviceName', S.deviceName)]);
+				show('main');
+				render();
+			}
+			return;
+		}
+		fetch(CFG.ajax, { method: 'POST', credentials: 'same-origin', body: new URLSearchParams({ action: 'wrp_app_session' }) })
+			.then(function (r) { return r.json(); })
+			.then(function (res) {
+				var d = res && res.success ? res.data : null;
+				if (d && d.loggedIn && d.scannerKey) { useKey(d.scannerKey, d.user.name); }
+				else if (cached) { useKey(cached.key, cached.name); }
+			}).catch(function () { if (cached) { useKey(cached.key, cached.name); } });
+	}
+
+	function showBackLink() {
+		var back = $('[data-back]');
+		if (!back) { return; }
+		var sess = null;
+		try { sess = JSON.parse(localStorage.getItem('wrp_app_' + CFG.siteId + '_session')); } catch (e) {}
+		back.hidden = !(sess && sess.loggedIn && sess.can && sess.can.manage);
+	}
 
 	// Expose for debugging / tests.
 	window.WRPScanner = { state: S, handleCode: handleCode, sync: sync, sha256: sha256 };

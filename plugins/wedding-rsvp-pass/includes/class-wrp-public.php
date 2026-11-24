@@ -5,7 +5,8 @@
  * URLs (pretty permalinks):
  *   /rsvp/{token}/          → guest answers
  *   /invitation/{token}/    → invitation card with QR code
- *   /wrp-scanner/           → offline QR scanner app for the wedding day
+ *   /espace-maries/         → installable app (PWA): login, guest lists, team
+ *   /espace-maries/scanner/ → offline QR scanner for the wedding day
  *
  * @package WeddingRSVPPass
  */
@@ -22,7 +23,7 @@ class WRP_Public {
 			array(
 				'rsvp'       => 'rsvp',
 				'invitation' => 'invitation',
-				'scanner'    => 'wrp-scanner',
+				'app'        => 'espace-maries',
 			)
 		);
 	}
@@ -103,9 +104,19 @@ class WRP_Public {
 		$s = self::slugs();
 		add_rewrite_rule( '^' . preg_quote( $s['rsvp'], '#' ) . '/([a-f0-9]{32})/?$', 'index.php?wrp_view=rsvp&wrp_token=$matches[1]', 'top' );
 		add_rewrite_rule( '^' . preg_quote( $s['invitation'], '#' ) . '/([a-f0-9]{32})/?$', 'index.php?wrp_view=invitation&wrp_token=$matches[1]', 'top' );
-		add_rewrite_rule( '^' . preg_quote( $s['scanner'], '#' ) . '/sw\.js$', 'index.php?wrp_view=sw', 'top' );
-		add_rewrite_rule( '^' . preg_quote( $s['scanner'], '#' ) . '/manifest\.webmanifest$', 'index.php?wrp_view=manifest', 'top' );
-		add_rewrite_rule( '^' . preg_quote( $s['scanner'], '#' ) . '/?$', 'index.php?wrp_view=scanner', 'top' );
+		$app = preg_quote( $s['app'], '#' );
+		add_rewrite_rule( '^' . $app . '/sw\.js$', 'index.php?wrp_view=sw', 'top' );
+		add_rewrite_rule( '^' . $app . '/manifest\.webmanifest$', 'index.php?wrp_view=manifest', 'top' );
+		add_rewrite_rule( '^' . $app . '/scanner/?$', 'index.php?wrp_view=scanner', 'top' );
+		add_rewrite_rule( '^' . $app . '/?$', 'index.php?wrp_view=app', 'top' );
+		// Version 1.0 scanner URL.
+		add_rewrite_rule( '^wrp-scanner/sw\.js$', 'index.php?wrp_view=legacy_sw', 'top' );
+		add_rewrite_rule( '^wrp-scanner/?$', 'index.php?wrp_view=legacy_scanner', 'top' );
+
+		if ( get_option( 'wrp_flush_rules' ) ) {
+			delete_option( 'wrp_flush_rules' );
+			flush_rewrite_rules( false );
+		}
 	}
 
 	public static function query_vars( $vars ) {
@@ -127,12 +138,14 @@ class WRP_Public {
 				case 'rsvp':
 				case 'invitation':
 					return home_url( user_trailingslashit( $s[ $view ] . '/' . $token ) );
+				case 'app':
+					return home_url( $s['app'] . '/' );
 				case 'scanner':
-					return home_url( $s['scanner'] . '/' );
+					return home_url( $s['app'] . '/scanner/' );
 				case 'sw':
-					return home_url( $s['scanner'] . '/sw.js' );
+					return home_url( $s['app'] . '/sw.js' );
 				case 'manifest':
-					return home_url( $s['scanner'] . '/manifest.webmanifest' );
+					return home_url( $s['app'] . '/manifest.webmanifest' );
 			}
 		}
 		$args = array( 'wrp_view' => $view );
@@ -143,7 +156,7 @@ class WRP_Public {
 	}
 
 	public static function no_canonical_for_sw( $redirect, $requested ) {
-		if ( get_query_var( 'wrp_view' ) && in_array( get_query_var( 'wrp_view' ), array( 'sw', 'manifest' ), true ) ) {
+		if ( get_query_var( 'wrp_view' ) && in_array( get_query_var( 'wrp_view' ), array( 'sw', 'manifest', 'legacy_sw', 'app', 'scanner' ), true ) ) {
 			return false;
 		}
 		return $redirect;
@@ -170,6 +183,17 @@ class WRP_Public {
 				break;
 			case 'manifest':
 				self::serve_manifest();
+				break;
+			case 'app':
+				WRP_App::view();
+				break;
+			case 'legacy_scanner':
+				wp_safe_redirect( self::url( 'scanner' ), 301 );
+				break;
+			case 'legacy_sw':
+				header( 'Content-Type: application/javascript; charset=utf-8' );
+				header( 'Cache-Control: no-cache' );
+				echo "self.addEventListener('install',function(){self.skipWaiting();});self.addEventListener('activate',function(){self.registration.unregister();});";
 				break;
 			default:
 				return;
@@ -364,8 +388,13 @@ class WRP_Public {
 	 * Offline scanner (PWA)
 	 * ---------------------------------------------------------------- */
 
-	public static function scanner_assets() {
+	/**
+	 * Everything the installable app needs offline (cached by the service worker).
+	 */
+	public static function pwa_assets() {
 		return array(
+			self::asset( 'app/app.css' ),
+			self::asset( 'app/app.js' ),
 			self::asset( 'scanner/scanner.css' ),
 			self::asset( 'scanner/scanner.js' ),
 			self::asset( 'vendor/jsQR.js' ),
@@ -375,9 +404,12 @@ class WRP_Public {
 		);
 	}
 
-	private static function view_scanner() {
-		// Make sure the app is always served on the trailing-slash URL (service worker scope).
-		$canonical = self::url( 'scanner' );
+	/**
+	 * PWA pages must be served on their trailing-slash URL (service worker scope).
+	 *
+	 * @param string $canonical URL.
+	 */
+	public static function enforce_trailing_slash( $canonical ) {
 		if ( get_option( 'permalink_structure' ) ) {
 			$req = isset( $_SERVER['REQUEST_URI'] ) ? wp_parse_url( esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ), PHP_URL_PATH ) : '';
 			if ( $req && '/' !== substr( $req, -1 ) ) {
@@ -385,23 +417,42 @@ class WRP_Public {
 				exit;
 			}
 		}
+	}
+
+	/**
+	 * Config shared by the app and the scanner.
+	 */
+	public static function pwa_config() {
+		return array(
+			'ajax'      => admin_url( 'admin-ajax.php' ),
+			'sw'        => self::url( 'sw' ),
+			'scope'     => self::url( 'app' ),
+			'appUrl'    => self::url( 'app' ),
+			'scannerUrl' => self::url( 'scanner' ),
+			'names'     => WRP_Settings::couple_names(),
+			'date'      => WRP_Settings::wedding_date_display( 'j F Y' ),
+			'timestamp' => WRP_Settings::wedding_timestamp() * 1000,
+			'siteId'    => substr( md5( home_url() ), 0, 10 ),
+			'version'   => WRP_VERSION,
+		);
+	}
+
+	private static function view_scanner() {
+		self::enforce_trailing_slash( self::url( 'scanner' ) );
 		header( 'X-Robots-Tag: noindex, nofollow', true );
 		header( 'Cache-Control: no-cache', true );
 		self::render(
 			'scanner',
 			array(
-				'config' => array(
-					'endpoints' => array(
-						'hello'    => esc_url_raw( rest_url( 'wrp/v1/scanner/hello' ) ),
-						'guests'   => esc_url_raw( rest_url( 'wrp/v1/scanner/guests' ) ),
-						'checkins' => esc_url_raw( rest_url( 'wrp/v1/scanner/checkins' ) ),
-					),
-					'sw'        => self::url( 'sw' ),
-					'scope'     => $canonical,
-					'names'     => WRP_Settings::couple_names(),
-					'date'      => WRP_Settings::wedding_date_display( 'j F Y' ),
-					'siteId'    => substr( md5( home_url() ), 0, 10 ),
-					'version'   => WRP_VERSION,
+				'config' => array_merge(
+					self::pwa_config(),
+					array(
+						'endpoints' => array(
+							'hello'    => esc_url_raw( rest_url( 'wrp/v1/scanner/hello' ) ),
+							'guests'   => esc_url_raw( rest_url( 'wrp/v1/scanner/guests' ) ),
+							'checkins' => esc_url_raw( rest_url( 'wrp/v1/scanner/checkins' ) ),
+						),
+					)
 				),
 			)
 		);
@@ -409,19 +460,18 @@ class WRP_Public {
 
 	private static function serve_service_worker() {
 		header( 'Content-Type: application/javascript; charset=utf-8' );
-		header( 'Service-Worker-Allowed: ' . wp_parse_url( self::url( 'scanner' ), PHP_URL_PATH ) );
+		header( 'Service-Worker-Allowed: ' . wp_parse_url( self::url( 'app' ), PHP_URL_PATH ) );
 		header( 'Cache-Control: no-cache' );
 		header( 'X-Robots-Tag: noindex' );
 
-		$assets = self::scanner_assets();
-		$assets[] = self::url( 'scanner' );
-		$assets[] = self::url( 'manifest' );
+		$shells   = array( self::url( 'app' ), self::url( 'scanner' ) );
+		$assets   = array_merge( self::pwa_assets(), $shells, array( self::url( 'manifest' ) ) );
 		$version  = WRP_VERSION . '-' . substr( md5( implode( '|', $assets ) ), 0, 8 );
 
 		$sw = file_get_contents( WRP_DIR . 'assets/scanner/sw.js' ); // phpcs:ignore
 		$sw = str_replace(
-			array( '__WRP_CACHE_VERSION__', '__WRP_ASSETS__', '__WRP_SCOPE_URL__' ),
-			array( $version, wp_json_encode( array_values( $assets ) ), wp_json_encode( self::url( 'scanner' ) ) ),
+			array( '__WRP_CACHE_VERSION__', '__WRP_ASSETS__', '__WRP_SHELLS__' ),
+			array( $version, wp_json_encode( array_values( $assets ) ), wp_json_encode( $shells ) ),
 			$sw
 		);
 		echo $sw; // phpcs:ignore
@@ -431,10 +481,14 @@ class WRP_Public {
 		header( 'Content-Type: application/manifest+json; charset=utf-8' );
 		header( 'Cache-Control: no-cache' );
 		$manifest = array(
-			'name'             => sprintf( __( 'Scanner – Mariage %s', 'wedding-rsvp-pass' ), WRP_Settings::couple_names() ),
-			'short_name'       => __( 'Scanner mariage', 'wedding-rsvp-pass' ),
-			'start_url'        => self::url( 'scanner' ),
-			'scope'            => self::url( 'scanner' ),
+			'id'               => wp_parse_url( self::url( 'app' ), PHP_URL_PATH ),
+			/* translators: %s couple names */
+			'name'             => sprintf( __( 'Mariage %s', 'wedding-rsvp-pass' ), WRP_Settings::couple_names() ),
+			'short_name'       => WRP_Settings::couple_names( '&' ),
+			'description'      => __( 'Espace des mariés : invités, réponses et scanner du jour J.', 'wedding-rsvp-pass' ),
+			'lang'             => 'fr',
+			'start_url'        => self::url( 'app' ),
+			'scope'            => self::url( 'app' ),
 			'display'          => 'standalone',
 			'orientation'      => 'portrait',
 			'background_color' => '#1d1714',
@@ -450,6 +504,14 @@ class WRP_Public {
 					'sizes'   => '512x512',
 					'type'    => 'image/png',
 					'purpose' => 'any maskable',
+				),
+			),
+			'shortcuts'        => array(
+				array(
+					'name'      => __( 'Scanner les cartons', 'wedding-rsvp-pass' ),
+					'short_name' => __( 'Scanner', 'wedding-rsvp-pass' ),
+					'url'       => self::url( 'scanner' ),
+					'icons'     => array( array( 'src' => self::asset( 'img/icon-192.png' ), 'sizes' => '192x192' ) ),
 				),
 			),
 		);

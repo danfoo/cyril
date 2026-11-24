@@ -69,6 +69,27 @@ dist/*.zip                   → archives prêtes à téléverser (régénérer 
 - L'API est protégée par la clé du scanner, avec une limite contre les essais en série. La clé peut être régénérée.
 - Les liens personnels sont aléatoires (128 bits) et exclus des moteurs de recherche.
 
+## Application « Espace mariés » (installable sur téléphone)
+
+L'application s'ouvre à l'adresse **`votresite.com/espace-maries/`**. C'est une PWA : elle s'installe sur l'écran d'accueil depuis le navigateur, sans passer par un store.
+
+- **Page de connexion** : avec l'e-mail ou l'identifiant WordPress. On reste connecté sur le téléphone.
+- **Mariés** (rôle « Marié(e) »), et aussi l'organisateur·rice et l'administrateur :
+  - tableau de bord : compte à rebours, présents, en attente, absents, taux de réponse, derniers petits mots ;
+  - liste des invités : recherche, filtres (à inviter, sans réponse, présents, absents, arrivés), onglets par liste pour l'administrateur ;
+  - fiche invité : WhatsApp, SMS, e-mail, partager, copier le lien, voir le carton, modifier, supprimer, annuler un passage ;
+  - ajout et modification d'invités ;
+  - onglet **Équipe** : création d'un accès « Agent d'accueil » en un clic. L'identifiant et le mot de passe s'affichent une fois, avec un message prêt à envoyer par WhatsApp.
+- **Équipe d'accueil** (rôle « Agent d'accueil (scan) ») :
+  - après connexion, la personne arrive directement sur le scanner, **déjà configuré** (aucune clé à saisir) ;
+  - elle n'a aucun accès à la liste des invités ni à l'administration WordPress.
+- **Installation** :
+  - Android / Chrome : bouton « Installer l'application » ;
+  - iPhone : Safari → Partager → « Sur l'écran d'accueil » (instructions dans l'application).
+- **Hors connexion** : l'application s'ouvre avec la dernière liste enregistrée, en lecture seule, et le scanner fonctionne entièrement.
+  - Conseil : ouvrez le scanner une fois avec du réseau avant le jour J pour télécharger la liste.
+- L'ancienne adresse du scanner (`/wrp-scanner/`) redirige vers `/espace-maries/scanner/`.
+
 ## Elementor
 
 Le thème est compatible avec Elementor (gratuit) et Elementor Pro.
